@@ -104,6 +104,7 @@ a {
   user-select: none;
   pointer-events: none;
   will-change: transform, filter;
+  opacity: 0;
 }
 
 .hero__canvas,
@@ -118,8 +119,8 @@ a {
 .hero__canvas {
   z-index: 1;
   pointer-events: none;
-  opacity: var(--noise-opacity);
-  mix-blend-mode: screen;
+  opacity: 1;
+  mix-blend-mode: normal;
 }
 
 .hero__grain {

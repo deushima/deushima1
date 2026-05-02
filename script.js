@@ -1,5 +1,6 @@
 const canvas = document.querySelector("[data-noise-canvas]");
 const hero = document.querySelector(".hero");
+const sourceImage = document.querySelector(".hero__photo");
 const ctx = canvas.getContext("2d", { alpha: true });
 const preloader = document.querySelector("[data-preloader]");
 const timeNode = document.querySelector("[data-current-time]");
@@ -21,6 +22,7 @@ let noiseImage = null;
 let noiseWidth = 0;
 let noiseHeight = 0;
 let dust = [];
+let imageReady = false;
 
 function resizeCanvas() {
   dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -56,6 +58,28 @@ function buildDust() {
       drift: Math.random() * Math.PI * 2
     });
   }
+}
+
+function coverRect(img) {
+  const imgRatio = img.naturalWidth / img.naturalHeight;
+  const canvasRatio = width / height;
+  let drawWidth = width;
+  let drawHeight = height;
+
+  if (imgRatio > canvasRatio) {
+    drawHeight = height;
+    drawWidth = height * imgRatio;
+  } else {
+    drawWidth = width;
+    drawHeight = width / imgRatio;
+  }
+
+  return {
+    x: (width - drawWidth) * 0.5,
+    y: (height - drawHeight) * 0.5,
+    width: drawWidth,
+    height: drawHeight
+  };
 }
 
 function updateNoise(now) {
@@ -95,12 +119,18 @@ function drawNoise(now) {
   hero.style.setProperty("--photo-blur", `${photoBlur.toFixed(2)}px`);
   hero.style.setProperty("--noise-opacity", `${Math.min(0.58, 0.38 + noiseBoost * 0.14).toFixed(2)}`);
 
-  const driftX = pointerX * 46 + Math.sin(now * 0.0004) * 18;
-  const driftY = pointerY * 34 + Math.cos(now * 0.00034) * 14;
+  if (imageReady) {
+    drawInteractivePhoto(now);
+  }
+
+  const idleX = Math.sin(now * 0.00055) * 28 + Math.sin(now * 0.0011) * 8;
+  const idleY = Math.cos(now * 0.00047) * 22 + Math.cos(now * 0.0009) * 7;
+  const driftX = pointerX * 46 + idleX;
+  const driftY = pointerY * 34 + idleY;
 
   ctx.save();
   ctx.globalCompositeOperation = "screen";
-  ctx.globalAlpha = 0.3 + noiseBoost * 0.16;
+  ctx.globalAlpha = 0.4 + noiseBoost * 0.2;
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(noiseCanvas, driftX - 18, driftY - 18, width + 36, height + 36);
   ctx.restore();
@@ -109,12 +139,45 @@ function drawNoise(now) {
   dust.forEach((point, index) => {
     const x = point.x + Math.sin(now * 0.00024 + point.drift + index) * 1.2;
     const y = point.y + Math.cos(now * 0.00018 + point.drift) * 0.8;
-    ctx.fillStyle = `rgba(255,255,255,${point.alpha})`;
+    ctx.fillStyle = `rgba(255,255,255,${point.alpha * 1.25})`;
     ctx.fillRect(x, y, point.size, point.size);
   });
   ctx.restore();
 
   requestAnimationFrame(drawNoise);
+}
+
+function drawInteractivePhoto(now) {
+  const rect = coverRect(sourceImage);
+  const idleX = Math.sin(now * 0.00035) * 5;
+  const idleY = Math.cos(now * 0.0003) * 4;
+  const photoX = -pointerX * 42 + idleX;
+  const photoY = -pointerY * 26 + idleY;
+
+  ctx.save();
+  ctx.globalCompositeOperation = "source-over";
+  ctx.filter = `brightness(0.58) contrast(1.36) saturate(0.84) blur(${photoBlur.toFixed(2)}px)`;
+  ctx.drawImage(
+    sourceImage,
+    rect.x + photoX,
+    rect.y + photoY,
+    rect.width,
+    rect.height
+  );
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.18 + noiseBoost * 0.08;
+  ctx.globalCompositeOperation = "screen";
+  ctx.filter = `brightness(0.9) contrast(1.25) saturate(1.35) blur(${(photoBlur * 0.55 + 1.1).toFixed(2)}px)`;
+  ctx.drawImage(
+    sourceImage,
+    rect.x + photoX * 1.22 + pointerX * 9,
+    rect.y + photoY * 1.18 + pointerY * 7,
+    rect.width,
+    rect.height
+  );
+  ctx.restore();
 }
 
 function updateTime() {
@@ -141,7 +204,24 @@ window.addEventListener("load", () => {
   window.setTimeout(() => preloader.classList.add("is-hidden"), 620);
 });
 
+async function initImage() {
+  if (sourceImage.complete && sourceImage.naturalWidth > 0) {
+    imageReady = true;
+    return;
+  }
+
+  try {
+    await sourceImage.decode();
+    imageReady = true;
+  } catch {
+    sourceImage.addEventListener("load", () => {
+      imageReady = true;
+    }, { once: true });
+  }
+}
+
 resizeCanvas();
 updateTime();
 setInterval(updateTime, 1000);
+initImage();
 requestAnimationFrame(drawNoise);
