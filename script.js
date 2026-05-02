@@ -119,10 +119,6 @@ function drawNoise(now) {
   hero.style.setProperty("--photo-blur", `${photoBlur.toFixed(2)}px`);
   hero.style.setProperty("--noise-opacity", `${Math.min(0.58, 0.38 + noiseBoost * 0.14).toFixed(2)}`);
 
-  if (imageReady) {
-    drawInteractivePhoto(now);
-  }
-
   const idleX = Math.sin(now * 0.00055) * 28 + Math.sin(now * 0.0011) * 8;
   const idleY = Math.cos(now * 0.00047) * 22 + Math.cos(now * 0.0009) * 7;
   const driftX = pointerX * 46 + idleX;
@@ -145,39 +141,6 @@ function drawNoise(now) {
   ctx.restore();
 
   requestAnimationFrame(drawNoise);
-}
-
-function drawInteractivePhoto(now) {
-  const rect = coverRect(sourceImage);
-  const idleX = Math.sin(now * 0.00035) * 5;
-  const idleY = Math.cos(now * 0.0003) * 4;
-  const photoX = -pointerX * 42 + idleX;
-  const photoY = -pointerY * 26 + idleY;
-
-  ctx.save();
-  ctx.globalCompositeOperation = "source-over";
-  ctx.filter = `brightness(0.58) contrast(1.36) saturate(0.84) blur(${photoBlur.toFixed(2)}px)`;
-  ctx.drawImage(
-    sourceImage,
-    rect.x + photoX,
-    rect.y + photoY,
-    rect.width,
-    rect.height
-  );
-  ctx.restore();
-
-  ctx.save();
-  ctx.globalAlpha = 0.18 + noiseBoost * 0.08;
-  ctx.globalCompositeOperation = "screen";
-  ctx.filter = `brightness(0.9) contrast(1.25) saturate(1.35) blur(${(photoBlur * 0.55 + 1.1).toFixed(2)}px)`;
-  ctx.drawImage(
-    sourceImage,
-    rect.x + photoX * 1.22 + pointerX * 9,
-    rect.y + photoY * 1.18 + pointerY * 7,
-    rect.width,
-    rect.height
-  );
-  ctx.restore();
 }
 
 function updateTime() {
