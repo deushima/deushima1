@@ -1,8 +1,11 @@
 const canvas = document.querySelector("[data-noise-canvas]");
 const distortionCanvas = document.querySelector("[data-distortion-canvas]");
+const subjectNoiseCanvas = document.querySelector("[data-subject-noise-canvas]");
 const hero = document.querySelector(".hero");
 const sourceImage = document.querySelector(".hero__photo");
+const subjectImage = document.querySelector(".hero__subject");
 const ctx = canvas.getContext("2d", { alpha: true });
+const subjectNoiseCtx = subjectNoiseCanvas.getContext("2d", { alpha: true });
 const gl = distortionCanvas.getContext("webgl", {
   alpha: false,
   antialias: false,
@@ -17,6 +20,10 @@ let height = 0;
 let dpr = 1;
 let pointerX = 0;
 let pointerY = 0;
+let subjectX = 0;
+let subjectY = 0;
+let subjectNoiseX = 0;
+let subjectNoiseY = 0;
 let targetX = 0;
 let targetY = 0;
 let targetBlur = 0;
@@ -40,6 +47,7 @@ let noiseCtx = noiseCanvas.getContext("2d");
 let noiseImage = null;
 let noiseWidth = 0;
 let noiseHeight = 0;
+let lastNoiseUpdate = 0;
 let dust = [];
 let pointerTrail = [];
 let webglReady = false;
@@ -83,9 +91,9 @@ vec2 coverUv(vec2 uv) {
 
 vec3 applyLook(vec3 color) {
   float gray = dot(color, vec3(0.299, 0.587, 0.114));
-  color = mix(vec3(gray), color, 0.86);
-  color = (color - 0.5) * 1.38 + 0.5;
-  color *= vec3(0.55, 0.63, 0.92);
+  color = mix(vec3(gray), color, 0.9);
+  color = (color - 0.5) * 1.28 + 0.5;
+  color *= vec3(0.62, 0.7, 1.04);
   return clamp(color, 0.0, 1.0);
 }
 
@@ -156,13 +164,16 @@ void main() {
 
   vec3 mixedColor = mix(base.rgb, mix(blurred, chroma, 0.84), smoothstep(0.018, 0.78, totalField));
   vec3 color = applyLook(mixedColor);
+  float breath = 0.5 + 0.5 * sin(uTime * 0.00135);
+  float centerGlow = 1.0 - smoothstep(0.12, 0.88, distance(uv, vec2(0.54, 0.48)));
+  color *= 0.94 + breath * 0.07 + centerGlow * 0.04 + uForce * 0.025;
   color = mix(vec3(0.0588), color, 0.98);
 
   gl_FragColor = vec4(color, 1.0);
 }`;
 
 function resizeCanvas() {
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  dpr = Math.min(window.devicePixelRatio || 1, 1.5);
   width = window.innerWidth;
   height = window.innerHeight;
 
@@ -176,6 +187,12 @@ function resizeCanvas() {
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  subjectNoiseCanvas.width = Math.floor(width * dpr);
+  subjectNoiseCanvas.height = Math.floor(height * dpr);
+  subjectNoiseCanvas.style.width = `${width}px`;
+  subjectNoiseCanvas.style.height = `${height}px`;
+  subjectNoiseCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   if (gl && webglReady) {
     gl.viewport(0, 0, distortionCanvas.width, distortionCanvas.height);
@@ -276,11 +293,12 @@ async function initDistortion() {
 }
 
 function buildNoiseBuffer() {
-  noiseWidth = Math.max(260, Math.floor(width / 3.5));
-  noiseHeight = Math.max(160, Math.floor(height / 3.5));
+  noiseWidth = Math.max(260, Math.floor(width / 4));
+  noiseHeight = Math.max(160, Math.floor(height / 4));
   noiseCanvas.width = noiseWidth;
   noiseCanvas.height = noiseHeight;
   noiseImage = noiseCtx.createImageData(noiseWidth, noiseHeight);
+  lastNoiseUpdate = 0;
 }
 
 function buildDust() {
@@ -319,9 +337,89 @@ function updateNoise(now) {
   noiseCtx.putImageData(noiseImage, 0, 0);
 }
 
+function getCoverRect(image, layerScale, offsetX, offsetY) {
+  const imageRatio = image.naturalWidth / image.naturalHeight;
+  const viewRatio = width / height;
+  let drawWidth;
+  let drawHeight;
+
+  if (viewRatio > imageRatio) {
+    drawWidth = width * layerScale;
+    drawHeight = drawWidth / imageRatio;
+  } else {
+    drawHeight = height * layerScale;
+    drawWidth = drawHeight * imageRatio;
+  }
+
+  return {
+    x: (width - drawWidth) / 2 + offsetX,
+    y: (height - drawHeight) / 2 + offsetY,
+    width: drawWidth,
+    height: drawHeight
+  };
+}
+
+function drawCoveredImage(context, image, rect) {
+  context.drawImage(image, rect.x, rect.y, rect.width, rect.height);
+}
+
+function drawSubjectNoise(now, subjectMoveX, subjectMoveY, subjectScale, subjectBlur) {
+  if (!subjectImage || !subjectImage.complete || subjectImage.naturalWidth === 0 || !noiseCanvas.width) {
+    return;
+  }
+
+  subjectNoiseX += ((-subjectX * 66 + velocityX * 0.026) - subjectNoiseX) * 0.08;
+  subjectNoiseY += ((-subjectY * 42 - velocityY * 0.024) - subjectNoiseY) * 0.08;
+
+  const maskRect = getCoverRect(subjectImage, subjectScale, subjectMoveX, subjectMoveY);
+  const pulse = Math.sin(now * 0.0022) * 0.5 + 0.5;
+  const blur = Math.min(2.35, subjectBlur * 0.95 + noiseBoost * 0.95);
+  const inverseNoiseX = subjectNoiseX + Math.sin(now * 0.0013) * 22;
+  const inverseNoiseY = subjectNoiseY + Math.cos(now * 0.0011) * 16;
+  const stretchX = Math.min(46, Math.abs(velocityX) * 0.026);
+  const stretchY = Math.min(34, Math.abs(velocityY) * 0.022);
+  const scanOffset = (now * 0.032 + subjectNoiseY) % 18;
+
+  subjectNoiseCtx.clearRect(0, 0, width, height);
+  subjectNoiseCtx.save();
+  subjectNoiseCtx.filter = `blur(${blur.toFixed(2)}px)`;
+  drawCoveredImage(subjectNoiseCtx, subjectImage, maskRect);
+  subjectNoiseCtx.globalCompositeOperation = "source-in";
+  subjectNoiseCtx.globalAlpha = 0.36 + pulse * 0.14 + noiseBoost * 0.22;
+  subjectNoiseCtx.imageSmoothingEnabled = false;
+  subjectNoiseCtx.drawImage(
+    noiseCanvas,
+    inverseNoiseX - 28 - stretchX,
+    inverseNoiseY - 24 - stretchY,
+    width + 56 + stretchX * 2,
+    height + 48 + stretchY * 2
+  );
+  subjectNoiseCtx.globalCompositeOperation = "source-atop";
+  subjectNoiseCtx.globalAlpha = 0.12 + noiseBoost * 0.12;
+  subjectNoiseCtx.fillStyle = "rgba(51, 119, 255, 0.62)";
+  subjectNoiseCtx.fillRect(0, 0, width, height);
+  subjectNoiseCtx.globalAlpha = 0.12 + noiseBoost * 0.18;
+  subjectNoiseCtx.fillStyle = "rgba(178, 214, 255, 0.74)";
+
+  for (let y = scanOffset - 18; y < height + 18; y += 18) {
+    subjectNoiseCtx.fillRect(0, y, width, 1);
+  }
+
+  subjectNoiseCtx.globalAlpha = 0.14 + noiseBoost * 0.16;
+  subjectNoiseCtx.fillStyle = "rgba(0, 42, 255, 0.54)";
+
+  for (let x = (inverseNoiseX % 26) - 26; x < width + 26; x += 26) {
+    subjectNoiseCtx.fillRect(x, 0, 1, height);
+  }
+
+  subjectNoiseCtx.restore();
+}
+
 function drawNoise(now) {
   pointerX += (targetX - pointerX) * 0.06;
   pointerY += (targetY - pointerY) * 0.06;
+  subjectX += (targetX - subjectX) * 0.04;
+  subjectY += (targetY - subjectY) * 0.04;
   smoothMouseX += (mouseX - smoothMouseX) * 0.12;
   smoothMouseY += (mouseY - smoothMouseY) * 0.12;
   velocityX += (targetVelocityX - velocityX) * 0.14;
@@ -335,20 +433,38 @@ function drawNoise(now) {
   targetDistortionForce *= 0.84;
   targetNoiseBoost *= 0.84;
   updatePointerTrail();
-  updateNoise(now);
+
+  if (now - lastNoiseUpdate > 38) {
+    updateNoise(now);
+    lastNoiseUpdate = now;
+  }
 
   ctx.clearRect(0, 0, width, height);
 
-  hero.style.setProperty("--photo-x", `${(-pointerX * 48).toFixed(2)}px`);
-  hero.style.setProperty("--photo-y", `${(-pointerY * 30).toFixed(2)}px`);
-  hero.style.setProperty("--photo-blur", `${photoBlur.toFixed(2)}px`);
-  hero.style.setProperty("--shadow-x", `${(pointerX * 42).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-y", `${(pointerY * 26).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-blur", `${(7 + photoBlur * 0.72).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-opacity", `${Math.min(0.24, 0.1 + noiseBoost * 0.08 + photoBlur * 0.006).toFixed(3)}`);
+  const breath = Math.sin(now * 0.00135);
+  const bgScale = 1.07 + breath * 0.012 + noiseBoost * 0.008;
+  const subjectScale = 1.055 + Math.sin(now * 0.0011 + 1.2) * 0.006 + noiseBoost * 0.006;
+  const subjectBlur = Math.min(1.15, photoBlur * 0.12);
+  const subjectMoveX = subjectX * 34;
+  const subjectMoveY = subjectY * 22;
+
+  hero.style.setProperty("--photo-x", `${(-pointerX * 18).toFixed(2)}px`);
+  hero.style.setProperty("--photo-y", `${(-pointerY * 12).toFixed(2)}px`);
+  hero.style.setProperty("--photo-blur", `${Math.min(1.6, photoBlur * 0.16).toFixed(2)}px`);
+  hero.style.setProperty("--photo-scale", bgScale.toFixed(4));
+  hero.style.setProperty("--subject-x", `${subjectMoveX.toFixed(2)}px`);
+  hero.style.setProperty("--subject-y", `${subjectMoveY.toFixed(2)}px`);
+  hero.style.setProperty("--subject-blur", `${subjectBlur.toFixed(2)}px`);
+  hero.style.setProperty("--subject-scale", subjectScale.toFixed(4));
+  hero.style.setProperty("--subject-noise-opacity", `${Math.min(0.56, 0.24 + noiseBoost * 0.2 + photoBlur * 0.014).toFixed(3)}`);
+  hero.style.setProperty("--shadow-x", `${(subjectX * 46 + velocityX * 0.014).toFixed(2)}px`);
+  hero.style.setProperty("--shadow-y", `${(subjectY * 30 - velocityY * 0.014).toFixed(2)}px`);
+  hero.style.setProperty("--shadow-blur", `${(10 + photoBlur * 0.42).toFixed(2)}px`);
+  hero.style.setProperty("--shadow-opacity", `${Math.min(0.22, 0.08 + noiseBoost * 0.08 + photoBlur * 0.004).toFixed(3)}`);
   hero.style.setProperty("--noise-opacity", `${Math.min(0.58, 0.38 + noiseBoost * 0.14).toFixed(2)}`);
 
   drawDistortion(now);
+  drawSubjectNoise(now, subjectMoveX, subjectMoveY, subjectScale, subjectBlur);
 
   const idleX = Math.sin(now * 0.00055) * 28 + Math.sin(now * 0.0011) * 8;
   const idleY = Math.cos(now * 0.00047) * 22 + Math.cos(now * 0.0009) * 7;
@@ -395,8 +511,8 @@ function drawDistortion(now) {
   gl.uniform2f(distortionUniforms.imageResolution, sourceImage.naturalWidth, sourceImage.naturalHeight);
   gl.uniform2f(distortionUniforms.mouse, smoothMouseX, smoothMouseY);
   gl.uniform2f(distortionUniforms.velocity, velocityX, velocityY);
-  gl.uniform2f(distortionUniforms.parallax, pointerX * 0.026, -pointerY * 0.018);
-  gl.uniform1f(distortionUniforms.motionBlur, Math.min(0.006, photoBlur * 0.00085));
+  gl.uniform2f(distortionUniforms.parallax, pointerX * 0.012, -pointerY * 0.008);
+  gl.uniform1f(distortionUniforms.motionBlur, Math.min(0.0045, photoBlur * 0.00062));
   gl.uniform4fv(distortionUniforms.trail, trailUniformData);
   gl.uniform1fv(distortionUniforms.trailLife, trailLifeData);
   gl.uniform1f(distortionUniforms.force, Math.min(1, distortionForce));

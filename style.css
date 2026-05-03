@@ -88,10 +88,16 @@ a {
   --photo-x: 0px;
   --photo-y: 0px;
   --photo-blur: 0px;
+  --photo-scale: 1.07;
+  --subject-x: 0px;
+  --subject-y: 0px;
+  --subject-blur: 0px;
+  --subject-scale: 1.055;
+  --subject-noise-opacity: 0.28;
   --shadow-x: 0px;
   --shadow-y: 0px;
   --shadow-blur: 12px;
-  --shadow-opacity: 0.2;
+  --shadow-opacity: 0.14;
   --noise-opacity: 0.42;
 }
 
@@ -117,12 +123,12 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: brightness(0.58) contrast(1.36) saturate(0.84) blur(var(--photo-blur));
-  transform: translate3d(var(--photo-x), var(--photo-y), 0) scale(1.085);
+  filter: brightness(0.72) contrast(1.18) saturate(0.98) blur(var(--photo-blur));
+  transform: translate3d(var(--photo-x), var(--photo-y), 0) scale(var(--photo-scale));
   transform-origin: center;
   user-select: none;
   pointer-events: none;
-  will-change: transform, filter;
+  will-change: transform, filter, opacity;
   opacity: 1;
 }
 
@@ -133,18 +139,51 @@ a {
 .hero__shadow-photo {
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   width: 100%;
   height: 100%;
   object-fit: cover;
   pointer-events: none;
   user-select: none;
   opacity: var(--shadow-opacity);
-  filter: brightness(0.38) contrast(1.42) saturate(0.86) blur(var(--shadow-blur));
-  transform: translate3d(var(--shadow-x), var(--shadow-y), 0) scale(1.105);
+  filter: brightness(0.3) contrast(1.5) saturate(0.95) blur(var(--shadow-blur));
+  transform: translate3d(var(--shadow-x), var(--shadow-y), 0) scale(1.095);
   transform-origin: center;
-  mix-blend-mode: multiply;
+  mix-blend-mode: screen;
   will-change: transform, filter, opacity;
+}
+
+.hero__subject {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  user-select: none;
+  filter:
+    brightness(0.78)
+    contrast(1.18)
+    saturate(0.92)
+    blur(var(--subject-blur))
+    drop-shadow(0 0 1.8rem rgba(24, 89, 255, 0.14));
+  transform: translate3d(var(--subject-x), var(--subject-y), 0) scale(var(--subject-scale));
+  transform-origin: center;
+  will-change: transform, filter;
+}
+
+.hero__subject-noise {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: var(--subject-noise-opacity);
+  mix-blend-mode: screen;
+  filter: contrast(175%) saturate(132%);
+  will-change: opacity, filter;
 }
 
 .hero__canvas,
@@ -157,14 +196,14 @@ a {
 }
 
 .hero__canvas {
-  z-index: 1;
+  z-index: 4;
   pointer-events: none;
   opacity: var(--noise-opacity);
   mix-blend-mode: screen;
 }
 
 .hero__grain {
-  z-index: 2;
+  z-index: 5;
   opacity: 0.45;
   mix-blend-mode: screen;
   background-image:
@@ -176,7 +215,7 @@ a {
 }
 
 .hero__vignette {
-  z-index: 3;
+  z-index: 6;
   background:
     linear-gradient(180deg, rgba(15, 15, 15, 0.64), rgba(15, 15, 15, 0.08) 28%, rgba(15, 15, 15, 0.26) 70%, rgba(15, 15, 15, 0.84)),
     radial-gradient(circle at 52% 55%, transparent 26%, rgba(15, 15, 15, 0.3) 55%, rgba(15, 15, 15, 0.9) 100%);
@@ -371,44 +410,44 @@ a {
   left: 50%;
   bottom: clamp(3rem, 6.4vw, 6.5rem);
   z-index: 8;
-  width: min(30rem, calc(100vw - 2rem));
+  width: min(22.5rem, calc(100vw - 2rem));
   translate: -50% 0;
   text-align: center;
-  color: rgba(255, 255, 255, 0.92);
-  text-shadow: 0 0.55rem 1.8rem rgba(0, 0, 0, 0.72);
+  color: rgba(255, 255, 255, 0.88);
+  text-shadow: 0 0.45rem 1.45rem rgba(0, 0, 0, 0.62);
 }
 
 .hero__copy h1 {
   margin: 0;
-  font-size: clamp(1.3rem, 1.55vw, 2rem);
-  font-weight: 300;
-  line-height: 1.08;
-}
-
-.hero__copy p {
-  margin: 0.18rem auto 1.1rem;
-  max-width: 25.5rem;
-  font-size: clamp(1.15rem, 1.62vw, 2.08rem);
+  font-size: clamp(1.02rem, 1.14vw, 1.46rem);
   font-weight: 300;
   line-height: 1.12;
 }
 
+.hero__copy p {
+  margin: 0.12rem auto 0.86rem;
+  max-width: 20.25rem;
+  font-size: clamp(0.98rem, 1.15vw, 1.48rem);
+  font-weight: 300;
+  line-height: 1.15;
+}
+
 .hero__copy strong {
   display: block;
-  color: rgba(255, 255, 255, 0.94);
-  font-size: clamp(1.28rem, 1.75vw, 2.24rem);
+  color: rgba(255, 255, 255, 0.9);
+  font-size: clamp(1.02rem, 1.2vw, 1.52rem);
   font-style: italic;
-  font-weight: 650;
+  font-weight: 500;
   line-height: 1;
 }
 
 .hero__pin {
   position: absolute;
-  width: clamp(0.9rem, 1.2vw, 1.4rem);
-  height: clamp(0.9rem, 1.2vw, 1.4rem);
+  width: clamp(0.55rem, 0.7vw, 0.86rem);
+  height: clamp(0.55rem, 0.7vw, 0.86rem);
   background: none;
-  color: rgba(255, 255, 255, 0.9);
-  filter: drop-shadow(0 0 0.75rem rgba(255, 255, 255, 0.14));
+  color: rgba(255, 255, 255, 0.82);
+  filter: drop-shadow(0 0 0.55rem rgba(255, 255, 255, 0.1));
 }
 
 .hero__pin::before,
@@ -426,13 +465,13 @@ a {
 }
 
 .hero__pin--left {
-  left: -2.6rem;
-  top: 1rem;
+  left: -1.6rem;
+  top: 0.7rem;
 }
 
 .hero__pin--right {
-  right: -2.6rem;
-  top: 1rem;
+  right: -1.6rem;
+  top: 0.7rem;
 }
 
 .scroll-hint {
