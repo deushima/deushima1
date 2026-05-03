@@ -66,6 +66,8 @@ uniform vec2 uResolution;
 uniform vec2 uImageResolution;
 uniform vec2 uMouse;
 uniform vec2 uVelocity;
+uniform vec2 uParallax;
+uniform float uMotionBlur;
 uniform vec4 uTrail[10];
 uniform float uTrailLife[10];
 uniform float uForce;
@@ -88,7 +90,7 @@ vec3 applyLook(vec3 color) {
 }
 
 vec4 photo(vec2 uv) {
-  vec2 covered = coverUv(uv);
+  vec2 covered = coverUv(uv + uParallax);
   return texture2D(uTexture, covered);
 }
 
@@ -132,7 +134,11 @@ void main() {
   totalField = clamp(totalField, 0.0, 1.0);
 
   vec2 displacedUv = uv + pull + wave;
-  vec4 base = photo(uv);
+  vec2 motionDir = normalize(velocity + vec2(0.0001));
+  vec2 globalBlur = motionDir * uMotionBlur;
+  vec4 base = photo(uv) * 0.48;
+  base += photo(uv - globalBlur) * 0.26;
+  base += photo(uv + globalBlur) * 0.26;
 
   vec3 blurred = vec3(0.0);
   blurred += photo(displacedUv - blurStep * 3.0).rgb * 0.08;
@@ -254,6 +260,8 @@ async function initDistortion() {
     imageResolution: gl.getUniformLocation(distortionProgram, "uImageResolution"),
     mouse: gl.getUniformLocation(distortionProgram, "uMouse"),
     velocity: gl.getUniformLocation(distortionProgram, "uVelocity"),
+    parallax: gl.getUniformLocation(distortionProgram, "uParallax"),
+    motionBlur: gl.getUniformLocation(distortionProgram, "uMotionBlur"),
     trail: gl.getUniformLocation(distortionProgram, "uTrail[0]"),
     trailLife: gl.getUniformLocation(distortionProgram, "uTrailLife[0]"),
     force: gl.getUniformLocation(distortionProgram, "uForce"),
@@ -334,10 +342,10 @@ function drawNoise(now) {
   hero.style.setProperty("--photo-x", `${(-pointerX * 48).toFixed(2)}px`);
   hero.style.setProperty("--photo-y", `${(-pointerY * 30).toFixed(2)}px`);
   hero.style.setProperty("--photo-blur", `${photoBlur.toFixed(2)}px`);
-  hero.style.setProperty("--shadow-x", `${(pointerX * 62).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-y", `${(pointerY * 38).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-blur", `${(10 + photoBlur * 1.35).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-opacity", `${Math.min(0.34, 0.16 + noiseBoost * 0.12 + photoBlur * 0.012).toFixed(3)}`);
+  hero.style.setProperty("--shadow-x", `${(pointerX * 42).toFixed(2)}px`);
+  hero.style.setProperty("--shadow-y", `${(pointerY * 26).toFixed(2)}px`);
+  hero.style.setProperty("--shadow-blur", `${(7 + photoBlur * 0.72).toFixed(2)}px`);
+  hero.style.setProperty("--shadow-opacity", `${Math.min(0.24, 0.1 + noiseBoost * 0.08 + photoBlur * 0.006).toFixed(3)}`);
   hero.style.setProperty("--noise-opacity", `${Math.min(0.58, 0.38 + noiseBoost * 0.14).toFixed(2)}`);
 
   drawDistortion(now);
@@ -387,6 +395,8 @@ function drawDistortion(now) {
   gl.uniform2f(distortionUniforms.imageResolution, sourceImage.naturalWidth, sourceImage.naturalHeight);
   gl.uniform2f(distortionUniforms.mouse, smoothMouseX, smoothMouseY);
   gl.uniform2f(distortionUniforms.velocity, velocityX, velocityY);
+  gl.uniform2f(distortionUniforms.parallax, pointerX * 0.026, -pointerY * 0.018);
+  gl.uniform1f(distortionUniforms.motionBlur, Math.min(0.006, photoBlur * 0.00085));
   gl.uniform4fv(distortionUniforms.trail, trailUniformData);
   gl.uniform1fv(distortionUniforms.trailLife, trailLifeData);
   gl.uniform1f(distortionUniforms.force, Math.min(1, distortionForce));

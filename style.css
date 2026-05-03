@@ -140,8 +140,8 @@ a {
   pointer-events: none;
   user-select: none;
   opacity: var(--shadow-opacity);
-  filter: brightness(0.34) contrast(1.55) saturate(0.9) blur(var(--shadow-blur));
-  transform: translate3d(var(--shadow-x), var(--shadow-y), 0) scale(1.12);
+  filter: brightness(0.38) contrast(1.42) saturate(0.86) blur(var(--shadow-blur));
+  transform: translate3d(var(--shadow-x), var(--shadow-y), 0) scale(1.105);
   transform-origin: center;
   mix-blend-mode: multiply;
   will-change: transform, filter, opacity;
