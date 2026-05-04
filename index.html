@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260503-5">
+  <link rel="stylesheet" href="style.css?v=20260504-1">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -20,12 +20,13 @@
 
   <main id="app" class="site-shell" data-site>
     <section class="hero" aria-label="Inicio">
-      <canvas class="hero__distortion" data-distortion-canvas aria-hidden="true"></canvas>
-      <img class="hero__photo" src="Ivan.png?v=20260503-2" alt="" aria-hidden="true">
-      <img class="hero__shadow-photo" src="Ivan%20adelante.png?v=20260503-2" alt="" aria-hidden="true">
-      <img class="hero__subject" src="Ivan%20adelante.png?v=20260503-2" alt="" aria-hidden="true">
-      <canvas class="hero__subject-noise" data-subject-noise-canvas aria-hidden="true"></canvas>
-      <canvas class="hero__canvas" data-noise-canvas aria-hidden="true"></canvas>
+      <video class="hero__video" data-hero-video autoplay muted loop playsinline preload="auto">
+        <source src="Video%20Background/Video%201.mp4" type="video/mp4">
+      </video>
+      <div class="cursor-distortion" data-cursor-distortion aria-hidden="true">
+        <span class="cursor-distortion__wake"></span>
+        <span class="cursor-distortion__lens"></span>
+      </div>
       <div class="hero__grain" aria-hidden="true"></div>
       <div class="hero__vignette" aria-hidden="true"></div>
 
@@ -81,13 +82,16 @@
       </div>
     </section>
 
-    <section class="intro-section" id="works">
-      <p class="section-kicker">Primera base</p>
-      <h2>Una home que se siente viva antes de explicar nada.</h2>
-      <p>Esta version inicial deja listo el lenguaje visual: oscuro, editorial, interactivo y con un retrato digital azul como pieza central.</p>
+    <section class="floating-section" id="works" aria-label="Archivo interactivo">
+      <div class="floating-section__header">
+        <p class="section-kicker">Works / draggable archive</p>
+        <h2>Selected visual systems in motion.</h2>
+      </div>
+      <div class="floating-stage" data-floating-world aria-label="Lienzo interactivo con piezas flotantes"></div>
     </section>
   </main>
 
-  <script src="script.js?v=20260503-15"></script>
+  <script async src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
+  <script src="script.js?v=20260504-11"></script>
 </body>
 </html>

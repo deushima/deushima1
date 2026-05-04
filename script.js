@@ -1,537 +1,28 @@
-const canvas = document.querySelector("[data-noise-canvas]");
-const distortionCanvas = document.querySelector("[data-distortion-canvas]");
-const subjectNoiseCanvas = document.querySelector("[data-subject-noise-canvas]");
 const hero = document.querySelector(".hero");
-const sourceImage = document.querySelector(".hero__photo");
-const subjectImage = document.querySelector(".hero__subject");
-const ctx = canvas.getContext("2d", { alpha: true });
-const subjectNoiseCtx = subjectNoiseCanvas.getContext("2d", { alpha: true });
-const gl = distortionCanvas.getContext("webgl", {
-  alpha: false,
-  antialias: false,
-  depth: false,
-  preserveDrawingBuffer: false
-});
 const preloader = document.querySelector("[data-preloader]");
 const timeNode = document.querySelector("[data-current-time]");
+const video = document.querySelector("[data-hero-video]");
 
-let width = 0;
-let height = 0;
-let dpr = 1;
 let pointerX = 0;
 let pointerY = 0;
-let subjectX = 0;
-let subjectY = 0;
-let subjectNoiseX = 0;
-let subjectNoiseY = 0;
+let cursorX = -320;
+let cursorY = -320;
+let targetCursorX = -320;
+let targetCursorY = -320;
 let targetX = 0;
 let targetY = 0;
-let targetBlur = 0;
-let photoBlur = 0;
-let noiseBoost = 0;
-let targetNoiseBoost = 0;
-let mouseX = 0.5;
-let mouseY = 0.5;
-let smoothMouseX = 0.5;
-let smoothMouseY = 0.5;
 let velocityX = 0;
 let velocityY = 0;
 let targetVelocityX = 0;
 let targetVelocityY = 0;
-let distortionForce = 0;
-let targetDistortionForce = 0;
-let lastPointerX = null;
-let lastPointerY = null;
-let noiseCanvas = document.createElement("canvas");
-let noiseCtx = noiseCanvas.getContext("2d");
-let noiseImage = null;
-let noiseWidth = 0;
-let noiseHeight = 0;
-let lastNoiseUpdate = 0;
-let dust = [];
-let pointerTrail = [];
-let webglReady = false;
-let distortionProgram = null;
-let distortionUniforms = null;
-const trailUniformData = new Float32Array(40);
-const trailLifeData = new Float32Array(10);
-
-const vertexShaderSource = `
-attribute vec2 aPosition;
-varying vec2 vUv;
-
-void main() {
-  vUv = aPosition * 0.5 + 0.5;
-  gl_Position = vec4(aPosition, 0.0, 1.0);
-}`;
-
-const fragmentShaderSource = `
-precision highp float;
-
-varying vec2 vUv;
-uniform sampler2D uTexture;
-uniform vec2 uResolution;
-uniform vec2 uImageResolution;
-uniform vec2 uMouse;
-uniform vec2 uVelocity;
-uniform vec2 uParallax;
-uniform float uMotionBlur;
-uniform vec4 uTrail[10];
-uniform float uTrailLife[10];
-uniform float uForce;
-uniform float uTime;
-
-vec2 coverUv(vec2 uv) {
-  vec2 ratio = uResolution / uImageResolution;
-  float scale = max(ratio.x, ratio.y);
-  vec2 scaledSize = uImageResolution * scale;
-  vec2 crop = (scaledSize - uResolution) / (2.0 * scaledSize);
-  return uv * (uResolution / scaledSize) + crop;
-}
-
-vec3 applyLook(vec3 color) {
-  float gray = dot(color, vec3(0.299, 0.587, 0.114));
-  color = mix(vec3(gray), color, 0.9);
-  color = (color - 0.5) * 1.28 + 0.5;
-  color *= vec3(0.62, 0.7, 1.04);
-  return clamp(color, 0.0, 1.0);
-}
-
-vec4 photo(vec2 uv) {
-  vec2 covered = coverUv(uv + uParallax);
-  return texture2D(uTexture, covered);
-}
-
-void main() {
-  vec2 uv = vUv;
-  vec2 mouse = uMouse;
-  vec2 velocity = uVelocity;
-  vec2 mainDir = normalize(velocity + vec2(0.0001));
-  float totalField = 0.0;
-  vec2 pull = vec2(0.0);
-  vec2 wave = vec2(0.0);
-  vec2 blurStep = vec2(0.0);
-  vec2 aberration = vec2(0.0);
-
-  for (int i = 0; i < 10; i++) {
-    vec2 point = uTrail[i].xy;
-    vec2 pointVelocity = uTrail[i].zw;
-    float life = uTrailLife[i];
-    vec2 dir = normalize(pointVelocity + vec2(0.0001));
-    vec2 normal = vec2(-dir.y, dir.x);
-    vec2 delta = uv - point;
-    delta.x *= uResolution.x / uResolution.y;
-
-    float along = dot(delta, dir);
-    float across = dot(delta, normal);
-    float speed = clamp(length(pointVelocity) / 82.0, 0.0, 1.0) * life * uForce;
-    float core = exp(-dot(delta, delta) * 24.0);
-    float wake = (1.0 - smoothstep(-0.06, 0.54, along)) * (1.0 - smoothstep(0.0, 0.34, abs(across)));
-    float lane = 0.5 + 0.5 * sin(across * 88.0 + along * 20.0 - uTime * 0.004 + float(i) * 1.7);
-    float ribbon = exp(-abs(across) * 18.0) * wake * (0.54 + lane * 0.46);
-    float softEdge = 1.0 - smoothstep(0.0, 0.58, length(delta));
-    float field = clamp(core * 0.64 + ribbon * 0.82, 0.0, 1.0) * speed * softEdge;
-
-    totalField += field;
-    pull += -dir * field * (0.11 + life * 0.045);
-    wave += normal * sin(along * 34.0 + uTime * 0.004 + float(i)) * field * 0.014;
-    blurStep += dir * field * 0.019;
-    aberration += dir * field * 0.022;
-  }
-
-  totalField = clamp(totalField, 0.0, 1.0);
-
-  vec2 displacedUv = uv + pull + wave;
-  vec2 motionDir = normalize(velocity + vec2(0.0001));
-  vec2 globalBlur = motionDir * uMotionBlur;
-  vec4 base = photo(uv) * 0.48;
-  base += photo(uv - globalBlur) * 0.26;
-  base += photo(uv + globalBlur) * 0.26;
-
-  vec3 blurred = vec3(0.0);
-  blurred += photo(displacedUv - blurStep * 3.0).rgb * 0.08;
-  blurred += photo(displacedUv - blurStep * 2.0).rgb * 0.12;
-  blurred += photo(displacedUv - blurStep).rgb * 0.16;
-  blurred += photo(displacedUv).rgb * 0.28;
-  blurred += photo(displacedUv + blurStep).rgb * 0.16;
-  blurred += photo(displacedUv + blurStep * 2.0).rgb * 0.12;
-  blurred += photo(displacedUv + blurStep * 3.0).rgb * 0.08;
-
-  vec3 chroma;
-  chroma.r = photo(displacedUv + aberration).r;
-  chroma.g = blurred.g;
-  chroma.b = photo(displacedUv - aberration).b;
-
-  vec3 mixedColor = mix(base.rgb, mix(blurred, chroma, 0.84), smoothstep(0.018, 0.78, totalField));
-  vec3 color = applyLook(mixedColor);
-  float breath = 0.5 + 0.5 * sin(uTime * 0.00135);
-  float centerGlow = 1.0 - smoothstep(0.12, 0.88, distance(uv, vec2(0.54, 0.48)));
-  color *= 0.94 + breath * 0.07 + centerGlow * 0.04 + uForce * 0.025;
-  color = mix(vec3(0.0588), color, 0.98);
-
-  gl_FragColor = vec4(color, 1.0);
-}`;
-
-function resizeCanvas() {
-  dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-  width = window.innerWidth;
-  height = window.innerHeight;
-
-  distortionCanvas.width = Math.floor(width * dpr);
-  distortionCanvas.height = Math.floor(height * dpr);
-  distortionCanvas.style.width = `${width}px`;
-  distortionCanvas.style.height = `${height}px`;
-
-  canvas.width = Math.floor(width * dpr);
-  canvas.height = Math.floor(height * dpr);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  subjectNoiseCanvas.width = Math.floor(width * dpr);
-  subjectNoiseCanvas.height = Math.floor(height * dpr);
-  subjectNoiseCanvas.style.width = `${width}px`;
-  subjectNoiseCanvas.style.height = `${height}px`;
-  subjectNoiseCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-  if (gl && webglReady) {
-    gl.viewport(0, 0, distortionCanvas.width, distortionCanvas.height);
-  }
-
-  buildNoiseBuffer();
-  buildDust();
-}
-
-function createShader(type, source) {
-  const shader = gl.createShader(type);
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-
-  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-    console.warn(gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    return null;
-  }
-
-  return shader;
-}
-
-function createProgram() {
-  const vertexShader = createShader(gl.VERTEX_SHADER, vertexShaderSource);
-  const fragmentShader = createShader(gl.FRAGMENT_SHADER, fragmentShaderSource);
-
-  if (!vertexShader || !fragmentShader) return null;
-
-  const program = gl.createProgram();
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-    console.warn(gl.getProgramInfoLog(program));
-    return null;
-  }
-
-  return program;
-}
-
-async function initDistortion() {
-  if (!gl || !sourceImage) return;
-
-  if (!sourceImage.complete || sourceImage.naturalWidth === 0) {
-    try {
-      await sourceImage.decode();
-    } catch {
-      return;
-    }
-  }
-
-  distortionProgram = createProgram();
-  if (!distortionProgram) return;
-
-  const positionBuffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]),
-    gl.STATIC_DRAW
-  );
-
-  const positionLocation = gl.getAttribLocation(distortionProgram, "aPosition");
-  gl.enableVertexAttribArray(positionLocation);
-  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-
-  const texture = gl.createTexture();
-  gl.activeTexture(gl.TEXTURE0);
-  gl.bindTexture(gl.TEXTURE_2D, texture);
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, sourceImage);
-
-  distortionUniforms = {
-    texture: gl.getUniformLocation(distortionProgram, "uTexture"),
-    resolution: gl.getUniformLocation(distortionProgram, "uResolution"),
-    imageResolution: gl.getUniformLocation(distortionProgram, "uImageResolution"),
-    mouse: gl.getUniformLocation(distortionProgram, "uMouse"),
-    velocity: gl.getUniformLocation(distortionProgram, "uVelocity"),
-    parallax: gl.getUniformLocation(distortionProgram, "uParallax"),
-    motionBlur: gl.getUniformLocation(distortionProgram, "uMotionBlur"),
-    trail: gl.getUniformLocation(distortionProgram, "uTrail[0]"),
-    trailLife: gl.getUniformLocation(distortionProgram, "uTrailLife[0]"),
-    force: gl.getUniformLocation(distortionProgram, "uForce"),
-    time: gl.getUniformLocation(distortionProgram, "uTime")
-  };
-
-  gl.useProgram(distortionProgram);
-  gl.uniform1i(distortionUniforms.texture, 0);
-  gl.viewport(0, 0, distortionCanvas.width, distortionCanvas.height);
-  webglReady = true;
-  hero.classList.add("is-webgl");
-}
-
-function buildNoiseBuffer() {
-  noiseWidth = Math.max(260, Math.floor(width / 4));
-  noiseHeight = Math.max(160, Math.floor(height / 4));
-  noiseCanvas.width = noiseWidth;
-  noiseCanvas.height = noiseHeight;
-  noiseImage = noiseCtx.createImageData(noiseWidth, noiseHeight);
-  lastNoiseUpdate = 0;
-}
-
-function buildDust() {
-  dust = [];
-  const amount = Math.floor((width * height) / 13000);
-
-  for (let i = 0; i < amount; i++) {
-    dust.push({
-      x: Math.random() * width,
-      y: Math.random() * height,
-      alpha: 0.03 + Math.random() * 0.16,
-      size: Math.random() < 0.88 ? 1 : 1.7,
-      drift: Math.random() * Math.PI * 2
-    });
-  }
-}
-
-function updateNoise(now) {
-  if (!noiseImage) return;
-
-  const data = noiseImage.data;
-  const wave = Math.floor(now * 0.025);
-
-  for (let i = 0; i < data.length; i += 4) {
-    const n = Math.random();
-    const pulse = Math.sin(i * 0.00065 + wave) * 0.5 + 0.5;
-    const value = n > 0.48 ? 196 + Math.floor(n * 50) : Math.floor(n * 54);
-    const blue = Math.floor(pulse * 48);
-
-    data[i] = Math.max(0, value - 28);
-    data[i + 1] = Math.max(0, value - 16 + blue * 0.2);
-    data[i + 2] = Math.min(255, value + blue);
-    data[i + 3] = n > 0.43 ? 72 : 18;
-  }
-
-  noiseCtx.putImageData(noiseImage, 0, 0);
-}
-
-function getCoverRect(image, layerScale, offsetX, offsetY) {
-  const imageRatio = image.naturalWidth / image.naturalHeight;
-  const viewRatio = width / height;
-  let drawWidth;
-  let drawHeight;
-
-  if (viewRatio > imageRatio) {
-    drawWidth = width * layerScale;
-    drawHeight = drawWidth / imageRatio;
-  } else {
-    drawHeight = height * layerScale;
-    drawWidth = drawHeight * imageRatio;
-  }
-
-  return {
-    x: (width - drawWidth) / 2 + offsetX,
-    y: (height - drawHeight) / 2 + offsetY,
-    width: drawWidth,
-    height: drawHeight
-  };
-}
-
-function drawCoveredImage(context, image, rect) {
-  context.drawImage(image, rect.x, rect.y, rect.width, rect.height);
-}
-
-function drawSubjectNoise(now, subjectMoveX, subjectMoveY, subjectScale, subjectBlur) {
-  if (!subjectImage || !subjectImage.complete || subjectImage.naturalWidth === 0 || !noiseCanvas.width) {
-    return;
-  }
-
-  subjectNoiseX += ((-subjectX * 66 + velocityX * 0.026) - subjectNoiseX) * 0.08;
-  subjectNoiseY += ((-subjectY * 42 - velocityY * 0.024) - subjectNoiseY) * 0.08;
-
-  const maskRect = getCoverRect(subjectImage, subjectScale, subjectMoveX, subjectMoveY);
-  const pulse = Math.sin(now * 0.0022) * 0.5 + 0.5;
-  const blur = Math.min(2.35, subjectBlur * 0.95 + noiseBoost * 0.95);
-  const inverseNoiseX = subjectNoiseX + Math.sin(now * 0.0013) * 22;
-  const inverseNoiseY = subjectNoiseY + Math.cos(now * 0.0011) * 16;
-  const stretchX = Math.min(46, Math.abs(velocityX) * 0.026);
-  const stretchY = Math.min(34, Math.abs(velocityY) * 0.022);
-  const scanOffset = (now * 0.032 + subjectNoiseY) % 18;
-
-  subjectNoiseCtx.clearRect(0, 0, width, height);
-  subjectNoiseCtx.save();
-  subjectNoiseCtx.filter = `blur(${blur.toFixed(2)}px)`;
-  drawCoveredImage(subjectNoiseCtx, subjectImage, maskRect);
-  subjectNoiseCtx.globalCompositeOperation = "source-in";
-  subjectNoiseCtx.globalAlpha = 0.36 + pulse * 0.14 + noiseBoost * 0.22;
-  subjectNoiseCtx.imageSmoothingEnabled = false;
-  subjectNoiseCtx.drawImage(
-    noiseCanvas,
-    inverseNoiseX - 28 - stretchX,
-    inverseNoiseY - 24 - stretchY,
-    width + 56 + stretchX * 2,
-    height + 48 + stretchY * 2
-  );
-  subjectNoiseCtx.globalCompositeOperation = "source-atop";
-  subjectNoiseCtx.globalAlpha = 0.12 + noiseBoost * 0.12;
-  subjectNoiseCtx.fillStyle = "rgba(51, 119, 255, 0.62)";
-  subjectNoiseCtx.fillRect(0, 0, width, height);
-  subjectNoiseCtx.globalAlpha = 0.12 + noiseBoost * 0.18;
-  subjectNoiseCtx.fillStyle = "rgba(178, 214, 255, 0.74)";
-
-  for (let y = scanOffset - 18; y < height + 18; y += 18) {
-    subjectNoiseCtx.fillRect(0, y, width, 1);
-  }
-
-  subjectNoiseCtx.globalAlpha = 0.14 + noiseBoost * 0.16;
-  subjectNoiseCtx.fillStyle = "rgba(0, 42, 255, 0.54)";
-
-  for (let x = (inverseNoiseX % 26) - 26; x < width + 26; x += 26) {
-    subjectNoiseCtx.fillRect(x, 0, 1, height);
-  }
-
-  subjectNoiseCtx.restore();
-}
-
-function drawNoise(now) {
-  pointerX += (targetX - pointerX) * 0.06;
-  pointerY += (targetY - pointerY) * 0.06;
-  subjectX += (targetX - subjectX) * 0.04;
-  subjectY += (targetY - subjectY) * 0.04;
-  smoothMouseX += (mouseX - smoothMouseX) * 0.12;
-  smoothMouseY += (mouseY - smoothMouseY) * 0.12;
-  velocityX += (targetVelocityX - velocityX) * 0.14;
-  velocityY += (targetVelocityY - velocityY) * 0.14;
-  photoBlur += (targetBlur - photoBlur) * 0.13;
-  distortionForce += (targetDistortionForce - distortionForce) * 0.14;
-  noiseBoost += (targetNoiseBoost - noiseBoost) * 0.18;
-  targetBlur *= 0.87;
-  targetVelocityX *= 0.82;
-  targetVelocityY *= 0.82;
-  targetDistortionForce *= 0.84;
-  targetNoiseBoost *= 0.84;
-  updatePointerTrail();
-
-  if (now - lastNoiseUpdate > 38) {
-    updateNoise(now);
-    lastNoiseUpdate = now;
-  }
-
-  ctx.clearRect(0, 0, width, height);
-
-  const breath = Math.sin(now * 0.00135);
-  const bgScale = 1.07 + breath * 0.012 + noiseBoost * 0.008;
-  const subjectScale = 1.055 + Math.sin(now * 0.0011 + 1.2) * 0.006 + noiseBoost * 0.006;
-  const subjectBlur = Math.min(1.15, photoBlur * 0.12);
-  const subjectMoveX = subjectX * 34;
-  const subjectMoveY = subjectY * 22;
-
-  hero.style.setProperty("--photo-x", `${(-pointerX * 18).toFixed(2)}px`);
-  hero.style.setProperty("--photo-y", `${(-pointerY * 12).toFixed(2)}px`);
-  hero.style.setProperty("--photo-blur", `${Math.min(1.6, photoBlur * 0.16).toFixed(2)}px`);
-  hero.style.setProperty("--photo-scale", bgScale.toFixed(4));
-  hero.style.setProperty("--subject-x", `${subjectMoveX.toFixed(2)}px`);
-  hero.style.setProperty("--subject-y", `${subjectMoveY.toFixed(2)}px`);
-  hero.style.setProperty("--subject-blur", `${subjectBlur.toFixed(2)}px`);
-  hero.style.setProperty("--subject-scale", subjectScale.toFixed(4));
-  hero.style.setProperty("--subject-noise-opacity", `${Math.min(0.56, 0.24 + noiseBoost * 0.2 + photoBlur * 0.014).toFixed(3)}`);
-  hero.style.setProperty("--shadow-x", `${(subjectX * 46 + velocityX * 0.014).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-y", `${(subjectY * 30 - velocityY * 0.014).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-blur", `${(10 + photoBlur * 0.42).toFixed(2)}px`);
-  hero.style.setProperty("--shadow-opacity", `${Math.min(0.22, 0.08 + noiseBoost * 0.08 + photoBlur * 0.004).toFixed(3)}`);
-  hero.style.setProperty("--noise-opacity", `${Math.min(0.58, 0.38 + noiseBoost * 0.14).toFixed(2)}`);
-
-  drawDistortion(now);
-  drawSubjectNoise(now, subjectMoveX, subjectMoveY, subjectScale, subjectBlur);
-
-  const idleX = Math.sin(now * 0.00055) * 28 + Math.sin(now * 0.0011) * 8;
-  const idleY = Math.cos(now * 0.00047) * 22 + Math.cos(now * 0.0009) * 7;
-  const driftX = pointerX * 46 + idleX;
-  const driftY = pointerY * 34 + idleY;
-
-  ctx.save();
-  ctx.globalCompositeOperation = "screen";
-  ctx.globalAlpha = 0.4 + noiseBoost * 0.2;
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(noiseCanvas, driftX - 18, driftY - 18, width + 36, height + 36);
-  ctx.restore();
-
-  ctx.save();
-  dust.forEach((point, index) => {
-    const x = point.x + Math.sin(now * 0.00024 + point.drift + index) * 1.2;
-    const y = point.y + Math.cos(now * 0.00018 + point.drift) * 0.8;
-    ctx.fillStyle = `rgba(255,255,255,${point.alpha * 1.25})`;
-    ctx.fillRect(x, y, point.size, point.size);
-  });
-  ctx.restore();
-
-  requestAnimationFrame(drawNoise);
-}
-
-function drawDistortion(now) {
-  if (!gl || !webglReady || !distortionProgram || !distortionUniforms) return;
-
-  trailUniformData.fill(0);
-  trailLifeData.fill(0);
-
-  for (let i = 0; i < Math.min(pointerTrail.length, 10); i++) {
-    const point = pointerTrail[i];
-    const index = i * 4;
-    trailUniformData[index] = point.x;
-    trailUniformData[index + 1] = point.y;
-    trailUniformData[index + 2] = point.vx;
-    trailUniformData[index + 3] = point.vy;
-    trailLifeData[i] = point.life;
-  }
-
-  gl.useProgram(distortionProgram);
-  gl.uniform2f(distortionUniforms.resolution, distortionCanvas.width, distortionCanvas.height);
-  gl.uniform2f(distortionUniforms.imageResolution, sourceImage.naturalWidth, sourceImage.naturalHeight);
-  gl.uniform2f(distortionUniforms.mouse, smoothMouseX, smoothMouseY);
-  gl.uniform2f(distortionUniforms.velocity, velocityX, velocityY);
-  gl.uniform2f(distortionUniforms.parallax, pointerX * 0.012, -pointerY * 0.008);
-  gl.uniform1f(distortionUniforms.motionBlur, Math.min(0.0045, photoBlur * 0.00062));
-  gl.uniform4fv(distortionUniforms.trail, trailUniformData);
-  gl.uniform1fv(distortionUniforms.trailLife, trailLifeData);
-  gl.uniform1f(distortionUniforms.force, Math.min(1, distortionForce));
-  gl.uniform1f(distortionUniforms.time, now);
-  gl.drawArrays(gl.TRIANGLES, 0, 6);
-}
-
-function updatePointerTrail() {
-  pointerTrail = pointerTrail
-    .map((point) => ({
-      ...point,
-      vx: point.vx * 0.88,
-      vy: point.vy * 0.88,
-      life: point.life * 0.84
-    }))
-    .filter((point) => point.life > 0.035);
-}
+let distortion = 0;
+let targetDistortion = 0;
+let lastX = null;
+let lastY = null;
 
 function updateTime() {
+  if (!timeNode) return;
+
   const formatter = new Intl.DateTimeFormat("es-AR", {
     timeZone: "America/Buenos_Aires",
     hour: "2-digit",
@@ -539,62 +30,590 @@ function updateTime() {
     second: "2-digit",
     hour12: false
   });
+
   timeNode.textContent = formatter.format(new Date());
 }
 
-window.addEventListener("resize", resizeCanvas);
+function hidePreloader() {
+  if (!preloader) return;
+  window.setTimeout(() => preloader.classList.add("is-hidden"), 520);
+}
 
 function handlePointerMove(event) {
-  const movementX = lastPointerX === null ? event.movementX || 0 : event.clientX - lastPointerX;
-  const movementY = lastPointerY === null ? event.movementY || 0 : event.clientY - lastPointerY;
+  const movementX = lastX === null ? 0 : event.clientX - lastX;
+  const movementY = lastY === null ? 0 : event.clientY - lastY;
   const movement = Math.hypot(movementX, movementY);
 
-  if (movement === 0 && event.clientX === lastPointerX && event.clientY === lastPointerY) {
+  lastX = event.clientX;
+  lastY = event.clientY;
+  targetCursorX = event.clientX;
+  targetCursorY = event.clientY;
+  targetX = (event.clientX / window.innerWidth - 0.5) * 2;
+  targetY = (event.clientY / window.innerHeight - 0.5) * 2;
+  targetVelocityX = movementX;
+  targetVelocityY = movementY;
+  targetDistortion = Math.min(1, movement / 48);
+}
+
+function animate() {
+  pointerX += (targetX - pointerX) * 0.045;
+  pointerY += (targetY - pointerY) * 0.045;
+  cursorX += (targetCursorX - cursorX) * 0.18;
+  cursorY += (targetCursorY - cursorY) * 0.18;
+  velocityX += (targetVelocityX - velocityX) * 0.16;
+  velocityY += (targetVelocityY - velocityY) * 0.16;
+  distortion += (targetDistortion - distortion) * 0.16;
+  targetVelocityX *= 0.78;
+  targetVelocityY *= 0.78;
+  targetDistortion *= 0.82;
+
+  if (hero) {
+    const speed = Math.min(1, Math.hypot(velocityX, velocityY) / 62);
+    const angle = Math.atan2(velocityY, velocityX) * 180 / Math.PI;
+
+    hero.style.setProperty("--video-x", `${(-pointerX * 12).toFixed(2)}px`);
+    hero.style.setProperty("--video-y", `${(-pointerY * 8).toFixed(2)}px`);
+    hero.style.setProperty("--video-scale", "1.035");
+    hero.style.setProperty("--cursor-x", `${cursorX.toFixed(2)}px`);
+    hero.style.setProperty("--cursor-y", `${cursorY.toFixed(2)}px`);
+    hero.style.setProperty("--cursor-opacity", `${Math.min(0.82, 0.08 + distortion * 0.74).toFixed(3)}`);
+    hero.style.setProperty("--cursor-rotate", `${angle.toFixed(2)}deg`);
+    hero.style.setProperty("--cursor-stretch-x", `${(1 + speed * 0.62).toFixed(3)}`);
+    hero.style.setProperty("--cursor-stretch-y", `${(1 - speed * 0.18).toFixed(3)}`);
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function initVideo() {
+  if (!video) return;
+
+  video.muted = true;
+  video.playsInline = true;
+
+  const playPromise = video.play();
+  if (playPromise) {
+    playPromise.catch(() => {
+      video.setAttribute("controls", "");
+    });
+  }
+}
+
+function getFloatingAssets() {
+  return [
+    { src: "Flotantes/heroines-2.svg", width: 330, height: 468, x: 0.78, y: 180, angle: 12, floatY: 0.58 },
+    { src: "Flotantes/bestseller.svg", width: 318, height: 420, x: 0.17, y: 120, angle: -14, floatY: 0.62 },
+    { src: "Flotantes/new-era-classic-png-negro.svg", width: 330, height: 396, x: 0.45, y: 60, angle: -1, floatY: 0.66 },
+    { src: "Flotantes/svg-02.svg", width: 312, height: 402, x: 0.64, y: 80, angle: 15, floatY: 0.5 },
+    { src: "Flotantes/Dise%C3%B1o.svg", width: 390, height: 292, x: 0.53, y: 10, angle: -31, floatY: 0.42 },
+    { src: "Flotantes/big-boss-negativo.svg", width: 306, height: 408, x: 0.3, y: 30, angle: 5, floatY: 0.55 }
+  ];
+}
+
+function createFloatingElement(asset, index, width, height) {
+  const element = document.createElement("article");
+  const image = document.createElement("img");
+  const controls = document.createElement("span");
+  const hint = document.createElement("span");
+
+  element.className = "floating-card";
+  element.style.setProperty("--card-w", `${width}px`);
+  element.style.setProperty("--card-h", `${height}px`);
+
+  image.className = "floating-card__image";
+  image.src = asset.src;
+  image.alt = "";
+  image.draggable = false;
+
+  controls.className = "floating-card__controls";
+  ["nw", "ne", "se", "sw", "e", "w"].forEach((position) => {
+    const handle = document.createElement("span");
+    handle.className = `floating-card__handle floating-card__handle--${position}`;
+    controls.appendChild(handle);
+  });
+
+  hint.className = "floating-card__hint";
+  hint.textContent = `piece ${String(index + 1).padStart(2, "0")}`;
+
+  element.append(image, controls, hint);
+  return element;
+}
+
+function initFloatingFallback(stage) {
+  if (!stage || stage.dataset.floatingReady === "fallback") return null;
+  stage.dataset.floatingReady = "fallback";
+
+  const assets = getFloatingAssets();
+  const cards = [];
+  let activeCard = null;
+  let frameId = 0;
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function setActiveCard(card) {
+    if (activeCard) activeCard.element.classList.remove("is-active");
+    activeCard = card;
+    if (activeCard) activeCard.element.classList.add("is-active");
+  }
+
+  function resizeCard(event, card) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const nextScale = clamp(card.scale * (event.deltaY < 0 ? 1.06 : 0.94), 0.66, 1.34);
+    const ratio = nextScale / card.scale;
+    if (Math.abs(ratio - 1) < 0.01) return;
+
+    card.scale = nextScale;
+    card.width *= ratio;
+    card.height *= ratio;
+    card.radius = Math.max(card.width, card.height) * 0.4;
+    card.element.style.setProperty("--card-w", `${card.width}px`);
+    card.element.style.setProperty("--card-h", `${card.height}px`);
+    setActiveCard(card);
+  }
+
+  function releaseCard(card) {
+    if (!card) return;
+    card.dragging = false;
+    stage.classList.remove("is-grabbing");
+    card.element.releasePointerCapture?.(card.pointerId);
+  }
+
+  function createCard(asset, index) {
+    const rect = stage.getBoundingClientRect();
+    const responsiveScale = clamp(rect.width / 1500, 0.7, 1);
+    const width = asset.width * responsiveScale;
+    const height = asset.height * responsiveScale;
+    const element = createFloatingElement(asset, index, width, height);
+    const card = {
+      element,
+      width,
+      height,
+      x: clamp(rect.width * asset.x - width / 2, 24, rect.width - width - 24),
+      y: asset.y,
+      vx: (index % 2 === 0 ? 0.18 : -0.18),
+      vy: 0,
+      angle: asset.angle * Math.PI / 180,
+      va: 0,
+      scale: 1,
+      floatY: asset.floatY,
+      phase: index * 1.73,
+      radius: Math.max(width, height) * 0.4,
+      dragging: false,
+      pointerId: null,
+      grabX: 0,
+      grabY: 0,
+      lastX: 0,
+      lastY: 0,
+      lastTime: performance.now()
+    };
+
+    stage.appendChild(element);
+    cards.push(card);
+
+    element.addEventListener("pointerdown", (event) => {
+      const now = performance.now();
+      const rect = stage.getBoundingClientRect();
+      card.dragging = true;
+      card.pointerId = event.pointerId;
+      card.grabX = event.clientX - rect.left - card.x;
+      card.grabY = event.clientY - rect.top - card.y;
+      card.lastX = event.clientX;
+      card.lastY = event.clientY;
+      card.lastTime = now;
+      element.setPointerCapture?.(event.pointerId);
+      setActiveCard(card);
+      stage.classList.add("is-grabbing");
+    });
+
+    element.addEventListener("pointermove", (event) => {
+      if (!card.dragging) return;
+
+      const now = performance.now();
+      const rect = stage.getBoundingClientRect();
+      const dt = Math.max(16, now - card.lastTime);
+      card.x = event.clientX - rect.left - card.grabX;
+      card.y = event.clientY - rect.top - card.grabY;
+      card.vx = (event.clientX - card.lastX) / dt * 16;
+      card.vy = (event.clientY - card.lastY) / dt * 16;
+      card.va = card.vx * 0.00035;
+      card.lastX = event.clientX;
+      card.lastY = event.clientY;
+      card.lastTime = now;
+    });
+
+    element.addEventListener("pointerup", () => releaseCard(card));
+    element.addEventListener("pointercancel", () => releaseCard(card));
+    element.addEventListener("wheel", (event) => resizeCard(event, card), { passive: false });
+  }
+
+  function solveCollision(a, b) {
+    const ax = a.x + a.width / 2;
+    const ay = a.y + a.height / 2;
+    const bx = b.x + b.width / 2;
+    const by = b.y + b.height / 2;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const distance = Math.hypot(dx, dy) || 1;
+    const minDistance = (a.radius + b.radius) * 0.82;
+    if (distance >= minDistance) return;
+
+    const overlap = (minDistance - distance) * 0.28;
+    const nx = dx / distance;
+    const ny = dy / distance;
+
+    if (!a.dragging) {
+      a.x -= nx * overlap;
+      a.y -= ny * overlap;
+      a.vx -= nx * 0.055;
+      a.vy -= ny * 0.055;
+    }
+
+    if (!b.dragging) {
+      b.x += nx * overlap;
+      b.y += ny * overlap;
+      b.vx += nx * 0.055;
+      b.vy += ny * 0.055;
+    }
+  }
+
+  function animateFallback() {
+    const rect = stage.getBoundingClientRect();
+    const time = performance.now() * 0.001;
+
+    for (const card of cards) {
+      if (!card.dragging) {
+        const targetY = rect.height * card.floatY + Math.sin(time * 0.38 + card.phase) * 20;
+        const targetX = rect.width * (0.18 + (card.phase % 5) * 0.16) + Math.cos(time * 0.24 + card.phase) * 18;
+
+        card.vx += (targetX - (card.x + card.width / 2)) * 0.00012;
+        card.vy += 0.52;
+        card.vy += (targetY - (card.y + card.height / 2)) * 0.00072;
+        card.vx += Math.sin(time * 0.44 + card.phase) * 0.004;
+        card.va += Math.sin(time * 0.34 + card.phase) * 0.00016;
+        card.vx *= 0.955;
+        card.vy *= 0.965;
+        card.va *= 0.95;
+        card.x += clamp(card.vx, -4.6, 4.6);
+        card.y += clamp(card.vy, -7.2, 7.2);
+        card.angle += card.va;
+      }
+
+      if (card.x < 14) {
+        card.x = 14;
+        card.vx = Math.abs(card.vx) * 0.38;
+      }
+
+      if (card.x > rect.width - card.width - 14) {
+        card.x = rect.width - card.width - 14;
+        card.vx = -Math.abs(card.vx) * 0.38;
+      }
+
+      if (card.y > rect.height - card.height - 18) {
+        card.y = rect.height - card.height - 18;
+        card.vy = -Math.abs(card.vy) * 0.24;
+      }
+    }
+
+    for (let i = 0; i < cards.length; i++) {
+      for (let j = i + 1; j < cards.length; j++) {
+        solveCollision(cards[i], cards[j]);
+      }
+    }
+
+    for (const card of cards) {
+      card.element.style.transform = `translate3d(${card.x.toFixed(2)}px, ${card.y.toFixed(2)}px, 0) rotate(${card.angle.toFixed(4)}rad)`;
+    }
+
+  }
+
+  assets.forEach(createCard);
+  animateFallback();
+  frameId = window.setInterval(animateFallback, 16);
+
+  return () => {
+    window.clearInterval(frameId);
+    stage.innerHTML = "";
+  };
+}
+
+function initFloatingWorld() {
+  const stage = document.querySelector("[data-floating-world]");
+  if (!stage) return null;
+  if (!window.Matter) return initFloatingFallback(stage);
+  if (stage.dataset.floatingReady === "true") return null;
+  stage.dataset.floatingReady = "true";
+
+  const {
+    Bodies,
+    Body,
+    Composite,
+    Engine,
+    Events,
+    Mouse,
+    MouseConstraint,
+    Runner
+  } = window.Matter;
+
+  const assets = getFloatingAssets();
+
+  const engine = Engine.create({ enableSleeping: false });
+  engine.gravity.y = 0.82;
+
+  const runner = Runner.create();
+  const cards = [];
+  let bounds = [];
+  let activeCard = null;
+  let frameId = 0;
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function stageRect() {
+    return stage.getBoundingClientRect();
+  }
+
+  function createCard(asset, index) {
+    const rect = stageRect();
+    const responsiveScale = clamp(rect.width / 1500, 0.7, 1);
+    const width = asset.width * responsiveScale;
+    const height = asset.height * responsiveScale;
+    const element = createFloatingElement(asset, index, width, height);
+    stage.appendChild(element);
+
+    const body = Bodies.rectangle(
+      clamp(rect.width * asset.x, width * 0.6, rect.width - width * 0.6),
+      asset.y,
+      width,
+      height,
+      {
+        restitution: 0.16,
+        friction: 0.72,
+        frictionAir: 0.07,
+        density: 0.002,
+        slop: 0.04,
+        render: { visible: false }
+      }
+    );
+
+    Body.rotate(body, asset.angle * Math.PI / 180);
+    Composite.add(engine.world, body);
+
+    const card = {
+      body,
+      element,
+      baseWidth: width,
+      baseHeight: height,
+      scale: 1,
+      floatY: asset.floatY,
+      phase: index * 1.73
+    };
+    cards.push(card);
+
+    element.addEventListener("pointerdown", () => setActiveCard(card));
+    element.addEventListener("wheel", (event) => resizeCard(event, card), { passive: false });
+  }
+
+  function setActiveCard(card) {
+    if (activeCard) activeCard.element.classList.remove("is-active");
+    activeCard = card;
+    if (activeCard) activeCard.element.classList.add("is-active");
+  }
+
+  function resizeCard(event, card) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const nextScale = clamp(card.scale * (event.deltaY < 0 ? 1.06 : 0.94), 0.66, 1.34);
+    const ratio = nextScale / card.scale;
+    if (Math.abs(ratio - 1) < 0.01) return;
+
+    card.scale = nextScale;
+    Body.scale(card.body, ratio, ratio);
+    card.element.style.setProperty("--card-w", `${card.baseWidth * card.scale}px`);
+    card.element.style.setProperty("--card-h", `${card.baseHeight * card.scale}px`);
+    setActiveCard(card);
+  }
+
+  function resetBounds() {
+    if (bounds.length) Composite.remove(engine.world, bounds);
+
+    const rect = stageRect();
+    const wallOptions = {
+      isStatic: true,
+      restitution: 0.18,
+      friction: 0.8,
+      render: { visible: false }
+    };
+
+    bounds = [
+      Bodies.rectangle(rect.width / 2, rect.height + 70, rect.width + 320, 128, wallOptions),
+      Bodies.rectangle(-70, rect.height / 2, 140, rect.height + 360, wallOptions),
+      Bodies.rectangle(rect.width + 70, rect.height / 2, 140, rect.height + 360, wallOptions)
+    ];
+
+    Composite.add(engine.world, bounds);
+  }
+
+  function updateCards() {
+    for (const card of cards) {
+      const width = card.baseWidth * card.scale;
+      const height = card.baseHeight * card.scale;
+      const { x, y } = card.body.position;
+      const angle = card.body.angle;
+
+      card.element.style.transform = `translate3d(${(x - width / 2).toFixed(2)}px, ${(y - height / 2).toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`;
+    }
+
+  }
+
+  function tickMatter() {
+    Engine.update(engine, 1000 / 60);
+    updateCards();
+  }
+
+  assets.forEach(createCard);
+  resetBounds();
+
+  const mouse = Mouse.create(stage);
+  mouse.pixelRatio = window.devicePixelRatio || 1;
+  const mouseConstraint = MouseConstraint.create(engine, {
+    mouse,
+    constraint: {
+      stiffness: 0.2,
+      damping: 0.09,
+      render: { visible: false }
+    }
+  });
+
+  Composite.add(engine.world, mouseConstraint);
+
+  Events.on(engine, "beforeUpdate", () => {
+    const rect = stageRect();
+    const time = performance.now() * 0.001;
+
+    for (const card of cards) {
+      if (mouseConstraint.body === card.body) continue;
+
+      const targetY = rect.height * card.floatY + Math.sin(time * 0.38 + card.phase) * 20;
+      const targetX = rect.width * (0.18 + (card.phase % 5) * 0.16) + Math.cos(time * 0.24 + card.phase) * 18;
+      const forceX = clamp((targetX - card.body.position.x) * 0.000006, -0.003, 0.003);
+      const forceY = clamp((targetY - card.body.position.y) * 0.000032 - 0.015, -0.032, 0.018);
+      const spin = Math.sin(time * 0.34 + card.phase) * 0.00014;
+
+      Body.applyForce(card.body, card.body.position, { x: forceX, y: forceY });
+      Body.setAngularVelocity(card.body, card.body.angularVelocity * 0.93 + spin);
+
+      const speed = Math.hypot(card.body.velocity.x, card.body.velocity.y);
+      if (speed > 5.6) {
+        const ratio = 5.6 / speed;
+        Body.setVelocity(card.body, {
+          x: card.body.velocity.x * ratio,
+          y: card.body.velocity.y * ratio
+        });
+      }
+    }
+  });
+
+  Events.on(mouseConstraint, "startdrag", (event) => {
+    const card = cards.find((item) => item.body === event.body);
+    setActiveCard(card || null);
+    stage.classList.add("is-grabbing");
+  });
+
+  Events.on(mouseConstraint, "enddrag", () => {
+    stage.classList.remove("is-grabbing");
+  });
+
+  window.addEventListener("resize", resetBounds);
+  tickMatter();
+  frameId = window.setInterval(tickMatter, 16);
+
+  return () => {
+    window.clearInterval(frameId);
+    Runner.stop(runner);
+    window.removeEventListener("resize", resetBounds);
+    Composite.clear(engine.world);
+    Engine.clear(engine);
+  };
+}
+
+let floatingWorldStarted = false;
+let floatingScheduleStarted = false;
+
+function scheduleFloatingWorld() {
+  if (floatingScheduleStarted) return;
+  floatingScheduleStarted = true;
+
+  const stage = document.querySelector("[data-floating-world]");
+  if (!stage) return;
+
+  function startFloatingWorld() {
+    if (floatingWorldStarted) return;
+    const cleanup = initFloatingWorld();
+    if (!cleanup) {
+      window.setTimeout(startFloatingWorld, 140);
+      return;
+    }
+
+    floatingWorldStarted = true;
+    window.removeEventListener("scroll", checkVisible);
+    window.removeEventListener("resize", checkVisible);
+  }
+
+  function checkVisible() {
+    const section = stage.closest(".floating-section") || stage;
+    const rect = section.getBoundingClientRect();
+    if (rect.top < window.innerHeight * 0.84 && rect.bottom > window.innerHeight * 0.16) {
+      startFloatingWorld();
+    }
+  }
+
+  if (!("IntersectionObserver" in window)) {
+    checkVisible();
+    window.addEventListener("scroll", checkVisible, { passive: true });
+    window.addEventListener("resize", checkVisible);
     return;
   }
 
-  lastPointerX = event.clientX;
-  lastPointerY = event.clientY;
-  mouseX = event.clientX / window.innerWidth;
-  mouseY = 1 - event.clientY / window.innerHeight;
-  targetX = (event.clientX / window.innerWidth - 0.5) * 2;
-  targetY = (event.clientY / window.innerHeight - 0.5) * 2;
-  targetVelocityX = movementX * 1.22;
-  targetVelocityY = -movementY * 1.22;
-  targetBlur = Math.min(7.2, movement * 0.12);
-  targetDistortionForce = Math.min(1, movement / 34);
-  targetNoiseBoost = Math.min(1, movement / 34);
+  const observer = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    observer.disconnect();
+    startFloatingWorld();
+  }, {
+    root: null,
+    rootMargin: "0px 0px -12% 0px",
+    threshold: 0.18
+  });
 
-  if (movement > 2.5) {
-    pointerTrail.unshift({
-      x: mouseX,
-      y: mouseY,
-      vx: movementX * 1.72,
-      vy: -movementY * 1.72,
-      life: Math.min(0.82, 0.34 + movement / 34)
-    });
-
-    if (pointerTrail.length > 7) {
-      pointerTrail.length = 7;
-    }
+  observer.observe(stage.closest(".floating-section") || stage);
+  window.addEventListener("scroll", checkVisible, { passive: true });
+  window.addEventListener("resize", checkVisible);
+  window.setTimeout(checkVisible, 120);
+  if (window.location.hash === "#works") {
+    window.setTimeout(startFloatingWorld, 160);
   }
 }
 
-window.addEventListener("pointermove", handlePointerMove);
-window.addEventListener("mousemove", handlePointerMove);
+window.addEventListener("pointermove", handlePointerMove, { passive: true });
+window.addEventListener("mousemove", handlePointerMove, { passive: true });
 
-function hidePreloader() {
-  window.setTimeout(() => preloader.classList.add("is-hidden"), 620);
-}
+scheduleFloatingWorld();
 
 if (document.readyState === "complete") {
   hidePreloader();
+  initVideo();
 } else {
-  window.addEventListener("load", hidePreloader, { once: true });
+  window.addEventListener("load", () => {
+    hidePreloader();
+    initVideo();
+  }, { once: true });
 }
 
-resizeCanvas();
 updateTime();
 setInterval(updateTime, 1000);
-initDistortion();
-requestAnimationFrame(drawNoise);
+requestAnimationFrame(animate);
