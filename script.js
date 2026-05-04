@@ -102,11 +102,11 @@ function initVideo() {
 function getFloatingAssets() {
   return [
     { src: "Flotantes/heroines-2.svg", width: 330, height: 468, x: 0.78, y: 180, angle: 12, floatY: 0.58 },
-    { src: "Flotantes/bestseller.svg", width: 318, height: 420, x: 0.17, y: 120, angle: -14, floatY: 0.62 },
-    { src: "Flotantes/new-era-classic-png-negro.svg", width: 330, height: 396, x: 0.45, y: 60, angle: -1, floatY: 0.66 },
-    { src: "Flotantes/svg-02.svg", width: 312, height: 402, x: 0.64, y: 80, angle: 15, floatY: 0.5 },
-    { src: "Flotantes/Dise%C3%B1o.svg", width: 390, height: 292, x: 0.53, y: 10, angle: -31, floatY: 0.42 },
-    { src: "Flotantes/big-boss-negativo.svg", width: 306, height: 408, x: 0.3, y: 30, angle: 5, floatY: 0.55 }
+    { src: "Flotantes/bestseller.svg", width: 318, height: 420, x: 0.17, y: 120, angle: -14, floatY: 0.62, imageScale: 1.18, controlInset: "0.45rem" },
+    { src: "Flotantes/new-era-classic-png-negro.svg", width: 330, height: 396, x: 0.45, y: 60, angle: -1, floatY: 0.66, imageScale: 1.24, controlInset: "0.35rem" },
+    { src: "Flotantes/svg-02.svg", width: 470, height: 530, x: 0.64, y: 80, angle: 15, floatY: 0.5, imageScale: 1.08, controlInset: "-1.35rem -1.05rem -2.15rem" },
+    { src: "Flotantes/Cultural-change.svg", width: 390, height: 486, x: 0.53, y: 10, angle: -31, floatY: 0.42, imageScale: 1, controlInset: "0" },
+    { src: "Flotantes/big-boss-negativo.svg", width: 306, height: 408, x: 0.3, y: 30, angle: 5, floatY: 0.55, imageScale: 1.08, controlInset: "0.2rem" }
   ];
 }
 
@@ -117,8 +117,15 @@ function createFloatingElement(asset, index, width, height) {
   const hint = document.createElement("span");
 
   element.className = "floating-card";
+  if (asset.modifier) {
+    element.classList.add(`floating-card--${asset.modifier}`);
+  }
   element.style.setProperty("--card-w", `${width}px`);
   element.style.setProperty("--card-h", `${height}px`);
+  element.style.setProperty("--image-scale", asset.imageScale || 1);
+  if (asset.controlInset) {
+    element.style.setProperty("--control-inset", asset.controlInset);
+  }
 
   image.className = "floating-card__image";
   image.src = asset.src;
@@ -307,6 +314,11 @@ function initFloatingFallback(stage) {
         card.vx = Math.abs(card.vx) * 0.38;
       }
 
+      if (card.y < 14) {
+        card.y = 14;
+        card.vy = Math.abs(card.vy) * 0.24;
+      }
+
       if (card.x > rect.width - card.width - 14) {
         card.x = rect.width - card.width - 14;
         card.vx = -Math.abs(card.vx) * 0.38;
@@ -460,11 +472,37 @@ function initFloatingWorld() {
   }
 
   function updateCards() {
+    const rect = stageRect();
+
     for (const card of cards) {
       const width = card.baseWidth * card.scale;
       const height = card.baseHeight * card.scale;
-      const { x, y } = card.body.position;
+      let { x, y } = card.body.position;
       const angle = card.body.angle;
+      const minX = width / 2 + 14;
+      const maxX = rect.width - width / 2 - 14;
+      const minY = height / 2 + 14;
+      const maxY = rect.height - height / 2 - 18;
+
+      if (x < minX) {
+        x = minX;
+        Body.setPosition(card.body, { x, y });
+        Body.setVelocity(card.body, { x: Math.abs(card.body.velocity.x) * 0.2, y: card.body.velocity.y * 0.82 });
+      } else if (x > maxX) {
+        x = maxX;
+        Body.setPosition(card.body, { x, y });
+        Body.setVelocity(card.body, { x: -Math.abs(card.body.velocity.x) * 0.2, y: card.body.velocity.y * 0.82 });
+      }
+
+      if (y < minY) {
+        y = minY;
+        Body.setPosition(card.body, { x, y });
+        Body.setVelocity(card.body, { x: card.body.velocity.x * 0.82, y: Math.abs(card.body.velocity.y) * 0.2 });
+      } else if (y > maxY) {
+        y = maxY;
+        Body.setPosition(card.body, { x, y });
+        Body.setVelocity(card.body, { x: card.body.velocity.x * 0.82, y: -Math.abs(card.body.velocity.y) * 0.16 });
+      }
 
       card.element.style.transform = `translate3d(${(x - width / 2).toFixed(2)}px, ${(y - height / 2).toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`;
     }

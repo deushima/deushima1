@@ -641,7 +641,9 @@ a {
   place-items: center;
   width: var(--card-w);
   height: var(--card-h);
+  padding: clamp(0.9rem, 1.25vw, 1.35rem);
   user-select: none;
+  overflow: visible;
   transform-origin: center;
   will-change: transform;
 }
@@ -655,12 +657,14 @@ a {
   height: 100%;
   object-fit: contain;
   pointer-events: none;
+  transform: scale(var(--image-scale, 1));
+  transform-origin: center;
   filter: invert(1) brightness(1.18) drop-shadow(0 1.8rem 2.4rem rgba(0, 0, 0, 0.46));
 }
 
 .floating-card__controls {
   position: absolute;
-  inset: -1px;
+  inset: var(--control-inset, 0);
   border: 1px solid rgba(244, 244, 241, 0.58);
   opacity: 0.82;
   pointer-events: none;
@@ -725,20 +729,11 @@ a {
 }
 
 .floating-card__hint {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 0.32rem);
-  color: rgba(244, 244, 241, 0.62);
-  font-size: 0.58rem;
-  font-weight: 500;
-  line-height: 1;
-  text-transform: uppercase;
-  opacity: 0;
-  transition: opacity 0.2s ease;
+  display: none;
 }
 
 .floating-card.is-active .floating-card__hint {
-  opacity: 1;
+  display: none;
 }
 
 @keyframes loadbar {
