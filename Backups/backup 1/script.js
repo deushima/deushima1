@@ -2,7 +2,6 @@ const hero = document.querySelector(".hero");
 const preloader = document.querySelector("[data-preloader]");
 const timeNode = document.querySelector("[data-current-time]");
 const video = document.querySelector("[data-hero-video]");
-const floatingSection = document.querySelector(".floating-section");
 
 let pointerX = 0;
 let pointerY = 0;
@@ -20,11 +19,6 @@ let distortion = 0;
 let targetDistortion = 0;
 let lastX = null;
 let lastY = null;
-let scrollTicking = false;
-
-function clamp(value, min, max) {
-  return Math.max(min, Math.min(max, value));
-}
 
 function updateTime() {
   if (!timeNode) return;
@@ -91,34 +85,6 @@ function animate() {
   requestAnimationFrame(animate);
 }
 
-function updateScrollParallax() {
-  const viewportHeight = window.innerHeight || 1;
-  const heroProgress = clamp(window.scrollY / viewportHeight, 0, 1);
-
-  if (hero) {
-    hero.style.setProperty("--hero-scroll-y", `${(heroProgress * 58).toFixed(2)}px`);
-    hero.style.setProperty("--hero-nav-y", `${(-heroProgress * 18).toFixed(2)}px`);
-    hero.style.setProperty("--hero-copy-y", `${(-heroProgress * 32).toFixed(2)}px`);
-  }
-
-  if (floatingSection) {
-    const rect = floatingSection.getBoundingClientRect();
-    const reveal = clamp((viewportHeight - rect.top) / (viewportHeight * 1.18), 0, 1);
-    floatingSection.style.setProperty("--works-glow-y", `${((1 - reveal) * -44).toFixed(2)}px`);
-    floatingSection.style.setProperty("--works-header-y", `${((1 - reveal) * 34).toFixed(2)}px`);
-  }
-}
-
-function requestScrollParallax() {
-  if (scrollTicking) return;
-  scrollTicking = true;
-
-  requestAnimationFrame(() => {
-    scrollTicking = false;
-    updateScrollParallax();
-  });
-}
-
 function initVideo() {
   if (!video) return;
 
@@ -135,36 +101,13 @@ function initVideo() {
 
 function getFloatingAssets() {
   return [
-    { src: "Flotantes/heroines-2.svg", width: 330, height: 468, x: 0.8, angle: 12, floatY: 0.41, collisionScale: 1.12 },
-    { src: "Flotantes/bestseller.svg", width: 318, height: 420, x: 0.24, angle: -14, floatY: 0.68, imageScale: 1.18, controlInset: "0.45rem", collisionScale: 1.18 },
-    { src: "Flotantes/new-era-classic-png-negro.svg", width: 330, height: 396, x: 0.42, angle: -1, floatY: 0.54, imageScale: 1.24, controlInset: "0.35rem", collisionScale: 1.22 },
-    { src: "Flotantes/svg-02.svg", width: 470, height: 530, x: 0.7, angle: 15, floatY: 0.65, imageScale: 1.08, controlInset: "-1.35rem -1.05rem -2.15rem", collisionScale: 1.16 },
-    { src: "Flotantes/Cultural-change.svg", width: 390, height: 486, x: 0.52, angle: -31, floatY: 0.35, imageScale: 1, controlInset: "0", collisionScale: 1.14 },
-    { src: "Flotantes/big-boss-negativo.svg", width: 306, height: 408, x: 0.33, angle: 5, floatY: 0.38, imageScale: 1.08, controlInset: "0.2rem", collisionScale: 1.12 }
+    { src: "Flotantes/heroines-2.svg", width: 330, height: 468, x: 0.78, y: 180, angle: 12, floatY: 0.58 },
+    { src: "Flotantes/bestseller.svg", width: 318, height: 420, x: 0.17, y: 120, angle: -14, floatY: 0.62, imageScale: 1.18, controlInset: "0.45rem" },
+    { src: "Flotantes/new-era-classic-png-negro.svg", width: 330, height: 396, x: 0.45, y: 60, angle: -1, floatY: 0.66, imageScale: 1.24, controlInset: "0.35rem" },
+    { src: "Flotantes/svg-02.svg", width: 470, height: 530, x: 0.64, y: 80, angle: 15, floatY: 0.5, imageScale: 1.08, controlInset: "-1.35rem -1.05rem -2.15rem" },
+    { src: "Flotantes/Cultural-change.svg", width: 390, height: 486, x: 0.53, y: 10, angle: -31, floatY: 0.42, imageScale: 1, controlInset: "0" },
+    { src: "Flotantes/big-boss-negativo.svg", width: 306, height: 408, x: 0.3, y: 30, angle: 5, floatY: 0.55, imageScale: 1.08, controlInset: "0.2rem" }
   ];
-}
-
-function makeWander(index) {
-  const seed = (index + 1) * 12.9898;
-  return {
-    x: Math.sin(seed) * 0.5,
-    y: Math.cos(seed * 1.37) * 0.5,
-    tx: Math.sin(seed * 2.11) * 0.5,
-    ty: Math.cos(seed * 1.91) * 0.5,
-    next: 0
-  };
-}
-
-function updateWander(wander, time, index) {
-  if (time > wander.next) {
-    const seed = time * 0.19 + index * 2.41;
-    wander.tx = Math.sin(seed * 2.7) * 0.5;
-    wander.ty = Math.cos(seed * 2.1) * 0.5;
-    wander.next = time + 3.8 + (index % 3) * 0.9;
-  }
-
-  wander.x += (wander.tx - wander.x) * 0.006;
-  wander.y += (wander.ty - wander.y) * 0.006;
 }
 
 function createFloatingElement(asset, index, width, height) {
@@ -248,27 +191,24 @@ function initFloatingFallback(stage) {
 
   function createCard(asset, index) {
     const rect = stage.getBoundingClientRect();
-    const responsiveScale = clamp(rect.width / 1500, 0.58, 0.84);
+    const responsiveScale = clamp(rect.width / 1500, 0.7, 1);
     const width = asset.width * responsiveScale;
     const height = asset.height * responsiveScale;
     const element = createFloatingElement(asset, index, width, height);
     const card = {
       element,
-      index,
       width,
       height,
       x: clamp(rect.width * asset.x - width / 2, 24, rect.width - width - 24),
-      y: clamp(rect.height * asset.floatY - height / 2, 24, rect.height - height - 24),
-      vx: (index % 2 === 0 ? 0.08 : -0.08),
+      y: asset.y,
+      vx: (index % 2 === 0 ? 0.18 : -0.18),
       vy: 0,
       angle: asset.angle * Math.PI / 180,
       va: 0,
       scale: 1,
-      anchorX: asset.x,
       floatY: asset.floatY,
       phase: index * 1.73,
-      wander: makeWander(index),
-      radius: Math.max(width, height) * (asset.collisionScale || 1.1) * 0.55,
+      radius: Math.max(width, height) * 0.4,
       dragging: false,
       pointerId: null,
       grabX: 0,
@@ -328,22 +268,22 @@ function initFloatingFallback(stage) {
     const minDistance = (a.radius + b.radius) * 0.82;
     if (distance >= minDistance) return;
 
-    const overlap = (minDistance - distance) * 0.18;
+    const overlap = (minDistance - distance) * 0.28;
     const nx = dx / distance;
     const ny = dy / distance;
 
     if (!a.dragging) {
       a.x -= nx * overlap;
       a.y -= ny * overlap;
-      a.vx -= nx * 0.032;
-      a.vy -= ny * 0.032;
+      a.vx -= nx * 0.055;
+      a.vy -= ny * 0.055;
     }
 
     if (!b.dragging) {
       b.x += nx * overlap;
       b.y += ny * overlap;
-      b.vx += nx * 0.032;
-      b.vy += ny * 0.032;
+      b.vx += nx * 0.055;
+      b.vy += ny * 0.055;
     }
   }
 
@@ -353,40 +293,40 @@ function initFloatingFallback(stage) {
 
     for (const card of cards) {
       if (!card.dragging) {
-        updateWander(card.wander, time, card.index);
-        const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.11 + Math.sin(time * 0.13 + card.phase) * 14;
-        const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.1 + Math.cos(time * 0.11 + card.phase) * 14;
+        const targetY = rect.height * card.floatY + Math.sin(time * 0.38 + card.phase) * 20;
+        const targetX = rect.width * (0.18 + (card.phase % 5) * 0.16) + Math.cos(time * 0.24 + card.phase) * 18;
 
-        card.vx += (targetX - (card.x + card.width / 2)) * 0.00007;
-        card.vy += (targetY - (card.y + card.height / 2)) * 0.00008;
-        card.vx += Math.sin(time * 0.18 + card.phase) * 0.0014;
-        card.va += Math.sin(time * 0.15 + card.phase) * 0.00003;
-        card.vx *= 0.982;
-        card.vy *= 0.984;
-        card.va *= 0.975;
-        card.x += clamp(card.vx, -1.45, 1.45);
-        card.y += clamp(card.vy, -1.55, 1.55);
+        card.vx += (targetX - (card.x + card.width / 2)) * 0.00012;
+        card.vy += 0.52;
+        card.vy += (targetY - (card.y + card.height / 2)) * 0.00072;
+        card.vx += Math.sin(time * 0.44 + card.phase) * 0.004;
+        card.va += Math.sin(time * 0.34 + card.phase) * 0.00016;
+        card.vx *= 0.955;
+        card.vy *= 0.965;
+        card.va *= 0.95;
+        card.x += clamp(card.vx, -4.6, 4.6);
+        card.y += clamp(card.vy, -7.2, 7.2);
         card.angle += card.va;
       }
 
       if (card.x < 14) {
         card.x = 14;
-        card.vx = Math.abs(card.vx) * 0.22;
+        card.vx = Math.abs(card.vx) * 0.38;
       }
 
       if (card.y < 14) {
         card.y = 14;
-        card.vy = Math.abs(card.vy) * 0.16;
+        card.vy = Math.abs(card.vy) * 0.24;
       }
 
       if (card.x > rect.width - card.width - 14) {
         card.x = rect.width - card.width - 14;
-        card.vx = -Math.abs(card.vx) * 0.22;
+        card.vx = -Math.abs(card.vx) * 0.38;
       }
 
       if (card.y > rect.height - card.height - 18) {
         card.y = rect.height - card.height - 18;
-        card.vy = -Math.abs(card.vy) * 0.16;
+        card.vy = -Math.abs(card.vy) * 0.24;
       }
     }
 
@@ -433,7 +373,7 @@ function initFloatingWorld() {
   const assets = getFloatingAssets();
 
   const engine = Engine.create({ enableSleeping: false });
-  engine.gravity.y = 0.018;
+  engine.gravity.y = 0.82;
 
   const runner = Runner.create();
   const cards = [];
@@ -451,26 +391,23 @@ function initFloatingWorld() {
 
   function createCard(asset, index) {
     const rect = stageRect();
-    const responsiveScale = clamp(rect.width / 1500, 0.58, 0.84);
+    const responsiveScale = clamp(rect.width / 1500, 0.7, 1);
     const width = asset.width * responsiveScale;
     const height = asset.height * responsiveScale;
-    const collisionScale = asset.collisionScale || Math.max(asset.imageScale || 1, 1.08);
-    const collisionWidth = width * collisionScale;
-    const collisionHeight = height * collisionScale;
     const element = createFloatingElement(asset, index, width, height);
     stage.appendChild(element);
 
     const body = Bodies.rectangle(
-      clamp(rect.width * asset.x, collisionWidth * 0.55, rect.width - collisionWidth * 0.55),
-      clamp(rect.height * asset.floatY, collisionHeight * 0.55, rect.height - collisionHeight * 0.55),
-      collisionWidth,
-      collisionHeight,
+      clamp(rect.width * asset.x, width * 0.6, rect.width - width * 0.6),
+      asset.y,
+      width,
+      height,
       {
-        restitution: 0.04,
-        friction: 0.96,
-        frictionAir: 0.2,
+        restitution: 0.16,
+        friction: 0.72,
+        frictionAir: 0.07,
         density: 0.002,
-        slop: 0.02,
+        slop: 0.04,
         render: { visible: false }
       }
     );
@@ -481,16 +418,11 @@ function initFloatingWorld() {
     const card = {
       body,
       element,
-      index,
       baseWidth: width,
       baseHeight: height,
-      baseCollisionWidth: collisionWidth,
-      baseCollisionHeight: collisionHeight,
       scale: 1,
-      anchorX: asset.x,
       floatY: asset.floatY,
-      phase: index * 1.73,
-      wander: makeWander(index)
+      phase: index * 1.73
     };
     cards.push(card);
 
@@ -525,14 +457,13 @@ function initFloatingWorld() {
     const rect = stageRect();
     const wallOptions = {
       isStatic: true,
-      restitution: 0.08,
-      friction: 0.92,
+      restitution: 0.18,
+      friction: 0.8,
       render: { visible: false }
     };
 
     bounds = [
       Bodies.rectangle(rect.width / 2, rect.height + 70, rect.width + 320, 128, wallOptions),
-      Bodies.rectangle(rect.width / 2, -70, rect.width + 320, 128, wallOptions),
       Bodies.rectangle(-70, rect.height / 2, 140, rect.height + 360, wallOptions),
       Bodies.rectangle(rect.width + 70, rect.height / 2, 140, rect.height + 360, wallOptions)
     ];
@@ -546,33 +477,31 @@ function initFloatingWorld() {
     for (const card of cards) {
       const width = card.baseWidth * card.scale;
       const height = card.baseHeight * card.scale;
-      const collisionWidth = card.baseCollisionWidth * card.scale;
-      const collisionHeight = card.baseCollisionHeight * card.scale;
       let { x, y } = card.body.position;
       const angle = card.body.angle;
-      const minX = collisionWidth / 2 + 18;
-      const maxX = rect.width - collisionWidth / 2 - 18;
-      const minY = collisionHeight / 2 + 18;
-      const maxY = rect.height - collisionHeight / 2 - 20;
+      const minX = width / 2 + 14;
+      const maxX = rect.width - width / 2 - 14;
+      const minY = height / 2 + 14;
+      const maxY = rect.height - height / 2 - 18;
 
       if (x < minX) {
         x = minX;
         Body.setPosition(card.body, { x, y });
-        Body.setVelocity(card.body, { x: Math.abs(card.body.velocity.x) * 0.08, y: card.body.velocity.y * 0.56 });
+        Body.setVelocity(card.body, { x: Math.abs(card.body.velocity.x) * 0.2, y: card.body.velocity.y * 0.82 });
       } else if (x > maxX) {
         x = maxX;
         Body.setPosition(card.body, { x, y });
-        Body.setVelocity(card.body, { x: -Math.abs(card.body.velocity.x) * 0.08, y: card.body.velocity.y * 0.56 });
+        Body.setVelocity(card.body, { x: -Math.abs(card.body.velocity.x) * 0.2, y: card.body.velocity.y * 0.82 });
       }
 
       if (y < minY) {
         y = minY;
         Body.setPosition(card.body, { x, y });
-        Body.setVelocity(card.body, { x: card.body.velocity.x * 0.56, y: Math.abs(card.body.velocity.y) * 0.08 });
+        Body.setVelocity(card.body, { x: card.body.velocity.x * 0.82, y: Math.abs(card.body.velocity.y) * 0.2 });
       } else if (y > maxY) {
         y = maxY;
         Body.setPosition(card.body, { x, y });
-        Body.setVelocity(card.body, { x: card.body.velocity.x * 0.56, y: -Math.abs(card.body.velocity.y) * 0.06 });
+        Body.setVelocity(card.body, { x: card.body.velocity.x * 0.82, y: -Math.abs(card.body.velocity.y) * 0.16 });
       }
 
       card.element.style.transform = `translate3d(${(x - width / 2).toFixed(2)}px, ${(y - height / 2).toFixed(2)}px, 0) rotate(${angle.toFixed(4)}rad)`;
@@ -593,8 +522,8 @@ function initFloatingWorld() {
   const mouseConstraint = MouseConstraint.create(engine, {
     mouse,
     constraint: {
-      stiffness: 0.12,
-      damping: 0.22,
+      stiffness: 0.2,
+      damping: 0.09,
       render: { visible: false }
     }
   });
@@ -608,19 +537,18 @@ function initFloatingWorld() {
     for (const card of cards) {
       if (mouseConstraint.body === card.body) continue;
 
-      updateWander(card.wander, time, card.index);
-      const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.12 + Math.sin(time * 0.13 + card.phase) * 16;
-      const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.11 + Math.cos(time * 0.11 + card.phase) * 16;
-      const forceX = clamp((targetX - card.body.position.x) * 0.0000036, -0.0012, 0.0012);
-      const forceY = clamp((targetY - card.body.position.y) * 0.0000038 - 0.00022, -0.00125, 0.00125);
-      const spin = Math.sin(time * 0.14 + card.phase) * 0.000014;
+      const targetY = rect.height * card.floatY + Math.sin(time * 0.38 + card.phase) * 20;
+      const targetX = rect.width * (0.18 + (card.phase % 5) * 0.16) + Math.cos(time * 0.24 + card.phase) * 18;
+      const forceX = clamp((targetX - card.body.position.x) * 0.000006, -0.003, 0.003);
+      const forceY = clamp((targetY - card.body.position.y) * 0.000032 - 0.015, -0.032, 0.018);
+      const spin = Math.sin(time * 0.34 + card.phase) * 0.00014;
 
       Body.applyForce(card.body, card.body.position, { x: forceX, y: forceY });
-      Body.setAngularVelocity(card.body, card.body.angularVelocity * 0.82 + spin);
+      Body.setAngularVelocity(card.body, card.body.angularVelocity * 0.93 + spin);
 
       const speed = Math.hypot(card.body.velocity.x, card.body.velocity.y);
-      if (speed > 0.95) {
-        const ratio = 0.95 / speed;
+      if (speed > 5.6) {
+        const ratio = 5.6 / speed;
         Body.setVelocity(card.body, {
           x: card.body.velocity.x * ratio,
           y: card.body.velocity.y * ratio
@@ -711,11 +639,8 @@ function scheduleFloatingWorld() {
 
 window.addEventListener("pointermove", handlePointerMove, { passive: true });
 window.addEventListener("mousemove", handlePointerMove, { passive: true });
-window.addEventListener("scroll", requestScrollParallax, { passive: true });
-window.addEventListener("resize", requestScrollParallax);
 
 scheduleFloatingWorld();
-updateScrollParallax();
 
 if (document.readyState === "complete") {
   hidePreloader();
