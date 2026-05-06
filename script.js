@@ -26,6 +26,16 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function smoothstep(value) {
+  const x = clamp(value, 0, 1);
+  return x * x * (3 - 2 * x);
+}
+
+function easeOutCubic(value) {
+  const x = clamp(value, 0, 1);
+  return 1 - Math.pow(1 - x, 3);
+}
+
 function updateTime() {
   if (!timeNode) return;
 
@@ -94,18 +104,38 @@ function animate() {
 function updateScrollParallax() {
   const viewportHeight = window.innerHeight || 1;
   const heroProgress = clamp(window.scrollY / viewportHeight, 0, 1);
+  const heroFade = smoothstep(clamp(window.scrollY / (viewportHeight * 0.82), 0, 1));
 
   if (hero) {
-    hero.style.setProperty("--hero-scroll-y", `${(heroProgress * 58).toFixed(2)}px`);
-    hero.style.setProperty("--hero-nav-y", `${(-heroProgress * 18).toFixed(2)}px`);
-    hero.style.setProperty("--hero-copy-y", `${(-heroProgress * 32).toFixed(2)}px`);
+    const heroEat = smoothstep(clamp(window.scrollY / (viewportHeight * 0.92), 0, 1));
+
+    hero.style.setProperty("--hero-scroll-y", `${(heroProgress * 96).toFixed(2)}px`);
+    hero.style.setProperty("--hero-nav-y", `${(-heroProgress * 22).toFixed(2)}px`);
+    hero.style.setProperty("--hero-copy-y", `${(-heroProgress * 42).toFixed(2)}px`);
+    hero.style.setProperty("--hero-dim", `${(heroFade * 0.58).toFixed(3)}`);
+    hero.style.setProperty("--hero-eat-opacity", `${(heroEat * 0.96).toFixed(3)}`);
+    hero.style.setProperty("--hero-eat-y", `${((1 - heroEat) * 72).toFixed(2)}%`);
+    hero.style.setProperty("--hero-edge-fade", `${(0.28 + heroFade * 0.42).toFixed(3)}`);
+    hero.style.setProperty("--video-scroll-scale", `${(1.035 + heroFade * 0.018).toFixed(3)}`);
   }
 
   if (floatingSection) {
     const rect = floatingSection.getBoundingClientRect();
-    const reveal = clamp((viewportHeight - rect.top) / (viewportHeight * 1.18), 0, 1);
-    floatingSection.style.setProperty("--works-glow-y", `${((1 - reveal) * -44).toFixed(2)}px`);
-    floatingSection.style.setProperty("--works-header-y", `${((1 - reveal) * 34).toFixed(2)}px`);
+    const reveal = easeOutCubic((viewportHeight - rect.top) / (viewportHeight * 0.82));
+    const stageReveal = smoothstep((reveal - 0.16) / 0.72);
+    const headerReveal = smoothstep((reveal - 0.05) / 0.58);
+
+    floatingSection.style.setProperty("--works-glow-y", `${((1 - reveal) * -72).toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-header-y", `${((1 - headerReveal) * 44).toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-section-y", `${((1 - reveal) * 72).toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-section-opacity", `${(0.22 + reveal * 0.78).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-darkness", `${(0.42 + reveal * 0.46).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-top-shadow", `${(0.18 + reveal * 0.58).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-header-opacity", `${(0.28 + headerReveal * 0.72).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-stage-y", `${((1 - stageReveal) * 96).toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-stage-opacity", `${stageReveal.toFixed(3)}`);
+    floatingSection.style.setProperty("--works-stage-scale", `${(0.965 + stageReveal * 0.035).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-stage-blur", `${((1 - stageReveal) * 7).toFixed(2)}px`);
   }
 }
 
@@ -135,12 +165,12 @@ function initVideo() {
 
 function getFloatingAssets() {
   return [
-    { src: "Flotantes/heroines-2.svg", width: 330, height: 468, x: 0.8, angle: 12, floatY: 0.41, collisionScale: 1.12 },
-    { src: "Flotantes/bestseller.svg", width: 318, height: 420, x: 0.24, angle: -14, floatY: 0.68, imageScale: 1.18, controlInset: "0.45rem", collisionScale: 1.18 },
-    { src: "Flotantes/new-era-classic-png-negro.svg", width: 330, height: 396, x: 0.42, angle: -1, floatY: 0.54, imageScale: 1.24, controlInset: "0.35rem", collisionScale: 1.22 },
-    { src: "Flotantes/svg-02.svg", width: 470, height: 530, x: 0.7, angle: 15, floatY: 0.65, imageScale: 1.08, controlInset: "-1.35rem -1.05rem -2.15rem", collisionScale: 1.16 },
-    { src: "Flotantes/Cultural-change.svg", width: 390, height: 486, x: 0.52, angle: -31, floatY: 0.35, imageScale: 1, controlInset: "0", collisionScale: 1.14 },
-    { src: "Flotantes/big-boss-negativo.svg", width: 306, height: 408, x: 0.33, angle: 5, floatY: 0.38, imageScale: 1.08, controlInset: "0.2rem", collisionScale: 1.12 }
+    { src: "Flotantes/heroines-2.svg", width: 306, height: 434, x: 0.78, angle: 8, floatY: 0.32, collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
+    { src: "Flotantes/bestseller.svg", width: 294, height: 388, x: 0.2, angle: -10, floatY: 0.68, imageScale: 1.16, controlInset: "0.45rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13 },
+    { src: "Flotantes/new-era-classic-png-negro.svg", width: 304, height: 365, x: 0.38, angle: -2, floatY: 0.55, imageScale: 1.2, controlInset: "0.35rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
+    { src: "Flotantes/svg-02.svg", width: 432, height: 487, x: 0.66, angle: 11, floatY: 0.72, imageScale: 1.06, controlInset: "-1.15rem -0.9rem -1.9rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
+    { src: "Flotantes/Cultural-change.svg", width: 358, height: 446, x: 0.52, angle: -22, floatY: 0.26, imageScale: 1, controlInset: "0", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
+    { src: "Flotantes/big-boss-negativo.svg", width: 282, height: 376, x: 0.28, angle: 4, floatY: 0.35, imageScale: 1.06, controlInset: "0.2rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5 }
   ];
 }
 
@@ -160,11 +190,18 @@ function updateWander(wander, time, index) {
     const seed = time * 0.19 + index * 2.41;
     wander.tx = Math.sin(seed * 2.7) * 0.5;
     wander.ty = Math.cos(seed * 2.1) * 0.5;
-    wander.next = time + 3.8 + (index % 3) * 0.9;
+    wander.next = time + 4.6 + (index % 3) * 1.15;
   }
 
-  wander.x += (wander.tx - wander.x) * 0.006;
-  wander.y += (wander.ty - wander.y) * 0.006;
+  wander.x += (wander.tx - wander.x) * 0.0042;
+  wander.y += (wander.ty - wander.y) * 0.0042;
+}
+
+function releaseMatterScroll(mouse) {
+  if (!mouse || !mouse.element || !mouse.mousewheel) return;
+  mouse.element.removeEventListener("mousewheel", mouse.mousewheel);
+  mouse.element.removeEventListener("DOMMouseScroll", mouse.mousewheel);
+  mouse.element.removeEventListener("wheel", mouse.mousewheel);
 }
 
 function createFloatingElement(asset, index, width, height) {
@@ -201,6 +238,139 @@ function createFloatingElement(asset, index, width, height) {
 
   element.append(image, controls, hint);
   return element;
+}
+
+function isCompactFloatingLayout(stage) {
+  return stage.getBoundingClientRect().width < 760 || window.matchMedia("(max-width: 760px)").matches;
+}
+
+function initFloatingMobile(stage) {
+  if (!stage || stage.dataset.floatingReady === "mobile") return null;
+  stage.dataset.floatingReady = "mobile";
+  stage.classList.add("floating-stage--mobile");
+
+  const assets = getFloatingAssets();
+  const cards = [];
+  let activeCard = null;
+  let frameId = 0;
+
+  function setActiveCard(card) {
+    if (activeCard) activeCard.element.classList.remove("is-active");
+    activeCard = card;
+    if (activeCard) activeCard.element.classList.add("is-active");
+  }
+
+  function releaseCard(card) {
+    if (!card) return;
+    card.dragging = false;
+    stage.classList.remove("is-grabbing");
+    card.element.releasePointerCapture?.(card.pointerId);
+  }
+
+  function createCard(asset, index) {
+    const rect = stage.getBoundingClientRect();
+    const baseWidth = asset.mobileWidth || 170;
+    const width = clamp(baseWidth * (rect.width / 390), baseWidth * 0.82, baseWidth * 1.08);
+    const height = width * (asset.height / asset.width);
+    const element = createFloatingElement(asset, index, width, height);
+    const card = {
+      element,
+      index,
+      width,
+      height,
+      anchorX: asset.mobileX || asset.x,
+      anchorY: asset.mobileY || asset.floatY,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      angle: (asset.mobileAngle ?? asset.angle) * Math.PI / 180,
+      phase: index * 1.91,
+      wander: makeWander(index),
+      dragging: false,
+      pointerId: null,
+      grabX: 0,
+      grabY: 0,
+      lastX: 0,
+      lastY: 0,
+      lastTime: performance.now()
+    };
+
+    const minY = Math.min(132, rect.height * 0.16);
+    card.x = clamp(rect.width * card.anchorX - width / 2, -width * 0.18, rect.width - width * 0.82);
+    card.y = clamp(rect.height * card.anchorY - height / 2, minY, rect.height - height * 0.55);
+
+    stage.appendChild(element);
+    cards.push(card);
+
+    element.addEventListener("pointerdown", (event) => {
+      const now = performance.now();
+      const rect = stage.getBoundingClientRect();
+      card.dragging = true;
+      card.pointerId = event.pointerId;
+      card.grabX = event.clientX - rect.left - card.x;
+      card.grabY = event.clientY - rect.top - card.y;
+      card.lastX = event.clientX;
+      card.lastY = event.clientY;
+      card.lastTime = now;
+      element.setPointerCapture?.(event.pointerId);
+      setActiveCard(card);
+      stage.classList.add("is-grabbing");
+    });
+
+    element.addEventListener("pointermove", (event) => {
+      if (!card.dragging) return;
+
+      const now = performance.now();
+      const rect = stage.getBoundingClientRect();
+      const dt = Math.max(16, now - card.lastTime);
+      card.x = event.clientX - rect.left - card.grabX;
+      card.y = event.clientY - rect.top - card.grabY;
+      card.vx = (event.clientX - card.lastX) / dt * 5;
+      card.vy = (event.clientY - card.lastY) / dt * 5;
+      card.lastX = event.clientX;
+      card.lastY = event.clientY;
+      card.lastTime = now;
+    });
+
+    element.addEventListener("pointerup", () => releaseCard(card));
+    element.addEventListener("pointercancel", () => releaseCard(card));
+  }
+
+  function animateMobile() {
+    const rect = stage.getBoundingClientRect();
+    const time = performance.now() * 0.001;
+    const minY = Math.min(132, rect.height * 0.16);
+
+    for (const card of cards) {
+      if (!card.dragging) {
+        updateWander(card.wander, time, card.index);
+        const targetX = rect.width * card.anchorX - card.width / 2 + card.wander.x * rect.width * 0.055;
+        const targetY = rect.height * card.anchorY - card.height / 2 + card.wander.y * rect.height * 0.045;
+
+        card.vx += (targetX - card.x) * 0.0032;
+        card.vy += (targetY - card.y) * 0.0032;
+        card.vx *= 0.91;
+        card.vy *= 0.91;
+        card.x += clamp(card.vx, -0.9, 0.9);
+        card.y += clamp(card.vy, -0.9, 0.9);
+      }
+
+      card.x = clamp(card.x, -card.width * 0.32, rect.width - card.width * 0.68);
+      card.y = clamp(card.y, minY, rect.height - card.height * 0.58);
+      card.element.style.transform = `translate3d(${card.x.toFixed(2)}px, ${card.y.toFixed(2)}px, 0) rotate(${card.angle.toFixed(4)}rad)`;
+    }
+  }
+
+  assets.forEach(createCard);
+  animateMobile();
+  frameId = window.setInterval(animateMobile, 16);
+
+  return () => {
+    window.clearInterval(frameId);
+    stage.classList.remove("floating-stage--mobile", "is-grabbing");
+    stage.innerHTML = "";
+  };
 }
 
 function initFloatingFallback(stage) {
@@ -248,7 +418,7 @@ function initFloatingFallback(stage) {
 
   function createCard(asset, index) {
     const rect = stage.getBoundingClientRect();
-    const responsiveScale = clamp(rect.width / 1500, 0.58, 0.84);
+    const responsiveScale = clamp(rect.width / 1500, 0.52, 0.76);
     const width = asset.width * responsiveScale;
     const height = asset.height * responsiveScale;
     const element = createFloatingElement(asset, index, width, height);
@@ -354,18 +524,18 @@ function initFloatingFallback(stage) {
     for (const card of cards) {
       if (!card.dragging) {
         updateWander(card.wander, time, card.index);
-        const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.11 + Math.sin(time * 0.13 + card.phase) * 14;
-        const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.1 + Math.cos(time * 0.11 + card.phase) * 14;
+        const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.14 + Math.sin(time * 0.1 + card.phase) * 18;
+        const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.12 + Math.cos(time * 0.09 + card.phase) * 18;
 
-        card.vx += (targetX - (card.x + card.width / 2)) * 0.00007;
-        card.vy += (targetY - (card.y + card.height / 2)) * 0.00008;
-        card.vx += Math.sin(time * 0.18 + card.phase) * 0.0014;
-        card.va += Math.sin(time * 0.15 + card.phase) * 0.00003;
-        card.vx *= 0.982;
-        card.vy *= 0.984;
-        card.va *= 0.975;
-        card.x += clamp(card.vx, -1.45, 1.45);
-        card.y += clamp(card.vy, -1.55, 1.55);
+        card.vx += (targetX - (card.x + card.width / 2)) * 0.00006;
+        card.vy += (targetY - (card.y + card.height / 2)) * 0.000065;
+        card.vx += Math.sin(time * 0.15 + card.phase) * 0.0012;
+        card.va += Math.sin(time * 0.13 + card.phase) * 0.000022;
+        card.vx *= 0.988;
+        card.vy *= 0.989;
+        card.va *= 0.982;
+        card.x += clamp(card.vx, -1.1, 1.1);
+        card.y += clamp(card.vy, -1.16, 1.16);
         card.angle += card.va;
       }
 
@@ -415,6 +585,7 @@ function initFloatingFallback(stage) {
 function initFloatingWorld() {
   const stage = document.querySelector("[data-floating-world]");
   if (!stage) return null;
+  if (isCompactFloatingLayout(stage)) return initFloatingMobile(stage);
   if (!window.Matter) return initFloatingFallback(stage);
   if (stage.dataset.floatingReady === "true") return null;
   stage.dataset.floatingReady = "true";
@@ -433,13 +604,17 @@ function initFloatingWorld() {
   const assets = getFloatingAssets();
 
   const engine = Engine.create({ enableSleeping: false });
-  engine.gravity.y = 0.018;
+  engine.positionIterations = 8;
+  engine.velocityIterations = 6;
+  engine.constraintIterations = 3;
+  engine.gravity.y = 0.012;
 
   const runner = Runner.create();
   const cards = [];
   let bounds = [];
   let activeCard = null;
   let frameId = 0;
+  let lastTick = performance.now();
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -451,7 +626,7 @@ function initFloatingWorld() {
 
   function createCard(asset, index) {
     const rect = stageRect();
-    const responsiveScale = clamp(rect.width / 1500, 0.58, 0.84);
+    const responsiveScale = clamp(rect.width / 1500, 0.52, 0.76);
     const width = asset.width * responsiveScale;
     const height = asset.height * responsiveScale;
     const collisionScale = asset.collisionScale || Math.max(asset.imageScale || 1, 1.08);
@@ -466,11 +641,11 @@ function initFloatingWorld() {
       collisionWidth,
       collisionHeight,
       {
-        restitution: 0.04,
+        restitution: 0.025,
         friction: 0.96,
-        frictionAir: 0.2,
+        frictionAir: 0.26,
         density: 0.002,
-        slop: 0.02,
+        slop: 0.045,
         render: { visible: false }
       }
     );
@@ -593,11 +768,12 @@ function initFloatingWorld() {
   const mouseConstraint = MouseConstraint.create(engine, {
     mouse,
     constraint: {
-      stiffness: 0.12,
-      damping: 0.22,
+      stiffness: 0.09,
+      damping: 0.32,
       render: { visible: false }
     }
   });
+  releaseMatterScroll(mouse);
 
   Composite.add(engine.world, mouseConstraint);
 
@@ -609,18 +785,18 @@ function initFloatingWorld() {
       if (mouseConstraint.body === card.body) continue;
 
       updateWander(card.wander, time, card.index);
-      const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.12 + Math.sin(time * 0.13 + card.phase) * 16;
-      const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.11 + Math.cos(time * 0.11 + card.phase) * 16;
-      const forceX = clamp((targetX - card.body.position.x) * 0.0000036, -0.0012, 0.0012);
-      const forceY = clamp((targetY - card.body.position.y) * 0.0000038 - 0.00022, -0.00125, 0.00125);
-      const spin = Math.sin(time * 0.14 + card.phase) * 0.000014;
+      const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.15 + Math.sin(time * 0.1 + card.phase) * 20;
+      const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.13 + Math.cos(time * 0.09 + card.phase) * 20;
+      const forceX = clamp((targetX - card.body.position.x) * 0.0000042, -0.001, 0.001);
+      const forceY = clamp((targetY - card.body.position.y) * 0.0000044 - 0.00016, -0.00105, 0.00105);
+      const spin = Math.sin(time * 0.12 + card.phase) * 0.000009;
 
       Body.applyForce(card.body, card.body.position, { x: forceX, y: forceY });
-      Body.setAngularVelocity(card.body, card.body.angularVelocity * 0.82 + spin);
+      Body.setAngularVelocity(card.body, clamp(card.body.angularVelocity * 0.78 + spin, -0.008, 0.008));
 
       const speed = Math.hypot(card.body.velocity.x, card.body.velocity.y);
-      if (speed > 0.95) {
-        const ratio = 0.95 / speed;
+      if (speed > 0.72) {
+        const ratio = 0.72 / speed;
         Body.setVelocity(card.body, {
           x: card.body.velocity.x * ratio,
           y: card.body.velocity.y * ratio
@@ -640,11 +816,18 @@ function initFloatingWorld() {
   });
 
   window.addEventListener("resize", resetBounds);
-  tickMatter();
-  frameId = window.setInterval(tickMatter, 16);
+  function animateMatter(now = performance.now()) {
+    const delta = clamp(now - lastTick, 1000 / 90, 1000 / 60);
+    lastTick = now;
+    Engine.update(engine, delta);
+    updateCards();
+    frameId = window.requestAnimationFrame(animateMatter);
+  }
+
+  animateMatter();
 
   return () => {
-    window.clearInterval(frameId);
+    window.cancelAnimationFrame(frameId);
     Runner.stop(runner);
     window.removeEventListener("resize", resetBounds);
     Composite.clear(engine.world);

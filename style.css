@@ -90,6 +90,11 @@ a {
   --hero-scroll-y: 0px;
   --hero-nav-y: 0px;
   --hero-copy-y: 0px;
+  --hero-dim: 0;
+  --hero-eat-opacity: 0;
+  --hero-eat-y: 72%;
+  --hero-edge-fade: 0.28;
+  --video-scroll-scale: 1.035;
   --video-scale: 1.035;
   --cursor-x: -20rem;
   --cursor-y: -20rem;
@@ -113,6 +118,41 @@ a {
   --noise-opacity: 0.42;
 }
 
+.hero::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  z-index: 7;
+  height: min(74svh, 46rem);
+  pointer-events: none;
+  opacity: var(--hero-eat-opacity);
+  background:
+    linear-gradient(
+      0deg,
+      #0f0f0f 0%,
+      rgba(15, 15, 15, 0.98) 34%,
+      rgba(15, 15, 15, 0.78) 62%,
+      rgba(15, 15, 15, 0) 100%
+    );
+  transform: translate3d(0, var(--hero-eat-y), 0);
+  will-change: transform, opacity;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  pointer-events: none;
+  opacity: var(--hero-dim);
+  background:
+    linear-gradient(180deg, rgba(15, 15, 15, 0.1), rgba(15, 15, 15, var(--hero-edge-fade))),
+    radial-gradient(circle at 50% 60%, transparent 20%, rgba(15, 15, 15, 0.7) 100%);
+  transition: opacity 0.12s linear;
+}
+
 .hero__video {
   position: absolute;
   inset: 0;
@@ -121,7 +161,7 @@ a {
   height: 100%;
   object-fit: cover;
   filter: brightness(0.78) contrast(1.12) saturate(1.04);
-  transform: translate3d(var(--video-x), calc(var(--video-y) + var(--hero-scroll-y)), 0) scale(var(--video-scale));
+  transform: translate3d(var(--video-x), calc(var(--video-y) + var(--hero-scroll-y)), 0) scale(var(--video-scroll-scale));
   transform-origin: center;
   pointer-events: none;
   user-select: none;
@@ -579,12 +619,26 @@ a {
   margin-top: -1px;
   --works-glow-y: 0px;
   --works-header-y: 0px;
+  --works-section-y: 0px;
+  --works-section-opacity: 1;
+  --works-darkness: 0.42;
+  --works-top-shadow: 0.18;
+  --works-header-opacity: 1;
+  --works-stage-y: 0px;
+  --works-stage-opacity: 1;
+  --works-stage-scale: 1;
+  --works-stage-blur: 0px;
   background:
-    linear-gradient(180deg, rgba(15, 15, 15, 0.18), #0f0f0f 8rem),
+    linear-gradient(180deg, rgba(15, 15, 15, var(--works-darkness)), #0f0f0f 9.5rem),
     radial-gradient(circle at 55% 4%, rgba(36, 119, 255, 0.08), transparent 30rem),
     #0f0f0f;
   color: var(--text);
   border-top: 0;
+  opacity: var(--works-section-opacity);
+  transform: translate3d(0, var(--works-section-y), 0);
+  transform-origin: top center;
+  box-shadow: 0 -28svh 42svh rgba(15, 15, 15, var(--works-top-shadow));
+  will-change: transform, opacity;
 }
 
 .floating-section::before {
@@ -609,8 +663,8 @@ a {
   pointer-events: none;
   opacity: 0.58;
   background:
-    radial-gradient(circle at 58% 0%, rgba(36, 119, 255, 0.1), transparent 34rem),
-    linear-gradient(180deg, rgba(15, 15, 15, 0), rgba(15, 15, 15, 0.55) 72%, #0f0f0f);
+    linear-gradient(180deg, rgba(15, 15, 15, var(--works-darkness)), rgba(15, 15, 15, 0.62) 58%, #0f0f0f),
+    radial-gradient(circle at 58% 0%, rgba(36, 119, 255, 0.1), transparent 34rem);
   transform: translate3d(0, var(--works-glow-y), 0);
   will-change: transform;
 }
@@ -623,6 +677,7 @@ a {
   max-width: 23rem;
   pointer-events: none;
   transform: translate3d(0, var(--works-header-y), 0);
+  opacity: var(--works-header-opacity);
   will-change: transform;
 }
 
@@ -649,8 +704,13 @@ a {
   inset: 0;
   z-index: 2;
   overflow: hidden;
-  cursor: grab;
-  touch-action: none;
+  cursor: default;
+  touch-action: pan-y;
+  opacity: var(--works-stage-opacity);
+  filter: blur(var(--works-stage-blur));
+  transform: translate3d(0, var(--works-stage-y), 0) scale(var(--works-stage-scale));
+  transform-origin: center top;
+  will-change: transform, opacity, filter;
 }
 
 .floating-stage.is-grabbing {
@@ -669,7 +729,13 @@ a {
   user-select: none;
   overflow: visible;
   transform-origin: center;
+  cursor: grab;
+  touch-action: none;
   will-change: transform;
+}
+
+.floating-card:active {
+  cursor: grabbing;
 }
 
 .floating-card.is-active {
@@ -760,6 +826,27 @@ a {
   display: none;
 }
 
+.floating-stage--mobile {
+  cursor: default;
+}
+
+.floating-stage--mobile .floating-card {
+  padding: clamp(0.48rem, 2.6vw, 0.82rem);
+}
+
+.floating-stage--mobile .floating-card__image {
+  filter: invert(1) brightness(1.14) drop-shadow(0 1.2rem 1.9rem rgba(0, 0, 0, 0.5));
+}
+
+.floating-stage--mobile .floating-card__controls {
+  opacity: 0;
+  transition: opacity 0.28s ease;
+}
+
+.floating-stage--mobile .floating-card.is-active .floating-card__controls {
+  opacity: 0.66;
+}
+
 @keyframes loadbar {
   to {
     transform: translateX(0);
@@ -836,19 +923,20 @@ a {
   }
 
   .floating-section {
-    min-height: 92svh;
+    min-height: 116svh;
   }
 
   .floating-section__header {
-    max-width: 14rem;
+    top: 2.3rem;
+    max-width: 13rem;
   }
 
   .floating-section__header h2 {
-    font-size: 1.05rem;
+    font-size: 1rem;
   }
 
   .floating-card__controls,
   .floating-card__hint {
-    opacity: 0.7;
+    opacity: 0.62;
   }
 }
