@@ -139,6 +139,13 @@ function updateScrollParallax() {
 
     floatingSection.style.setProperty("--works-glow-y", `${((1 - reveal) * -72).toFixed(2)}px`);
     floatingSection.style.setProperty("--works-header-y", `${((1 - headerReveal) * 44).toFixed(2)}px`);
+    const panelY = (1 - headerReveal) * 18 - reveal * 4;
+
+    floatingSection.style.setProperty("--works-panel-y", `${panelY.toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-panel-scale", `${(0.982 + headerReveal * 0.018).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-panel-opacity", `${(0.72 + headerReveal * 0.28).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-panel-glow-y", `${(panelY * 0.55).toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-panel-glow-opacity", `${(0.2 + headerReveal * 0.16).toFixed(3)}`);
     floatingSection.style.setProperty("--works-section-y", `${((1 - reveal) * 72).toFixed(2)}px`);
     floatingSection.style.setProperty("--works-section-opacity", `${(0.22 + reveal * 0.78).toFixed(3)}`);
     floatingSection.style.setProperty("--works-darkness", `${(0.42 + reveal * 0.46).toFixed(3)}`);
@@ -261,14 +268,36 @@ function typeText(element, text, speed = 22) {
   });
 }
 
+function prepareWipeLink(link) {
+  if (!link) return;
+
+  const text = link.textContent.trim();
+  link.dataset.wipeText = text;
+  link.setAttribute("aria-label", text);
+  link.textContent = "";
+
+  const textNode = document.createElement("span");
+  textNode.className = "wipe-link-text";
+  textNode.textContent = text;
+  link.appendChild(textNode);
+}
+
+function revealWipeLink(link, index) {
+  if (!link) return;
+  link.style.setProperty("--link-delay", `${(index * 0.045).toFixed(3)}s`);
+  link.classList.add("is-wipe-ready");
+}
+
 async function initIntroText() {
   if (introTextStarted) return;
   introTextStarted = true;
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-  const items = Array.from(document.querySelectorAll(".js-type-text"));
-  items.forEach((item) => {
+  const titles = Array.from(document.querySelectorAll(".directory__title.js-type-text"));
+  const wipeLinks = Array.from(document.querySelectorAll(".directory .js-wipe-link"));
+
+  titles.forEach((item) => {
     const text = item.textContent.trim();
     item.dataset.typeText = text;
     item.setAttribute("aria-label", text);
@@ -277,29 +306,18 @@ async function initIntroText() {
     item.classList.add("is-type-pending");
   });
 
-  await wait(260);
+  wipeLinks.forEach(prepareWipeLink);
 
-  const typed = new Set();
-  const groups = Array.from(document.querySelectorAll(".directory__group"));
+  await wait(220);
 
-  for (const group of groups) {
-    const groupItems = Array.from(group.querySelectorAll(".js-type-text"));
+  await Promise.all(
+    titles.map((item, index) => (
+      wait(index * 86).then(() => typeText(item, item.dataset.typeText || "", 12))
+    ))
+  );
 
-    for (const item of groupItems) {
-      typed.add(item);
-      const isTitle = item.classList.contains("directory__title");
-      await typeText(item, item.dataset.typeText || "", isTitle ? 13 : 10);
-      await wait(isTitle ? 72 : 44);
-    }
-
-    await wait(128);
-  }
-
-  const secondaryItems = items.filter((item) => !typed.has(item));
-  for (const item of secondaryItems) {
-    await typeText(item, item.dataset.typeText || "", 10);
-    await wait(64);
-  }
+  await wait(105);
+  wipeLinks.forEach(revealWipeLink);
 }
 
 function initTextReveals() {
@@ -508,15 +526,15 @@ function initFloatingMobile(stage) {
     for (const card of cards) {
       if (!card.dragging) {
         updateWander(card.wander, time, card.index);
-        const targetX = rect.width * card.anchorX - card.width / 2 + card.wander.x * rect.width * 0.055;
-        const targetY = rect.height * card.anchorY - card.height / 2 + card.wander.y * rect.height * 0.045;
+        const targetX = rect.width * card.anchorX - card.width / 2 + card.wander.x * rect.width * 0.064;
+        const targetY = rect.height * card.anchorY - card.height / 2 + card.wander.y * rect.height * 0.052;
 
-        card.vx += (targetX - card.x) * 0.0032;
-        card.vy += (targetY - card.y) * 0.0032;
-        card.vx *= 0.91;
-        card.vy *= 0.91;
-        card.x += clamp(card.vx, -0.9, 0.9);
-        card.y += clamp(card.vy, -0.9, 0.9);
+        card.vx += (targetX - card.x) * 0.0038;
+        card.vy += (targetY - card.y) * 0.0038;
+        card.vx *= 0.905;
+        card.vy *= 0.905;
+        card.x += clamp(card.vx, -1.04, 1.04);
+        card.y += clamp(card.vy, -1.04, 1.04);
       }
 
       card.x = clamp(card.x, -card.width * 0.32, rect.width - card.width * 0.68);
@@ -687,18 +705,18 @@ function initFloatingFallback(stage) {
     for (const card of cards) {
       if (!card.dragging) {
         updateWander(card.wander, time, card.index);
-        const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.14 + Math.sin(time * 0.1 + card.phase) * 18;
-        const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.12 + Math.cos(time * 0.09 + card.phase) * 18;
+        const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.16 + Math.sin(time * 0.12 + card.phase) * 22;
+        const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.14 + Math.cos(time * 0.105 + card.phase) * 22;
 
-        card.vx += (targetX - (card.x + card.width / 2)) * 0.00006;
-        card.vy += (targetY - (card.y + card.height / 2)) * 0.000065;
-        card.vx += Math.sin(time * 0.15 + card.phase) * 0.0012;
-        card.va += Math.sin(time * 0.13 + card.phase) * 0.000022;
-        card.vx *= 0.988;
-        card.vy *= 0.989;
-        card.va *= 0.982;
-        card.x += clamp(card.vx, -1.1, 1.1);
-        card.y += clamp(card.vy, -1.16, 1.16);
+        card.vx += (targetX - (card.x + card.width / 2)) * 0.000074;
+        card.vy += (targetY - (card.y + card.height / 2)) * 0.000078;
+        card.vx += Math.sin(time * 0.17 + card.phase) * 0.0015;
+        card.va += Math.sin(time * 0.15 + card.phase) * 0.000029;
+        card.vx *= 0.986;
+        card.vy *= 0.987;
+        card.va *= 0.98;
+        card.x += clamp(card.vx, -1.26, 1.26);
+        card.y += clamp(card.vy, -1.3, 1.3);
         card.angle += card.va;
       }
 
@@ -806,7 +824,7 @@ function initFloatingWorld() {
       {
         restitution: 0.025,
         friction: 0.96,
-        frictionAir: 0.26,
+        frictionAir: 0.215,
         density: 0.002,
         slop: 0.045,
         render: { visible: false }
@@ -948,18 +966,18 @@ function initFloatingWorld() {
       if (mouseConstraint.body === card.body) continue;
 
       updateWander(card.wander, time, card.index);
-      const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.15 + Math.sin(time * 0.1 + card.phase) * 20;
-      const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.13 + Math.cos(time * 0.09 + card.phase) * 20;
-      const forceX = clamp((targetX - card.body.position.x) * 0.0000042, -0.001, 0.001);
-      const forceY = clamp((targetY - card.body.position.y) * 0.0000044 - 0.00016, -0.00105, 0.00105);
-      const spin = Math.sin(time * 0.12 + card.phase) * 0.000009;
+      const targetY = rect.height * card.floatY + card.wander.y * rect.height * 0.18 + Math.sin(time * 0.12 + card.phase) * 24;
+      const targetX = rect.width * card.anchorX + card.wander.x * rect.width * 0.16 + Math.cos(time * 0.105 + card.phase) * 24;
+      const forceX = clamp((targetX - card.body.position.x) * 0.0000052, -0.00124, 0.00124);
+      const forceY = clamp((targetY - card.body.position.y) * 0.0000054 - 0.00014, -0.00128, 0.00128);
+      const spin = Math.sin(time * 0.15 + card.phase) * 0.000014;
 
       Body.applyForce(card.body, card.body.position, { x: forceX, y: forceY });
-      Body.setAngularVelocity(card.body, clamp(card.body.angularVelocity * 0.78 + spin, -0.008, 0.008));
+      Body.setAngularVelocity(card.body, clamp(card.body.angularVelocity * 0.82 + spin, -0.0095, 0.0095));
 
       const speed = Math.hypot(card.body.velocity.x, card.body.velocity.y);
-      if (speed > 0.72) {
-        const ratio = 0.72 / speed;
+      if (speed > 0.86) {
+        const ratio = 0.86 / speed;
         Body.setVelocity(card.body, {
           x: card.body.velocity.x * ratio,
           y: card.body.velocity.y * ratio
