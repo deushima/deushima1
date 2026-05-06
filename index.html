@@ -8,14 +8,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=20260504-13">
+  <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
+  <link rel="stylesheet" href="style.css?v=20260506-06">
 </head>
 <body>
   <div class="preloader" data-preloader>
-    <div class="preloader__inner">
-      <span class="preloader__label">Loading interface</span>
-      <span class="preloader__bar"><span></span></span>
+    <div class="preloader__shutter" aria-hidden="true">
+      <span class="preloader__panel preloader__panel--top"></span>
+      <span class="preloader__panel preloader__panel--right"></span>
+      <span class="preloader__panel preloader__panel--bottom"></span>
+      <span class="preloader__panel preloader__panel--left"></span>
     </div>
+    <img class="preloader__logo" src="deushima.svg.svg" alt="">
   </div>
 
   <main id="app" class="site-shell" data-site>
@@ -31,39 +35,39 @@
       <div class="hero__vignette" aria-hidden="true"></div>
 
       <header class="nav" aria-label="Navegacion principal">
-        <a class="brand-mark" href="#" aria-label="Ivan Rodriguez">
+        <a class="brand-mark intro-fade" href="#" aria-label="Ivan Rodriguez" style="--intro-delay: 0.08s">
           <img src="simbolo%20deushima.svg" alt="" aria-hidden="true">
         </a>
 
         <nav class="directory" aria-label="Directorio">
-          <div class="directory__group">
-            <span class="directory__title directory__title--triangle">Contacto</span>
-            <a href="#contact">Instagram</a>
-            <a href="#contact">Linkedin</a>
-            <a href="#contact">Correo</a>
+          <div class="directory__group intro-fade" style="--intro-delay: 0.26s">
+            <span class="directory__title directory__title--triangle js-type-text">Contacto</span>
+            <a href="https://www.instagram.com/ivanhayunosolo/" class="js-type-text" target="_blank" rel="noopener noreferrer">Instagram</a>
+            <a href="https://www.linkedin.com/in/iv%C3%A1n-lautaro-rodriguez-9b4827278/" class="js-type-text" target="_blank" rel="noopener noreferrer">Linkedin</a>
+            <a href="mailto:deushima@gmail.com" class="js-type-text">Correo</a>
           </div>
-          <div class="directory__group">
-            <span class="directory__title directory__title--dot">Portfolio</span>
-            <a href="#works">Behance</a>
-            <a href="#works">Instagram</a>
+          <div class="directory__group intro-fade" style="--intro-delay: 0.38s">
+            <span class="directory__title directory__title--dot js-type-text">Portfolio</span>
+            <a href="https://www.behance.net/deushima" class="js-type-text" target="_blank" rel="noopener noreferrer">Behance</a>
+            <a href="https://www.instagram.com/deushima" class="js-type-text" target="_blank" rel="noopener noreferrer">Instagram</a>
           </div>
-          <div class="directory__group">
-            <span class="directory__title directory__title--square">Programas</span>
-            <a href="#launcher">Launcher 3D</a>
-            <a href="#developing">Second Developing...</a>
+          <div class="directory__group intro-fade" style="--intro-delay: 0.5s">
+            <span class="directory__title directory__title--square js-type-text">Programas</span>
+            <a href="https://www.deushima.com.ar/3Deushima" class="js-type-text">Launcher 3D</a>
+            <a href="#developing" class="js-type-text">Second Developing...</a>
           </div>
         </nav>
 
-        <div class="status-panel" aria-label="Estado">
+        <div class="status-panel intro-fade" aria-label="Estado" style="--intro-delay: 0.62s">
           <time data-current-time>00:00:00</time>
           <span>ART</span>
           <span>ARG</span>
         </div>
 
-        <a class="discover-link" href="#works">Discover</a>
+        <a class="discover-link intro-fade js-type-text" href="#works" style="--intro-delay: 0.74s">Discover</a>
       </header>
 
-      <a class="floating-cta" href="#contact">
+      <a class="floating-cta cta-reveal" href="https://www.deushima.com.ar/3Deushima">
         <span>Get launch 3D</span>
         <span aria-hidden="true">-&gt;</span>
       </a>
@@ -71,9 +75,9 @@
       <div class="hero__copy">
         <span class="hero__pin hero__pin--left" aria-hidden="true"></span>
         <span class="hero__pin hero__pin--right" aria-hidden="true"></span>
-        <h1>Iv&aacute;n Rodr&iacute;guez</h1>
-        <p>Design, code & AI for interactive experiences.</p>
-        <strong>1999 &mdash; Future</strong>
+        <h1 class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.2s">Iv&aacute;n Rodr&iacute;guez</span></h1>
+        <p class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.34s">Design, code & AI for interactive experiences.</span></p>
+        <strong class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
       </div>
 
       <div class="scroll-hint" aria-hidden="true">
@@ -84,14 +88,19 @@
 
     <section class="floating-section" id="works" aria-label="Archivo interactivo">
       <div class="floating-section__header">
-        <p class="section-kicker">Works / draggable archive</p>
-        <h2>Selected visual systems in motion.</h2>
+        <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">Works / draggable archive</span></p>
+        <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Selected visual systems in motion.</span></h2>
       </div>
       <div class="floating-stage" data-floating-world aria-label="Lienzo interactivo con piezas flotantes"></div>
     </section>
   </main>
 
+  <div class="page-transition" data-page-transition aria-hidden="true">
+    <span class="page-transition__iris"></span>
+    <img class="page-transition__logo" src="deushima.svg.svg" alt="">
+  </div>
+
   <script async src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
-  <script src="script.js?v=20260504-27"></script>
+  <script src="script.js?v=20260506-06"></script>
 </body>
 </html>
