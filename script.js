@@ -4,6 +4,12 @@ const timeNode = document.querySelector("[data-current-time]");
 const video = document.querySelector("[data-hero-video]");
 const floatingSection = document.querySelector(".floating-section");
 const pageTransition = document.querySelector("[data-page-transition]");
+const designViewer = document.querySelector("[data-design-viewer]");
+const designViewerPanel = designViewer?.querySelector(".design-viewer__panel");
+const designViewerStage = designViewer?.querySelector("[data-design-stage]");
+const designViewerImage = designViewer?.querySelector("[data-design-image]");
+const designViewerTitle = designViewer?.querySelector("[data-design-title]");
+const designViewerZoom = designViewer?.querySelector("[data-design-zoom]");
 
 let pointerX = 0;
 let pointerY = 0;
@@ -25,6 +31,19 @@ let scrollTicking = false;
 let introTextStarted = false;
 let preloaderHideStarted = false;
 let pageTransitionStarted = false;
+let lastFocusedElement = null;
+let viewerScale = 1;
+let viewerX = 0;
+let viewerY = 0;
+let viewerPanning = false;
+let viewerPointerId = null;
+let viewerStartX = 0;
+let viewerStartY = 0;
+let viewerBaseX = 0;
+let viewerBaseY = 0;
+let viewerTouchMode = null;
+let viewerTouchDistance = 0;
+let viewerTouchScale = 1;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -346,12 +365,12 @@ function initTextReveals() {
 
 function getFloatingAssets() {
   return [
-    { src: "Flotantes/heroines-2.svg", width: 306, height: 434, x: 0.78, angle: 8, floatY: 0.32, collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
-    { src: "Flotantes/bestseller.svg", width: 294, height: 388, x: 0.2, angle: -10, floatY: 0.68, imageScale: 1.16, controlInset: "0.45rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13 },
-    { src: "Flotantes/new-era-classic-png-negro.svg", width: 304, height: 365, x: 0.38, angle: -2, floatY: 0.55, imageScale: 1.2, controlInset: "0.35rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
-    { src: "Flotantes/svg-02.svg", width: 432, height: 487, x: 0.66, angle: 11, floatY: 0.72, imageScale: 1.06, controlInset: "-1.15rem -0.9rem -1.9rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
-    { src: "Flotantes/Cultural-change.svg", width: 358, height: 446, x: 0.52, angle: -22, floatY: 0.26, imageScale: 1, controlInset: "0", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
-    { src: "Flotantes/big-boss-negativo.svg", width: 282, height: 376, x: 0.28, angle: 4, floatY: 0.35, imageScale: 1.06, controlInset: "0.2rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5 }
+    { title: "Heroines", src: "Flotantes/heroines-2.svg", width: 306, height: 434, x: 0.78, angle: 8, floatY: 0.32, collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
+    { title: "Bestseller", src: "Flotantes/bestseller.svg", width: 294, height: 388, x: 0.2, angle: -10, floatY: 0.68, imageScale: 1.16, controlInset: "0.45rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13 },
+    { title: "New Era Classic", src: "Flotantes/new-era-classic-png-negro.svg", width: 304, height: 365, x: 0.38, angle: -2, floatY: 0.55, imageScale: 1.2, controlInset: "0.35rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
+    { title: "Existence Design", src: "Flotantes/svg-02.svg", width: 432, height: 487, x: 0.66, angle: 11, floatY: 0.72, imageScale: 1.06, controlInset: "-1.15rem -0.9rem -1.9rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
+    { title: "Cultural Change", src: "Flotantes/Cultural-change.svg", width: 358, height: 446, x: 0.52, angle: -22, floatY: 0.26, imageScale: 1, controlInset: "0", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
+    { title: "Big Boss", src: "Flotantes/big-boss-negativo.svg", width: 282, height: 376, x: 0.28, angle: 4, floatY: 0.35, imageScale: 1.06, controlInset: "0.2rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5 }
   ];
 }
 
@@ -378,6 +397,190 @@ function updateWander(wander, time, index) {
   wander.y += (wander.ty - wander.y) * 0.0042;
 }
 
+function stopViewerButtonEvent(event) {
+  event.stopPropagation();
+}
+
+function getTouchDistance(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.hypot(dx, dy);
+}
+
+function getTouchCenter(touches) {
+  return {
+    x: (touches[0].clientX + touches[1].clientX) / 2,
+    y: (touches[0].clientY + touches[1].clientY) / 2
+  };
+}
+
+function applyViewerTransform() {
+  if (!designViewerImage) return;
+
+  designViewerImage.style.setProperty("--viewer-x", `${viewerX.toFixed(2)}px`);
+  designViewerImage.style.setProperty("--viewer-y", `${viewerY.toFixed(2)}px`);
+  designViewerImage.style.setProperty("--viewer-scale", viewerScale.toFixed(3));
+  if (designViewerZoom) designViewerZoom.textContent = `${Math.round(viewerScale * 100)}%`;
+}
+
+function resetDesignViewer() {
+  viewerScale = 1;
+  viewerX = 0;
+  viewerY = 0;
+  applyViewerTransform();
+}
+
+function zoomDesignViewerAt(clientX, clientY, nextScale) {
+  if (!designViewerStage) return;
+
+  const rect = designViewerStage.getBoundingClientRect();
+  const localX = clientX - rect.left - rect.width / 2;
+  const localY = clientY - rect.top - rect.height / 2;
+  const scale = clamp(nextScale, 0.72, 5.2);
+  const ratio = scale / viewerScale;
+
+  viewerX = localX - (localX - viewerX) * ratio;
+  viewerY = localY - (localY - viewerY) * ratio;
+  viewerScale = scale;
+  applyViewerTransform();
+}
+
+function openDesignViewer(asset) {
+  if (!designViewer || !designViewerImage || !designViewerTitle || !designViewerPanel) return;
+
+  lastFocusedElement = document.activeElement;
+  designViewerImage.src = asset.src;
+  designViewerImage.alt = asset.title || "Design detail";
+  designViewerTitle.textContent = asset.title || "Selected piece";
+  designViewer.setAttribute("aria-hidden", "false");
+  document.body.classList.add("is-design-viewer-open");
+  resetDesignViewer();
+
+  window.requestAnimationFrame(() => {
+    designViewer.classList.add("is-open");
+    designViewerPanel.focus({ preventScroll: true });
+  });
+}
+
+function closeDesignViewer() {
+  if (!designViewer) return;
+
+  designViewer.classList.remove("is-open");
+  designViewer.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-design-viewer-open");
+  designViewerStage?.classList.remove("is-panning");
+  viewerPanning = false;
+  viewerPointerId = null;
+  viewerTouchMode = null;
+
+  if (lastFocusedElement?.focus) {
+    window.setTimeout(() => lastFocusedElement.focus({ preventScroll: true }), 80);
+  }
+}
+
+function initDesignViewer() {
+  if (!designViewer || !designViewerStage || !designViewerPanel) return;
+
+  designViewer.querySelectorAll("[data-design-close]").forEach((button) => {
+    button.addEventListener("click", closeDesignViewer);
+  });
+
+  designViewerStage.addEventListener("wheel", (event) => {
+    event.preventDefault();
+    const zoomAmount = event.deltaY < 0 ? 1.12 : 0.9;
+    zoomDesignViewerAt(event.clientX, event.clientY, viewerScale * zoomAmount);
+  }, { passive: false });
+
+  designViewerStage.addEventListener("pointerdown", (event) => {
+    if (event.pointerType === "touch") return;
+    viewerPanning = true;
+    viewerPointerId = event.pointerId;
+    viewerStartX = event.clientX;
+    viewerStartY = event.clientY;
+    viewerBaseX = viewerX;
+    viewerBaseY = viewerY;
+    designViewerStage.setPointerCapture?.(event.pointerId);
+    designViewerStage.classList.add("is-panning");
+  });
+
+  designViewerStage.addEventListener("pointermove", (event) => {
+    if (!viewerPanning || event.pointerId !== viewerPointerId) return;
+    viewerX = viewerBaseX + event.clientX - viewerStartX;
+    viewerY = viewerBaseY + event.clientY - viewerStartY;
+    applyViewerTransform();
+  });
+
+  function releasePointer(event) {
+    if (event.pointerId !== viewerPointerId) return;
+    viewerPanning = false;
+    viewerPointerId = null;
+    designViewerStage.classList.remove("is-panning");
+  }
+
+  designViewerStage.addEventListener("pointerup", releasePointer);
+  designViewerStage.addEventListener("pointercancel", releasePointer);
+  designViewerStage.addEventListener("dblclick", resetDesignViewer);
+
+  designViewerStage.addEventListener("touchstart", (event) => {
+    if (event.touches.length === 1) {
+      viewerTouchMode = "pan";
+      viewerStartX = event.touches[0].clientX;
+      viewerStartY = event.touches[0].clientY;
+      viewerBaseX = viewerX;
+      viewerBaseY = viewerY;
+    } else if (event.touches.length === 2) {
+      viewerTouchMode = "pinch";
+      viewerTouchDistance = getTouchDistance(event.touches);
+      viewerTouchScale = viewerScale;
+    }
+  }, { passive: false });
+
+  designViewerStage.addEventListener("touchmove", (event) => {
+    event.preventDefault();
+    if (viewerTouchMode === "pinch" && event.touches.length === 2) {
+      const center = getTouchCenter(event.touches);
+      const nextScale = viewerTouchScale * (getTouchDistance(event.touches) / viewerTouchDistance);
+      zoomDesignViewerAt(center.x, center.y, nextScale);
+      return;
+    }
+
+    if (viewerTouchMode === "pan" && event.touches.length === 1) {
+      viewerX = viewerBaseX + event.touches[0].clientX - viewerStartX;
+      viewerY = viewerBaseY + event.touches[0].clientY - viewerStartY;
+      applyViewerTransform();
+    }
+  }, { passive: false });
+
+  designViewerStage.addEventListener("touchend", () => {
+    viewerTouchMode = null;
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!designViewer.classList.contains("is-open")) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeDesignViewer();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(designViewer.querySelectorAll("button, [tabindex]:not([tabindex='-1'])"))
+      .filter((item) => !item.hasAttribute("disabled"));
+    if (!focusable.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+}
+
 function releaseMatterScroll(mouse) {
   if (!mouse || !mouse.element || !mouse.mousewheel) return;
   mouse.element.removeEventListener("mousewheel", mouse.mousewheel);
@@ -390,6 +593,7 @@ function createFloatingElement(asset, index, width, height) {
   const image = document.createElement("img");
   const controls = document.createElement("span");
   const hint = document.createElement("span");
+  const zoomButton = document.createElement("button");
 
   element.className = "floating-card";
   if (asset.modifier) {
@@ -404,7 +608,7 @@ function createFloatingElement(asset, index, width, height) {
 
   image.className = "floating-card__image";
   image.src = asset.src;
-  image.alt = "";
+  image.alt = asset.title || "";
   image.draggable = false;
 
   controls.className = "floating-card__controls";
@@ -417,7 +621,19 @@ function createFloatingElement(asset, index, width, height) {
   hint.className = "floating-card__hint";
   hint.textContent = `piece ${String(index + 1).padStart(2, "0")}`;
 
-  element.append(image, controls, hint);
+  zoomButton.className = "floating-card__zoom";
+  zoomButton.type = "button";
+  zoomButton.setAttribute("aria-label", `Ver ${asset.title || `pieza ${index + 1}`}`);
+  zoomButton.addEventListener("pointerdown", stopViewerButtonEvent);
+  zoomButton.addEventListener("mousedown", stopViewerButtonEvent);
+  zoomButton.addEventListener("touchstart", stopViewerButtonEvent, { passive: false });
+  zoomButton.addEventListener("click", (event) => {
+    stopViewerButtonEvent(event);
+    event.preventDefault();
+    openDesignViewer(asset);
+  });
+
+  element.append(image, controls, zoomButton, hint);
   return element;
 }
 
@@ -1082,6 +1298,7 @@ scheduleFloatingWorld();
 updateScrollParallax();
 initTextReveals();
 initPageTransitions();
+initDesignViewer();
 window.setTimeout(hidePreloader, 900);
 
 if (document.readyState === "complete") {

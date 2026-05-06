@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260506-09">
+  <link rel="stylesheet" href="style.css?v=20260506-13">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -79,11 +79,6 @@
         <p class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.34s">Design, code & AI for interactive experiences.</span></p>
         <strong class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
       </div>
-
-      <div class="scroll-hint" aria-hidden="true">
-        <span></span>
-        <small>Scroll</small>
-      </div>
     </section>
 
     <section class="floating-section" id="works" aria-label="Archivo interactivo">
@@ -100,12 +95,36 @@
     </section>
   </main>
 
+  <div class="design-viewer" data-design-viewer aria-hidden="true">
+    <button class="design-viewer__backdrop" type="button" data-design-close aria-label="Cerrar visor" tabindex="-1"></button>
+    <section class="design-viewer__panel" role="dialog" aria-modal="true" aria-labelledby="design-viewer-title" tabindex="-1">
+      <header class="design-viewer__header">
+        <div>
+          <p>Visual detail</p>
+          <h2 id="design-viewer-title" data-design-title>Selected piece</h2>
+        </div>
+        <button class="design-viewer__close" type="button" data-design-close aria-label="Cerrar">×</button>
+      </header>
+      <div class="design-viewer__stage" data-design-stage>
+        <img class="design-viewer__image" data-design-image src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="">
+        <span class="design-viewer__corner design-viewer__corner--nw" aria-hidden="true"></span>
+        <span class="design-viewer__corner design-viewer__corner--ne" aria-hidden="true"></span>
+        <span class="design-viewer__corner design-viewer__corner--se" aria-hidden="true"></span>
+        <span class="design-viewer__corner design-viewer__corner--sw" aria-hidden="true"></span>
+      </div>
+      <footer class="design-viewer__footer">
+        <span>SVG / detail view</span>
+        <span data-design-zoom>100%</span>
+      </footer>
+    </section>
+  </div>
+
   <div class="page-transition" data-page-transition aria-hidden="true">
     <span class="page-transition__iris"></span>
     <img class="page-transition__logo" src="deushima.svg.svg" alt="">
   </div>
 
   <script async src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
-  <script src="script.js?v=20260506-09"></script>
+  <script src="script.js?v=20260506-10"></script>
 </body>
 </html>
