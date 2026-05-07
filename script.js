@@ -4,12 +4,15 @@ const timeNode = document.querySelector("[data-current-time]");
 const video = document.querySelector("[data-hero-video]");
 const floatingSection = document.querySelector(".floating-section");
 const pageTransition = document.querySelector("[data-page-transition]");
+const workArchive = document.querySelector("[data-work-archive]");
+const contactForm = document.querySelector("[data-contact-form]");
 const designViewer = document.querySelector("[data-design-viewer]");
 const designViewerPanel = designViewer?.querySelector(".design-viewer__panel");
 const designViewerStage = designViewer?.querySelector("[data-design-stage]");
 const designViewerImage = designViewer?.querySelector("[data-design-image]");
 const designViewerTitle = designViewer?.querySelector("[data-design-title]");
 const designViewerZoom = designViewer?.querySelector("[data-design-zoom]");
+const CONTACT_ENDPOINT = "";
 
 let pointerX = 0;
 let pointerY = 0;
@@ -578,6 +581,155 @@ function initDesignViewer() {
       event.preventDefault();
       first.focus();
     }
+  });
+}
+
+function initWorkArchive() {
+  if (!workArchive) return;
+
+  const videos = Array.from(workArchive.querySelectorAll("[data-work-video]"));
+  const triggers = Array.from(workArchive.querySelectorAll("[data-work-trigger]"));
+  if (!videos.length || !triggers.length) return;
+
+  let activeIndex = 0;
+  let userInteracting = false;
+  let interactionTimer = 0;
+  let scrollTickingArchive = false;
+
+  function playVideo(videoNode) {
+    if (!videoNode) return;
+    videoNode.muted = true;
+    videoNode.playsInline = true;
+    const playPromise = videoNode.play();
+    if (playPromise?.catch) playPromise.catch(() => {});
+  }
+
+  function playAllVideos() {
+    videos.forEach(playVideo);
+  }
+
+  function setActiveWork(index, fromUser = false) {
+    const nextIndex = clamp(index, 0, videos.length - 1);
+    if (nextIndex === activeIndex && fromUser) {
+      window.clearTimeout(interactionTimer);
+    }
+
+    activeIndex = nextIndex;
+    videos.forEach((videoNode, videoIndex) => {
+      const isActive = videoIndex === activeIndex;
+      videoNode.classList.toggle("is-active", isActive);
+      if (isActive) playVideo(videoNode);
+    });
+
+    triggers.forEach((trigger, triggerIndex) => {
+      trigger.classList.toggle("is-active", triggerIndex === activeIndex);
+    });
+
+    if (fromUser) {
+      userInteracting = true;
+      window.clearTimeout(interactionTimer);
+      interactionTimer = window.setTimeout(() => {
+        userInteracting = false;
+      }, 1200);
+    }
+  }
+
+  function updateByScroll() {
+    scrollTickingArchive = false;
+    if (userInteracting) return;
+
+    const rect = workArchive.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || 1;
+    if (rect.top > viewportHeight || rect.bottom < 0) return;
+
+    const progress = clamp((viewportHeight * 0.62 - rect.top) / Math.max(rect.height - viewportHeight * 0.28, 1), 0, 0.999);
+    setActiveWork(Math.floor(progress * videos.length));
+  }
+
+  function requestArchiveScroll() {
+    if (scrollTickingArchive) return;
+    scrollTickingArchive = true;
+    window.requestAnimationFrame(updateByScroll);
+  }
+
+  triggers.forEach((trigger) => {
+    const index = Number(trigger.dataset.workIndex || 0);
+    trigger.addEventListener("pointerenter", () => setActiveWork(index, true));
+    trigger.addEventListener("focus", () => setActiveWork(index, true));
+    trigger.addEventListener("click", () => setActiveWork(index, true));
+  });
+
+  const observer = "IntersectionObserver" in window
+    ? new IntersectionObserver((entries) => {
+      const visible = entries.some((entry) => entry.isIntersecting);
+      if (visible) {
+        playAllVideos();
+        window.addEventListener("scroll", requestArchiveScroll, { passive: true });
+        requestArchiveScroll();
+      } else {
+        window.removeEventListener("scroll", requestArchiveScroll);
+      }
+    }, { threshold: 0.12 })
+    : null;
+
+  if (observer) {
+    observer.observe(workArchive);
+  } else {
+    playAllVideos();
+    window.addEventListener("scroll", requestArchiveScroll, { passive: true });
+  }
+
+  setActiveWork(0);
+}
+
+function initContactForm() {
+  if (!contactForm) return;
+
+  const statusNode = contactForm.querySelector("[data-contact-status]");
+
+  function setStatus(message) {
+    if (statusNode) statusNode.textContent = message;
+  }
+
+  contactForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!contactForm.reportValidity()) return;
+
+    const formData = new FormData(contactForm);
+    const name = String(formData.get("name") || "").trim();
+    const email = String(formData.get("email") || "").trim();
+    const message = String(formData.get("message") || "").trim();
+
+    if (CONTACT_ENDPOINT) {
+      setStatus("Enviando...");
+      try {
+        const response = await fetch(CONTACT_ENDPOINT, {
+          method: "POST",
+          body: formData,
+          headers: { Accept: "application/json" }
+        });
+
+        if (!response.ok) throw new Error("contact-submit-failed");
+        contactForm.reset();
+        setStatus("Mensaje enviado.");
+      } catch {
+        setStatus("No se pudo enviar. Prob&aacute; por mail.");
+      }
+      return;
+    }
+
+    const subject = encodeURIComponent(`Nuevo contacto de ${name || "portfolio"}`);
+    const body = encodeURIComponent([
+      "Hola Deushima,",
+      "",
+      message,
+      "",
+      `Nombre: ${name}`,
+      `Email: ${email}`
+    ].join("\n"));
+
+    setStatus("Abriendo correo...");
+    window.location.href = `mailto:deushima@gmail.com?subject=${subject}&body=${body}`;
   });
 }
 
@@ -1299,6 +1451,8 @@ updateScrollParallax();
 initTextReveals();
 initPageTransitions();
 initDesignViewer();
+initWorkArchive();
+initContactForm();
 window.setTimeout(hidePreloader, 900);
 
 if (document.readyState === "complete") {

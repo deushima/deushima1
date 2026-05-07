@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260506-13">
+  <link rel="stylesheet" href="style.css?v=20260506-27">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -93,6 +93,120 @@
       </div>
       <div class="floating-stage" data-floating-world aria-label="Lienzo interactivo con piezas flotantes"></div>
     </section>
+
+    <section class="work-archive" id="developing" data-work-archive aria-label="Trabajos realizados">
+      <div class="work-archive__meta" aria-hidden="true">
+        <span>DEUSHIMA / 2021-2024</span>
+        <span>PACKAGING / SOCIAL / GARMENTS / 3D</span>
+        <span>NATIONAL &amp; INTERNATIONAL BRANDS</span>
+        <span>VISUAL DIRECTION / MARKETING</span>
+      </div>
+
+      <div class="work-archive__content">
+        <div class="work-archive__intro">
+          <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">Works / commercial practice</span></p>
+          <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Trabajos realizados entre moda, gr&aacute;fica y direcci&oacute;n visual.</span></h2>
+          <div class="work-archive__copy">
+            <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.18s">Trabaj&eacute; con Deushima, mi marca personal de ropa indie, desarrollando prendas, identidad visual y contenido de marca.</span></p>
+            <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.26s">Tambi&eacute;n colabor&eacute; con marcas nacionales e internacionales en packaging, redes sociales, prendas de dise&ntilde;o, modelado 3D y piezas orientadas a marketing.</span></p>
+          </div>
+        </div>
+
+        <div class="work-archive__filmstrip" aria-label="Film strip de trabajos">
+          <button class="work-archive__item is-active" type="button" data-work-trigger data-work-index="0">
+            <video class="work-archive__video is-active" data-work-video muted loop playsinline preload="metadata">
+              <source src="Trabajos/trabajos%20(1).mp4" type="video/mp4">
+            </video>
+            <span>01</span>
+            <strong>Deushima Clothing</strong>
+            <small>Marca personal, prendas, identidad y direcci&oacute;n visual.</small>
+          </button>
+          <button class="work-archive__item" type="button" data-work-trigger data-work-index="1">
+            <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
+              <source src="Trabajos/trabajos%20(2).mp4" type="video/mp4">
+            </video>
+            <span>02</span>
+            <strong>Packaging &amp; Brand Systems</strong>
+            <small>Dise&ntilde;o aplicado para marcas nacionales e internacionales.</small>
+          </button>
+          <button class="work-archive__item" type="button" data-work-trigger data-work-index="2">
+            <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
+              <source src="Trabajos/trabajos%20(3).mp4?v=social-content-3" type="video/mp4">
+            </video>
+            <span>03</span>
+            <strong>Social Content &amp; Marketing</strong>
+            <small>Contenido visual para redes, campa&ntilde;as y lanzamientos.</small>
+          </button>
+          <button class="work-archive__item" type="button" data-work-trigger data-work-index="3">
+            <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
+              <source src="Trabajos/trabajos%20(4).mp4?v=digital-exploration-4" type="video/mp4">
+            </video>
+            <span>04</span>
+            <strong>3D &amp; Digital Exploration</strong>
+            <small>Modelado 3D, assets digitales y exploraci&oacute;n multimedia.</small>
+          </button>
+        </div>
+
+        <section class="contact-strip" aria-label="Contacto">
+          <div class="contact-strip__intro">
+            <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">Start a project / Contact Deushima</span></p>
+            <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Contame qu&eacute; quer&eacute;s construir.</span></h2>
+            <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.18s">Dise&ntilde;o, direcci&oacute;n visual, web, 3D o identidad. Dej&aacute; tu mensaje y coordinamos el pr&oacute;ximo movimiento.</span></p>
+            <small>deushima@gmail.com / Buenos Aires, ARG</small>
+          </div>
+
+          <form class="contact-form" data-contact-form>
+            <label>
+              <span>Nombre</span>
+              <input type="text" name="name" autocomplete="name" required>
+            </label>
+            <label>
+              <span>Email</span>
+              <input type="email" name="email" autocomplete="email" required>
+            </label>
+            <label class="contact-form__message">
+              <span>Mensaje</span>
+              <textarea name="message" rows="5" required></textarea>
+            </label>
+            <div class="contact-form__footer">
+              <button type="submit">Send message -&gt;</button>
+              <p data-contact-status aria-live="polite"></p>
+            </div>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <footer class="site-footer" aria-label="Footer">
+      <p>&copy; 2025 Deushima. Todos los derechos reservados.</p>
+      <nav class="site-footer__links" aria-label="Redes y contacto">
+        <a href="mailto:deushima@gmail.com" aria-label="Contacto">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 6.5h16v11H4z"></path>
+            <path d="m4.75 7.25 7.25 6 7.25-6"></path>
+          </svg>
+        </a>
+        <a href="https://wa.me/541121801731?text=Hola%20Deushima..." target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M5.2 19.2 6.1 16A7 7 0 1 1 9 18.2z"></path>
+            <path d="M9.2 8.6c.2-.5.4-.5.7-.5h.5c.2 0 .4.1.5.4l.6 1.4c.1.3.1.4-.1.6l-.4.5c-.1.1-.2.3-.1.5.3.7 1.2 1.7 2 2.1.2.1.4.1.5-.1l.6-.7c.2-.2.4-.2.6-.1l1.5.7c.3.1.4.3.4.5 0 .4-.2 1-.5 1.3-.4.4-1.3.6-2.6.2-2.2-.7-4.4-2.8-5.2-5-.4-1-.1-1.6.2-1.9z"></path>
+          </svg>
+        </a>
+        <a href="https://www.behance.net/deushima" target="_blank" rel="noopener noreferrer" aria-label="Behance">
+          <span aria-hidden="true">Be</span>
+        </a>
+        <a href="https://www.instagram.com/deushima" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="5" width="14" height="14" rx="4"></rect>
+            <circle cx="12" cy="12" r="3.25"></circle>
+            <path d="M16.25 7.8h.01"></path>
+          </svg>
+        </a>
+        <a href="https://www.linkedin.com/in/iv%C3%A1n-lautaro-rodriguez-9b4827278/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
+          <span aria-hidden="true">in</span>
+        </a>
+      </nav>
+    </footer>
   </main>
 
   <div class="design-viewer" data-design-viewer aria-hidden="true">
@@ -103,7 +217,7 @@
           <p>Visual detail</p>
           <h2 id="design-viewer-title" data-design-title>Selected piece</h2>
         </div>
-        <button class="design-viewer__close" type="button" data-design-close aria-label="Cerrar">×</button>
+        <button class="design-viewer__close" type="button" data-design-close aria-label="Cerrar">&times;</button>
       </header>
       <div class="design-viewer__stage" data-design-stage>
         <img class="design-viewer__image" data-design-image src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="">
@@ -125,6 +239,6 @@
   </div>
 
   <script async src="https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js"></script>
-  <script src="script.js?v=20260506-10"></script>
+  <script src="script.js?v=20260506-13"></script>
 </body>
 </html>
