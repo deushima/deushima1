@@ -123,15 +123,15 @@ a {
 }
 
 .preloader.is-opening .preloader__panel {
-  animation: preloaderPanelOpen 1.04s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  animation: preloaderPanelOpen 0.82s cubic-bezier(0.76, 0, 0.24, 1) forwards;
 }
 
 .preloader.is-opening .preloader__shutter::before {
-  animation: preloaderSquareGuide 1.04s cubic-bezier(0.76, 0, 0.24, 1) forwards;
+  animation: preloaderSquareGuide 0.82s cubic-bezier(0.76, 0, 0.24, 1) forwards;
 }
 
 .preloader.is-opening .preloader__logo {
-  animation: preloaderLogoOut 0.78s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: preloaderLogoOut 0.62s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 .intro-fade {
@@ -161,11 +161,35 @@ a {
   animation-delay: var(--wipe-delay, 0s);
 }
 
+.hero__copy p.wipe-container,
+.floating-section__header h2.wipe-container,
+.floating-section__bio .wipe-container {
+  overflow: visible;
+}
+
+.hero__copy p .wipe-text,
+.floating-section__header h2 .wipe-text,
+.floating-section__bio .wipe-text {
+  opacity: 0;
+  transform: translate3d(0, 0.85rem, 0);
+}
+
+.is-site-ready .hero__copy p .wipe-text,
+.is-site-ready .floating-section__header h2 .wipe-text,
+.is-site-ready .floating-section__bio .wipe-text {
+  animation-name: fadeSlideIn;
+  animation-duration: 0.58s;
+}
+
 .is-site-ready .reveal-on-view {
   animation-play-state: paused;
 }
 
 .is-site-ready .is-in-view .reveal-on-view {
+  animation-play-state: running;
+}
+
+.is-site-ready .floating-section__header .reveal-on-view {
   animation-play-state: running;
 }
 
@@ -201,7 +225,7 @@ a {
 }
 
 .js-wipe-link.is-wipe-ready .wipe-link-text {
-  animation: linkWipeDown 0.48s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: linkWipeDown 0.38s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   animation-delay: var(--link-delay, 0s);
 }
 
@@ -2273,8 +2297,41 @@ body.is-page-leaving .page-transition__logo {
 }
 
 @media (max-width: 640px) {
+  .intro-fade,
+  .js-type-text,
+  .js-type-text.is-type-pending,
+  .js-wipe-link,
+  .wipe-link-text,
+  .hero__copy .wipe-text,
+  .hero__copy p .wipe-text,
+  .floating-section__header h2 .wipe-text,
+  .floating-section__bio .wipe-text {
+    opacity: 1;
+    animation: none;
+    transform: none;
+  }
+
+  .hero__copy .wipe-container {
+    overflow: visible;
+  }
+
   .hero {
     min-height: 100svh;
+  }
+
+  .hero__video {
+    filter: brightness(0.74) contrast(1.08) saturate(1);
+    transform: translate3d(0, var(--hero-scroll-y), 0) scale(1.045);
+    will-change: transform;
+  }
+
+  .cursor-distortion {
+    display: none;
+  }
+
+  .hero__grain {
+    opacity: 0.28;
+    animation-duration: 1.2s;
   }
 
   .nav {
@@ -2290,13 +2347,50 @@ body.is-page-leaving .page-transition__logo {
     display: none;
   }
 
-  .discover-link::before,
-  .floating-cta {
+  .discover-link {
     display: none;
   }
 
+  .discover-link::before {
+    display: none;
+  }
+
+  .floating-cta {
+    left: 1rem;
+    right: auto;
+    bottom: calc(1rem + env(safe-area-inset-bottom));
+    display: inline-flex;
+    min-width: 9.4rem;
+    min-height: 2.75rem;
+    justify-content: center;
+    padding: 0.78rem 0.9rem;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .floating-cta.cta-reveal {
+    opacity: 1;
+    clip-path: none;
+    animation: none;
+  }
+
   .hero__copy {
-    bottom: 2rem;
+    bottom: 5.65rem;
+    width: min(18rem, calc(100vw - 2rem));
+  }
+
+  .hero__copy h1 {
+    font-size: 0.96rem;
+  }
+
+  .hero__copy p {
+    max-width: 17rem;
+    font-size: 0.9rem;
+    line-height: 1.18;
+  }
+
+  .hero__copy strong {
+    font-size: 0.98rem;
   }
 
   .hero__pin {
@@ -2304,7 +2398,7 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .floating-section {
-    min-height: 116svh;
+    min-height: 108svh;
   }
 
   .floating-section__header {

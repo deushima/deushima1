@@ -13,6 +13,8 @@ const designViewerImage = designViewer?.querySelector("[data-design-image]");
 const designViewerTitle = designViewer?.querySelector("[data-design-title]");
 const designViewerZoom = designViewer?.querySelector("[data-design-zoom]");
 const CONTACT_ENDPOINT = "";
+const compactPointerQuery = window.matchMedia("(pointer: coarse)");
+const compactLayoutQuery = window.matchMedia("(max-width: 760px)");
 
 let pointerX = 0;
 let pointerY = 0;
@@ -86,7 +88,25 @@ function hidePreloader() {
     preloader?.classList.add("is-hidden");
     document.body.classList.add("is-site-ready");
     initIntroText();
-  }, 1040);
+    syncInitialHashScroll();
+  }, 820);
+}
+
+function syncInitialHashScroll() {
+  const id = window.location.hash ? window.location.hash.slice(1) : "";
+  if (!id) return;
+
+  const target = document.getElementById(id);
+  if (!target) return;
+
+  function jumpToTarget() {
+    const top = target.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top, behavior: "auto" });
+    requestScrollParallax();
+  }
+
+  window.setTimeout(jumpToTarget, 90);
+  window.setTimeout(jumpToTarget, 520);
 }
 
 function handlePointerMove(event) {
@@ -219,6 +239,7 @@ function shouldUsePageTransition(link, event) {
   if (!normalizedHref || normalizedHref.startsWith("#")) return false;
   if (normalizedHref.startsWith("mailto:") || normalizedHref.startsWith("tel:")) return false;
   if (normalizedHref.startsWith("javascript:")) return false;
+  if (link.dataset.directNav === "true") return false;
 
   const nextUrl = new URL(link.href, window.location.href);
   if (nextUrl.href === window.location.href) return false;
@@ -306,7 +327,7 @@ function prepareWipeLink(link) {
 
 function revealWipeLink(link, index) {
   if (!link) return;
-  link.style.setProperty("--link-delay", `${(index * 0.045).toFixed(3)}s`);
+  link.style.setProperty("--link-delay", `${(index * 0.032).toFixed(3)}s`);
   link.classList.add("is-wipe-ready");
 }
 
@@ -330,15 +351,15 @@ async function initIntroText() {
 
   wipeLinks.forEach(prepareWipeLink);
 
-  await wait(220);
+  await wait(80);
 
   await Promise.all(
     titles.map((item, index) => (
-      wait(index * 86).then(() => typeText(item, item.dataset.typeText || "", 12))
+      wait(index * 58).then(() => typeText(item, item.dataset.typeText || "", 9))
     ))
   );
 
-  await wait(105);
+  await wait(55);
   wipeLinks.forEach(revealWipeLink);
 }
 
@@ -369,11 +390,11 @@ function initTextReveals() {
 function getFloatingAssets() {
   return [
     { title: "Heroines", src: "Flotantes/heroines-2.svg", width: 306, height: 434, x: 0.78, angle: 8, floatY: 0.32, collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
-    { title: "Bestseller", src: "Flotantes/bestseller.svg", width: 294, height: 388, x: 0.2, angle: -10, floatY: 0.68, imageScale: 1.16, controlInset: "0.45rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13 },
+    { title: "Bestseller", src: "Flotantes/bestseller.svg", width: 294, height: 388, x: 0.2, angle: -10, floatY: 0.68, imageScale: 1.16, controlInset: "0.45rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13, mobileHidden: true },
     { title: "New Era Classic", src: "Flotantes/new-era-classic-png-negro.svg", width: 304, height: 365, x: 0.38, angle: -2, floatY: 0.55, imageScale: 1.2, controlInset: "0.35rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
     { title: "Existence Design", src: "Flotantes/svg-02.svg", width: 432, height: 487, x: 0.66, angle: 11, floatY: 0.72, imageScale: 1.06, controlInset: "-1.15rem -0.9rem -1.9rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
     { title: "Cultural Change", src: "Flotantes/Cultural-change.svg", width: 358, height: 446, x: 0.52, angle: -22, floatY: 0.26, imageScale: 1, controlInset: "0", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
-    { title: "Big Boss", src: "Flotantes/big-boss-negativo.svg", width: 282, height: 376, x: 0.28, angle: 4, floatY: 0.35, imageScale: 1.06, controlInset: "0.2rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5 }
+    { title: "Big Boss", src: "Flotantes/big-boss-negativo.svg", width: 282, height: 376, x: 0.28, angle: 4, floatY: 0.35, imageScale: 1.06, controlInset: "0.2rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5, mobileHidden: true }
   ];
 }
 
@@ -595,6 +616,11 @@ function initWorkArchive() {
   let userInteracting = false;
   let interactionTimer = 0;
   let scrollTickingArchive = false;
+  let archiveVisible = false;
+
+  function isCompactArchive() {
+    return compactLayoutQuery.matches;
+  }
 
   function playVideo(videoNode) {
     if (!videoNode) return;
@@ -604,8 +630,29 @@ function initWorkArchive() {
     if (playPromise?.catch) playPromise.catch(() => {});
   }
 
+  function pauseVideo(videoNode) {
+    if (!videoNode) return;
+    videoNode.pause();
+  }
+
+  function syncVideoPlayback() {
+    const compact = isCompactArchive();
+    videos.forEach((videoNode, videoIndex) => {
+      videoNode.preload = compact ? "metadata" : "auto";
+      if (archiveVisible && (!compact || videoIndex === activeIndex)) {
+        playVideo(videoNode);
+      } else {
+        pauseVideo(videoNode);
+      }
+    });
+  }
+
   function playAllVideos() {
-    videos.forEach(playVideo);
+    syncVideoPlayback();
+  }
+
+  function pauseAllVideos() {
+    videos.forEach(pauseVideo);
   }
 
   function setActiveWork(index, fromUser = false) {
@@ -618,7 +665,6 @@ function initWorkArchive() {
     videos.forEach((videoNode, videoIndex) => {
       const isActive = videoIndex === activeIndex;
       videoNode.classList.toggle("is-active", isActive);
-      if (isActive) playVideo(videoNode);
     });
 
     triggers.forEach((trigger, triggerIndex) => {
@@ -632,6 +678,8 @@ function initWorkArchive() {
         userInteracting = false;
       }, 1200);
     }
+
+    syncVideoPlayback();
   }
 
   function updateByScroll() {
@@ -662,12 +710,14 @@ function initWorkArchive() {
   const observer = "IntersectionObserver" in window
     ? new IntersectionObserver((entries) => {
       const visible = entries.some((entry) => entry.isIntersecting);
+      archiveVisible = visible;
       if (visible) {
         playAllVideos();
         window.addEventListener("scroll", requestArchiveScroll, { passive: true });
         requestArchiveScroll();
       } else {
         window.removeEventListener("scroll", requestArchiveScroll);
+        pauseAllVideos();
       }
     }, { threshold: 0.12 })
     : null;
@@ -675,11 +725,13 @@ function initWorkArchive() {
   if (observer) {
     observer.observe(workArchive);
   } else {
+    archiveVisible = true;
     playAllVideos();
     window.addEventListener("scroll", requestArchiveScroll, { passive: true });
   }
 
   setActiveWork(0);
+  window.addEventListener("resize", syncVideoPlayback);
 }
 
 function initContactForm() {
@@ -798,10 +850,11 @@ function initFloatingMobile(stage) {
   stage.dataset.floatingReady = "mobile";
   stage.classList.add("floating-stage--mobile");
 
-  const assets = getFloatingAssets();
+  const assets = getFloatingAssets().filter((asset) => !asset.mobileHidden);
   const cards = [];
   let activeCard = null;
   let frameId = 0;
+  let lastFrame = 0;
 
   function setActiveCard(card) {
     if (activeCard) activeCard.element.classList.remove("is-active");
@@ -886,7 +939,11 @@ function initFloatingMobile(stage) {
     element.addEventListener("pointercancel", () => releaseCard(card));
   }
 
-  function animateMobile() {
+  function animateMobile(now = performance.now()) {
+    frameId = window.requestAnimationFrame(animateMobile);
+    if (document.hidden || now - lastFrame < 32) return;
+    lastFrame = now;
+
     const rect = stage.getBoundingClientRect();
     const time = performance.now() * 0.001;
     const minY = Math.min(132, rect.height * 0.16);
@@ -912,11 +969,10 @@ function initFloatingMobile(stage) {
   }
 
   assets.forEach(createCard);
-  animateMobile();
-  frameId = window.setInterval(animateMobile, 16);
+  frameId = window.requestAnimationFrame(animateMobile);
 
   return () => {
-    window.clearInterval(frameId);
+    window.cancelAnimationFrame(frameId);
     stage.classList.remove("floating-stage--mobile", "is-grabbing");
     stage.innerHTML = "";
   };
@@ -1386,6 +1442,24 @@ function initFloatingWorld() {
 
 let floatingWorldStarted = false;
 let floatingScheduleStarted = false;
+let floatingWorldStarting = false;
+let matterLoadPromise = null;
+
+function loadMatterLibrary() {
+  if (window.Matter) return Promise.resolve();
+  if (matterLoadPromise) return matterLoadPromise;
+
+  matterLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdn.jsdelivr.net/npm/matter-js@0.20.0/build/matter.min.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("matter-load-failed"));
+    document.head.appendChild(script);
+  });
+
+  return matterLoadPromise;
+}
 
 function scheduleFloatingWorld() {
   if (floatingScheduleStarted) return;
@@ -1394,15 +1468,27 @@ function scheduleFloatingWorld() {
   const stage = document.querySelector("[data-floating-world]");
   if (!stage) return;
 
-  function startFloatingWorld() {
-    if (floatingWorldStarted) return;
+  async function startFloatingWorld() {
+    if (floatingWorldStarted || floatingWorldStarting) return;
+    floatingWorldStarting = true;
+
+    if (!isCompactFloatingLayout(stage) && !window.Matter) {
+      try {
+        await loadMatterLibrary();
+      } catch {
+        // If the CDN is blocked, the lightweight fallback keeps the section usable.
+      }
+    }
+
     const cleanup = initFloatingWorld();
     if (!cleanup) {
+      floatingWorldStarting = false;
       window.setTimeout(startFloatingWorld, 140);
       return;
     }
 
     floatingWorldStarted = true;
+    floatingWorldStarting = false;
     window.removeEventListener("scroll", checkVisible);
     window.removeEventListener("resize", checkVisible);
   }
@@ -1441,8 +1527,14 @@ function scheduleFloatingWorld() {
   }
 }
 
-window.addEventListener("pointermove", handlePointerMove, { passive: true });
-window.addEventListener("mousemove", handlePointerMove, { passive: true });
+if (!compactPointerQuery.matches) {
+  window.addEventListener("pointermove", handlePointerMove, { passive: true });
+  window.addEventListener("mousemove", handlePointerMove, { passive: true });
+  requestAnimationFrame(animate);
+} else if (hero) {
+  hero.style.setProperty("--cursor-opacity", "0");
+}
+
 window.addEventListener("scroll", requestScrollParallax, { passive: true });
 window.addEventListener("resize", requestScrollParallax);
 
@@ -1453,7 +1545,7 @@ initPageTransitions();
 initDesignViewer();
 initWorkArchive();
 initContactForm();
-window.setTimeout(hidePreloader, 900);
+window.setTimeout(hidePreloader, 650);
 
 if (document.readyState === "complete") {
   hidePreloader();
@@ -1467,4 +1559,3 @@ if (document.readyState === "complete") {
 
 updateTime();
 setInterval(updateTime, 1000);
-requestAnimationFrame(animate);
