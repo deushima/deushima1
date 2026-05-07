@@ -249,6 +249,23 @@ function shouldUsePageTransition(link, event) {
   return true;
 }
 
+function isEmbeddedPage() {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true;
+  }
+}
+
+function isPrimaryLinkClick(link, event) {
+  if (!link || !link.href) return false;
+  if (event.defaultPrevented) return false;
+  if (event.button !== 0) return false;
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return false;
+  if (link.hasAttribute("download")) return false;
+  return true;
+}
+
 function startPageTransition(destination) {
   if (!pageTransition) {
     window.location.href = destination;
@@ -268,6 +285,27 @@ function startPageTransition(destination) {
 function initPageTransitions() {
   document.addEventListener("click", (event) => {
     const link = event.target.closest("a[href]");
+
+    if (link?.dataset.launcherNav === "true") {
+      if (!isPrimaryLinkClick(link, event)) return;
+
+      if (isEmbeddedPage()) {
+        if (pageTransition && !pageTransitionStarted) {
+          pageTransitionStarted = true;
+          document.body.classList.add("is-page-leaving");
+          window.setTimeout(() => {
+            pageTransitionStarted = false;
+            document.body.classList.remove("is-page-leaving");
+          }, 900);
+        }
+        return;
+      }
+
+      event.preventDefault();
+      startPageTransition(link.href);
+      return;
+    }
+
     if (!shouldUsePageTransition(link, event)) return;
 
     event.preventDefault();
