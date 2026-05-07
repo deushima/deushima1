@@ -1590,6 +1590,12 @@ a {
   outline: none;
 }
 
+.contact-form button:disabled {
+  cursor: wait;
+  opacity: 0.58;
+  transform: none;
+}
+
 .contact-form__footer p {
   min-height: 1em;
   margin: 0;
@@ -1597,6 +1603,14 @@ a {
   font-size: 0.68rem;
   font-weight: 400;
   text-align: right;
+}
+
+.contact-form__footer p[data-state="success"] {
+  color: rgba(244, 244, 241, 0.78);
+}
+
+.contact-form__footer p[data-state="error"] {
+  color: rgba(244, 244, 241, 0.64);
 }
 
 .site-footer {

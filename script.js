@@ -12,7 +12,8 @@ const designViewerStage = designViewer?.querySelector("[data-design-stage]");
 const designViewerImage = designViewer?.querySelector("[data-design-image]");
 const designViewerTitle = designViewer?.querySelector("[data-design-title]");
 const designViewerZoom = designViewer?.querySelector("[data-design-zoom]");
-const CONTACT_ENDPOINT = "";
+const CONTACT_ENDPOINT = "https://api.web3forms.com/submit";
+const CONTACT_ACCESS_KEY = "8b8a51cd-3ec4-4b6d-8712-1bdc14969f4f";
 const compactPointerQuery = window.matchMedia("(pointer: coarse)");
 const compactLayoutQuery = window.matchMedia("(max-width: 760px)");
 
@@ -738,9 +739,17 @@ function initContactForm() {
   if (!contactForm) return;
 
   const statusNode = contactForm.querySelector("[data-contact-status]");
+  const submitButton = contactForm.querySelector('button[type="submit"]');
+  const submitLabel = submitButton?.textContent || "Send message ->";
 
-  function setStatus(message) {
-    if (statusNode) statusNode.textContent = message;
+  function setStatus(message, state = "") {
+    if (!statusNode) return;
+    statusNode.textContent = message;
+    if (state) {
+      statusNode.dataset.state = state;
+    } else {
+      delete statusNode.dataset.state;
+    }
   }
 
   contactForm.addEventListener("submit", async (event) => {
@@ -750,38 +759,42 @@ function initContactForm() {
     const formData = new FormData(contactForm);
     const name = String(formData.get("name") || "").trim();
     const email = String(formData.get("email") || "").trim();
-    const message = String(formData.get("message") || "").trim();
 
-    if (CONTACT_ENDPOINT) {
-      setStatus("Enviando...");
-      try {
-        const response = await fetch(CONTACT_ENDPOINT, {
-          method: "POST",
-          body: formData,
-          headers: { Accept: "application/json" }
-        });
+    formData.append("access_key", CONTACT_ACCESS_KEY);
+    formData.append("subject", `Nuevo contacto de ${name || "portfolio"} - Deushima`);
+    formData.append("from_name", "Portfolio Deushima");
+    formData.append("replyto", email);
 
-        if (!response.ok) throw new Error("contact-submit-failed");
-        contactForm.reset();
-        setStatus("Mensaje enviado.");
-      } catch {
-        setStatus("No se pudo enviar. Prob&aacute; por mail.");
-      }
-      return;
+    if (submitButton) {
+      submitButton.textContent = "Sending...";
+      submitButton.disabled = true;
     }
 
-    const subject = encodeURIComponent(`Nuevo contacto de ${name || "portfolio"}`);
-    const body = encodeURIComponent([
-      "Hola Deushima,",
-      "",
-      message,
-      "",
-      `Nombre: ${name}`,
-      `Email: ${email}`
-    ].join("\n"));
+    setStatus("Enviando...", "pending");
 
-    setStatus("Abriendo correo...");
-    window.location.href = `mailto:deushima@gmail.com?subject=${subject}&body=${body}`;
+    try {
+      const response = await fetch(CONTACT_ENDPOINT, {
+        method: "POST",
+        body: formData,
+        headers: { Accept: "application/json" }
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.success === false) {
+        throw new Error(data.message || "contact-submit-failed");
+      }
+
+      contactForm.reset();
+      setStatus("Mensaje enviado. Gracias.", "success");
+    } catch (error) {
+      console.warn("Contact form error:", error);
+      setStatus("No se pudo enviar. Intenta de nuevo.", "error");
+    } finally {
+      if (submitButton) {
+        submitButton.textContent = submitLabel;
+        submitButton.disabled = false;
+      }
+    }
   });
 }
 
