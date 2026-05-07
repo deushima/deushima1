@@ -289,7 +289,7 @@ function initPageTransitions() {
     if (link?.dataset.launcherNav === "true") {
       if (!isPrimaryLinkClick(link, event)) return;
 
-      if (isEmbeddedPage()) {
+      if (link.getAttribute("target") === "_blank" || isEmbeddedPage()) {
         if (pageTransition && !pageTransitionStarted) {
           pageTransitionStarted = true;
           document.body.classList.add("is-page-leaving");
