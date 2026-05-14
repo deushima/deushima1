@@ -167,20 +167,19 @@ function updateScrollParallax() {
     hero.style.setProperty("--hero-scroll-y", `${(heroProgress * 96).toFixed(2)}px`);
     hero.style.setProperty("--hero-nav-y", `${(-heroProgress * 22).toFixed(2)}px`);
     hero.style.setProperty("--hero-copy-y", `${(-heroProgress * 42).toFixed(2)}px`);
-    hero.style.setProperty("--hero-dim", `${(heroFade * 0.58).toFixed(3)}`);
-    hero.style.setProperty("--hero-eat-opacity", `${(heroEat * 0.96).toFixed(3)}`);
+    hero.style.setProperty("--hero-dim", `${(heroFade * 0.34).toFixed(3)}`);
+    hero.style.setProperty("--hero-eat-opacity", `${(heroEat * 0.56).toFixed(3)}`);
     hero.style.setProperty("--hero-eat-y", `${((1 - heroEat) * 72).toFixed(2)}%`);
-    hero.style.setProperty("--hero-edge-fade", `${(0.28 + heroFade * 0.42).toFixed(3)}`);
+    hero.style.setProperty("--hero-edge-fade", `${(0.2 + heroFade * 0.34).toFixed(3)}`);
     hero.style.setProperty("--video-scroll-scale", `${(1.07 - heroFade * 0.055).toFixed(3)}`);
   }
 
   if (floatingSection) {
     const rect = floatingSection.getBoundingClientRect();
     const reveal = easeOutCubic((viewportHeight - rect.top) / (viewportHeight * 0.82));
-    const stageReveal = smoothstep((reveal - 0.16) / 0.72);
     const headerReveal = smoothstep((reveal - 0.05) / 0.58);
 
-    floatingSection.style.setProperty("--works-glow-y", `${((1 - reveal) * -72).toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-glow-y", "0px");
     floatingSection.style.setProperty("--works-header-y", `${((1 - headerReveal) * 44).toFixed(2)}px`);
     const panelY = (1 - headerReveal) * 18 - reveal * 4;
 
@@ -189,15 +188,15 @@ function updateScrollParallax() {
     floatingSection.style.setProperty("--works-panel-opacity", `${(0.72 + headerReveal * 0.28).toFixed(3)}`);
     floatingSection.style.setProperty("--works-panel-glow-y", `${(panelY * 0.55).toFixed(2)}px`);
     floatingSection.style.setProperty("--works-panel-glow-opacity", `${(0.2 + headerReveal * 0.16).toFixed(3)}`);
-    floatingSection.style.setProperty("--works-section-y", `${((1 - reveal) * 72).toFixed(2)}px`);
-    floatingSection.style.setProperty("--works-section-opacity", `${(0.22 + reveal * 0.78).toFixed(3)}`);
-    floatingSection.style.setProperty("--works-darkness", `${(0.42 + reveal * 0.46).toFixed(3)}`);
-    floatingSection.style.setProperty("--works-top-shadow", `${(0.18 + reveal * 0.58).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-darkness", `${(0.18 + reveal * 0.16).toFixed(3)}`);
+    floatingSection.style.setProperty("--works-top-shadow", `${(0.03 + reveal * 0.11).toFixed(3)}`);
     floatingSection.style.setProperty("--works-header-opacity", `${(0.28 + headerReveal * 0.72).toFixed(3)}`);
-    floatingSection.style.setProperty("--works-stage-y", `${((1 - stageReveal) * 96).toFixed(2)}px`);
-    floatingSection.style.setProperty("--works-stage-opacity", `${stageReveal.toFixed(3)}`);
-    floatingSection.style.setProperty("--works-stage-scale", `${(0.965 + stageReveal * 0.035).toFixed(3)}`);
-    floatingSection.style.setProperty("--works-stage-blur", `${((1 - stageReveal) * 7).toFixed(2)}px`);
+    floatingSection.style.setProperty("--works-stage-y", "0px");
+    floatingSection.style.setProperty("--works-stage-z", "0px");
+    floatingSection.style.setProperty("--works-stage-rotate", "0deg");
+    floatingSection.style.setProperty("--works-stage-opacity", "1");
+    floatingSection.style.setProperty("--works-stage-scale", "1");
+    floatingSection.style.setProperty("--works-stage-blur", "0px");
   }
 }
 
@@ -428,12 +427,12 @@ function initTextReveals() {
 
 function getFloatingAssets() {
   return [
-    { title: "Heroines", src: "Flotantes/heroines-2.svg", width: 306, height: 434, x: 0.78, angle: 8, floatY: 0.32, collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
-    { title: "Bestseller", src: "Flotantes/bestseller.svg", width: 294, height: 388, x: 0.2, angle: -10, floatY: 0.68, imageScale: 1.16, controlInset: "0.45rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13, mobileHidden: true },
-    { title: "New Era Classic", src: "Flotantes/new-era-classic-png-negro.svg", width: 304, height: 365, x: 0.38, angle: -2, floatY: 0.55, imageScale: 1.2, controlInset: "0.35rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
-    { title: "Existence Design", src: "Flotantes/svg-02.svg", width: 432, height: 487, x: 0.66, angle: 11, floatY: 0.72, imageScale: 1.06, controlInset: "-1.15rem -0.9rem -1.9rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
-    { title: "Cultural Change", src: "Flotantes/Cultural-change.svg", width: 358, height: 446, x: 0.52, angle: -22, floatY: 0.26, imageScale: 1, controlInset: "0", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
-    { title: "Big Boss", src: "Flotantes/big-boss-negativo.svg", width: 282, height: 376, x: 0.28, angle: 4, floatY: 0.35, imageScale: 1.06, controlInset: "0.2rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5, mobileHidden: true }
+    { title: "Heroines", src: "Flotantes/Optimizados/heroines-2.webp", width: 306, height: 434, x: 0.86, angle: 8, floatY: 0.43, imageScale: 0.96, controlInset: "-0.22rem", collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
+    { title: "Bestseller", src: "Flotantes/Optimizados/bestseller.webp", width: 294, height: 388, x: 0.18, angle: -9, floatY: 0.64, imageScale: 0.92, controlInset: "-0.58rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13, mobileHidden: true },
+    { title: "New Era Classic", src: "Flotantes/Optimizados/new-era-classic-png-negro.webp", width: 304, height: 365, x: 0.39, angle: -4, floatY: 0.66, imageScale: 0.84, imageOffsetY: "-0.72rem", controlInset: "-0.68rem -0.58rem -1.22rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
+    { title: "Existence Design", src: "Flotantes/Optimizados/Existencia y destino.webp", width: 432, height: 487, x: 0.68, angle: 10, floatY: 0.4, imageScale: 0.95, controlInset: "-0.42rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
+    { title: "Cultural Change", src: "Flotantes/Optimizados/Cultural-change.webp", width: 358, height: 446, x: 0.58, angle: -15, floatY: 0.6, imageScale: 0.96, controlInset: "-0.34rem", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
+    { title: "Big Boss", src: "Flotantes/Optimizados/big-boss-negativo.webp", width: 282, height: 376, x: 0.31, angle: 5, floatY: 0.48, imageScale: 0.95, controlInset: "-0.32rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5, mobileHidden: true }
   ];
 }
 
@@ -857,6 +856,12 @@ function createFloatingElement(asset, index, width, height) {
   element.style.setProperty("--card-w", `${width}px`);
   element.style.setProperty("--card-h", `${height}px`);
   element.style.setProperty("--image-scale", asset.imageScale || 1);
+  if (asset.imageOffsetX) {
+    element.style.setProperty("--image-x", asset.imageOffsetX);
+  }
+  if (asset.imageOffsetY) {
+    element.style.setProperty("--image-y", asset.imageOffsetY);
+  }
   if (asset.controlInset) {
     element.style.setProperty("--control-inset", asset.controlInset);
   }
@@ -1074,7 +1079,7 @@ function initFloatingFallback(stage) {
 
   function createCard(asset, index) {
     const rect = stage.getBoundingClientRect();
-    const responsiveScale = clamp(rect.width / 1500, 0.52, 0.76);
+    const responsiveScale = clamp(rect.width / 1500, 0.48, 0.68);
     const width = asset.width * responsiveScale;
     const height = asset.height * responsiveScale;
     const element = createFloatingElement(asset, index, width, height);
@@ -1282,7 +1287,7 @@ function initFloatingWorld() {
 
   function createCard(asset, index) {
     const rect = stageRect();
-    const responsiveScale = clamp(rect.width / 1500, 0.52, 0.76);
+    const responsiveScale = clamp(rect.width / 1500, 0.48, 0.68);
     const width = asset.width * responsiveScale;
     const height = asset.height * responsiveScale;
     const collisionScale = asset.collisionScale || Math.max(asset.imageScale || 1, 1.08);
