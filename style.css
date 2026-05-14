@@ -6,6 +6,9 @@
   --blue: #2477ff;
   --blue-soft: #7eb7ff;
   --black-glass: rgba(15, 15, 15, 0.66);
+  --site-cursor-x: -4rem;
+  --site-cursor-y: -4rem;
+  --site-cursor-scale: 1;
 }
 
 * {
@@ -24,6 +27,81 @@ body {
   font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0;
   overflow-x: hidden;
+}
+
+@media (pointer: fine) {
+  body.has-site-cursor,
+  body.has-site-cursor a,
+  body.has-site-cursor button,
+  body.has-site-cursor input,
+  body.has-site-cursor textarea,
+  body.has-site-cursor [role="button"],
+  body.has-site-cursor .floating-card,
+  body.has-site-cursor .design-viewer__stage {
+    cursor: none !important;
+  }
+}
+
+.site-cursor {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 10000;
+  display: none;
+  width: 1.45rem;
+  aspect-ratio: 1;
+  pointer-events: none;
+  opacity: 0;
+  transform:
+    translate3d(calc(var(--site-cursor-x) - 50%), calc(var(--site-cursor-y) - 50%), 0)
+    scale(var(--site-cursor-scale));
+  transition:
+    opacity 0.18s ease,
+    width 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
+}
+
+.site-cursor span {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.92);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.42),
+    0 0.5rem 1.25rem rgba(0, 0, 0, 0.28);
+}
+
+@media (pointer: fine) {
+  .site-cursor {
+    display: block;
+  }
+
+  body.has-site-cursor.is-cursor-active .site-cursor {
+    opacity: 1;
+  }
+
+  body.has-site-cursor.is-cursor-hover .site-cursor {
+    width: 2.2rem;
+  }
+
+  body.has-site-cursor.is-cursor-hover .site-cursor span {
+    border-color: rgba(255, 255, 255, 0.98);
+    background: rgba(0, 0, 0, 0.72);
+  }
+}
+
+@media (pointer: coarse) {
+  .site-cursor {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .site-cursor {
+    display: none;
+  }
 }
 
 .liquid-gradient-bg {
@@ -1970,7 +2048,8 @@ body.is-design-viewer-open {
   overflow: hidden;
 }
 
-body.is-design-viewer-open .site-shell {
+body.is-design-viewer-open .site-shell,
+body.is-launcher-pop-open .site-shell {
   filter: blur(9px) brightness(0.7);
   transform: scale(0.992);
   transition:
@@ -2153,6 +2232,197 @@ body.is-design-viewer-open .site-shell {
 .design-viewer__corner--sw {
   left: clamp(0.75rem, 1.2vw, 1rem);
   bottom: clamp(0.75rem, 1.2vw, 1rem);
+}
+
+.launcher-pop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  display: grid;
+  place-items: center;
+  padding: clamp(1rem, 2.2vw, 2rem);
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.38s ease,
+    visibility 0s linear 0.38s;
+}
+
+body.is-launcher-pop-open {
+  overflow: hidden;
+}
+
+.launcher-pop.is-open {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  transition-delay: 0s;
+}
+
+.launcher-pop__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(52, 118, 255, 0.12), transparent 26rem),
+    rgba(4, 4, 4, 0.7);
+  cursor: default;
+}
+
+.launcher-pop__panel {
+  position: relative;
+  z-index: 1;
+  width: min(27.5rem, calc(100vw - 2rem));
+  overflow: hidden;
+  padding: clamp(1.05rem, 2.2vw, 1.55rem);
+  border: 1px solid rgba(244, 244, 241, 0.18);
+  border-radius: 5px;
+  background:
+    linear-gradient(135deg, rgba(18, 18, 18, 0.94), rgba(15, 15, 15, 0.76) 58%, rgba(8, 8, 8, 0.95)),
+    radial-gradient(circle at 78% 14%, rgba(42, 105, 255, 0.16), transparent 14rem);
+  box-shadow:
+    0 2rem 5.5rem rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #f4f4f1;
+  opacity: 0;
+  transform: translate3d(0, 0.85rem, 0) scale(0.982);
+  transition:
+    opacity 0.42s ease,
+    transform 0.56s cubic-bezier(0.16, 1, 0.3, 1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  backdrop-filter: blur(18px) saturate(1.12);
+}
+
+.launcher-pop.is-open .launcher-pop__panel {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.launcher-pop__panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    linear-gradient(rgba(244, 244, 241, 0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(244, 244, 241, 0.024) 1px, transparent 1px);
+  background-size: 3.4rem 3.4rem;
+}
+
+.launcher-pop__close {
+  position: absolute;
+  top: 0.78rem;
+  right: 0.78rem;
+  display: grid;
+  width: 2rem;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid rgba(244, 244, 241, 0.22);
+  border-radius: 0;
+  background: rgba(15, 15, 15, 0.66);
+  color: rgba(244, 244, 241, 0.88);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  transition:
+    border-color 0.28s ease,
+    background 0.28s ease,
+    color 0.28s ease;
+}
+
+.launcher-pop__close:hover,
+.launcher-pop__close:focus-visible {
+  border-color: rgba(126, 183, 255, 0.9);
+  background: rgba(15, 15, 15, 0.9);
+  color: #fff;
+}
+
+.launcher-pop__kicker {
+  margin: 0 2.4rem 0.72rem 0;
+  color: rgba(244, 244, 241, 0.52);
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.launcher-pop h2 {
+  max-width: 18rem;
+  margin: 0;
+  color: rgba(244, 244, 241, 0.96);
+  font-size: clamp(1.22rem, 2.1vw, 1.72rem);
+  font-weight: 400;
+  line-height: 1.02;
+}
+
+.launcher-pop__copy {
+  max-width: 22rem;
+  margin: 0.95rem 0 1.15rem;
+  color: rgba(244, 244, 241, 0.68);
+  font-size: clamp(0.78rem, 0.9vw, 0.9rem);
+  font-weight: 300;
+  line-height: 1.44;
+}
+
+.launcher-pop__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.58rem;
+  min-height: 2.55rem;
+  padding: 0 0.95rem;
+  border: 1px solid rgba(244, 244, 241, 0.42);
+  color: rgba(244, 244, 241, 0.94);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  transition:
+    border-color 0.28s ease,
+    background 0.28s ease,
+    color 0.28s ease,
+    transform 0.36s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.launcher-pop__action:hover,
+.launcher-pop__action:focus-visible {
+  border-color: rgba(126, 183, 255, 0.92);
+  background: rgba(244, 244, 241, 0.06);
+  color: #fff;
+  transform: translate3d(0, -0.08rem, 0);
+}
+
+.launcher-pop__corner {
+  position: absolute;
+  z-index: 2;
+  width: 0.34rem;
+  aspect-ratio: 1;
+  background: #f4f4f1;
+  opacity: 0.82;
+}
+
+.launcher-pop__corner--nw {
+  left: 0.72rem;
+  top: 0.72rem;
+}
+
+.launcher-pop__corner--ne {
+  right: 0.72rem;
+  top: 0.72rem;
+}
+
+.launcher-pop__corner--se {
+  right: 0.72rem;
+  bottom: 0.72rem;
+}
+
+.launcher-pop__corner--sw {
+  left: 0.72rem;
+  bottom: 0.72rem;
 }
 
 .page-transition {
@@ -2665,12 +2935,35 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .directory {
-    grid-template-columns: 1fr;
-    max-width: 12rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-width: none;
+    gap: 0.7rem;
   }
 
-  .directory__group:nth-child(n+2) {
-    display: none;
+  .directory__group {
+    display: grid;
+    gap: 0.07rem;
+    min-width: 0;
+    font-size: 0.72rem;
+    line-height: 1.06;
+  }
+
+  .directory__title {
+    gap: 0.22rem;
+    margin-bottom: 0.02rem;
+    font-size: 0.74rem;
+  }
+
+  .directory__title::before {
+    width: 0.4rem;
+    height: 0.4rem;
+  }
+
+  .directory a {
+    max-width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .discover-link {
@@ -2763,13 +3056,13 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .floating-section__header {
-    top: calc(var(--works-overlap) + 2.3rem);
-    max-width: min(19rem, calc(100vw - 2rem));
-    padding: 0.9rem 0.95rem;
+    top: calc(var(--works-overlap) + 1.55rem);
+    max-width: min(18.2rem, calc(100vw - 2rem));
+    padding: 0.72rem 0.78rem;
   }
 
   .floating-section__header h2 {
-    font-size: 1rem;
+    font-size: 0.92rem;
   }
 
   .floating-section__bio {
@@ -2778,8 +3071,8 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .floating-section__bio p {
-    font-size: 0.72rem;
-    line-height: 1.34;
+    font-size: 0.66rem;
+    line-height: 1.3;
   }
 
   .floating-card__controls,
@@ -2816,14 +3109,15 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .work-archive__filmstrip {
-    display: flex;
-    gap: 0.75rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.72rem;
     min-height: 0;
     margin-top: 0;
-    margin-inline: -1rem;
-    overflow-x: auto;
-    padding: 0.7rem 1rem 1.2rem;
-    scroll-snap-type: x mandatory;
+    margin-inline: 0;
+    overflow: visible;
+    padding: 0.55rem 0 0.9rem;
+    scroll-snap-type: none;
     scrollbar-width: none;
   }
 
@@ -2832,11 +3126,12 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .work-archive__item {
-    min-width: min(78vw, 19rem);
-    height: 21rem;
+    min-width: 0;
+    width: 100%;
+    height: clamp(15.6rem, 72vw, 18.8rem);
     min-height: 0;
-    flex: 0 0 min(78vw, 19rem);
-    scroll-snap-align: center;
+    flex: none;
+    scroll-snap-align: none;
   }
 
   .work-archive__item:hover,
@@ -2857,7 +3152,7 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .contact-media {
-    min-height: 19rem;
+    min-height: 18.6rem;
     border-radius: 16px;
   }
 
@@ -2866,9 +3161,11 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .contact-media__prompt p {
-    min-height: 6.8em;
-    font-size: 0.72rem;
-    line-height: 1.18;
+    min-height: 0;
+    max-height: 8.9rem;
+    overflow: hidden;
+    font-size: 0.58rem;
+    line-height: 1.13;
   }
 
   .contact-strip__intro h2 {
@@ -2909,5 +3206,42 @@ body.is-page-leaving .page-transition__logo {
   .design-viewer__image {
     width: 88%;
     max-height: 82%;
+  }
+
+  .launcher-pop {
+    padding: 1.2rem;
+  }
+
+  .launcher-pop__panel {
+    width: min(22.5rem, calc(100vw - 2.4rem));
+    padding: 0.95rem;
+  }
+
+  .launcher-pop__close {
+    top: 0.7rem;
+    right: 0.7rem;
+    width: 1.75rem;
+  }
+
+  .launcher-pop__kicker {
+    margin-bottom: 0.6rem;
+    font-size: 0.56rem;
+  }
+
+  .launcher-pop h2 {
+    max-width: 15.5rem;
+    font-size: 1.24rem;
+  }
+
+  .launcher-pop__copy {
+    margin: 0.78rem 0 0.95rem;
+    font-size: 0.76rem;
+    line-height: 1.4;
+  }
+
+  .launcher-pop__action {
+    min-height: 2.3rem;
+    padding: 0 0.78rem;
+    font-size: 0.74rem;
   }
 }

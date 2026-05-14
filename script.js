@@ -7,12 +7,15 @@ const pageTransition = document.querySelector("[data-page-transition]");
 const workArchive = document.querySelector("[data-work-archive]");
 const contactForm = document.querySelector("[data-contact-form]");
 const footerPrompt = document.querySelector("[data-footer-prompt]");
+const siteCursor = document.querySelector("[data-site-cursor]");
 const designViewer = document.querySelector("[data-design-viewer]");
 const designViewerPanel = designViewer?.querySelector(".design-viewer__panel");
 const designViewerStage = designViewer?.querySelector("[data-design-stage]");
 const designViewerImage = designViewer?.querySelector("[data-design-image]");
 const designViewerTitle = designViewer?.querySelector("[data-design-title]");
 const designViewerZoom = designViewer?.querySelector("[data-design-zoom]");
+const launcherPop = document.querySelector("[data-launcher-pop]");
+const launcherPopPanel = launcherPop?.querySelector(".launcher-pop__panel");
 const CONTACT_ENDPOINT = "https://api.web3forms.com/submit";
 const CONTACT_ACCESS_KEY = "8b8a51cd-3ec4-4b6d-8712-1bdc14969f4f";
 const compactPointerQuery = window.matchMedia("(pointer: coarse)");
@@ -138,9 +141,9 @@ function animate() {
   targetVelocityX *= 0.78;
   targetVelocityY *= 0.78;
   targetDistortion *= 0.82;
+  const speed = Math.min(1, Math.hypot(velocityX, velocityY) / 62);
 
   if (hero) {
-    const speed = Math.min(1, Math.hypot(velocityX, velocityY) / 62);
     const angle = Math.atan2(velocityY, velocityX) * 180 / Math.PI;
 
     hero.style.setProperty("--video-x", `${(-pointerX * 12).toFixed(2)}px`);
@@ -152,6 +155,12 @@ function animate() {
     hero.style.setProperty("--cursor-rotate", `${angle.toFixed(2)}deg`);
     hero.style.setProperty("--cursor-stretch-x", `${(1 + speed * 0.62).toFixed(3)}`);
     hero.style.setProperty("--cursor-stretch-y", `${(1 - speed * 0.18).toFixed(3)}`);
+  }
+
+  if (siteCursor) {
+    document.documentElement.style.setProperty("--site-cursor-x", `${cursorX.toFixed(2)}px`);
+    document.documentElement.style.setProperty("--site-cursor-y", `${cursorY.toFixed(2)}px`);
+    document.documentElement.style.setProperty("--site-cursor-scale", `${(1 + Math.min(0.2, speed * 0.12)).toFixed(3)}`);
   }
 
   requestAnimationFrame(animate);
@@ -644,6 +653,90 @@ function initDesignViewer() {
   });
 }
 
+function openLauncherPop() {
+  if (!launcherPop || !launcherPopPanel) return;
+  if (document.body.classList.contains("is-design-viewer-open") || document.body.classList.contains("is-page-leaving")) {
+    window.setTimeout(openLauncherPop, 1800);
+    return;
+  }
+
+  lastFocusedElement = document.activeElement;
+  launcherPop.setAttribute("aria-hidden", "false");
+  document.body.classList.add("is-launcher-pop-open");
+
+  window.requestAnimationFrame(() => {
+    launcherPop.classList.add("is-open");
+    launcherPopPanel.focus({ preventScroll: true });
+  });
+}
+
+function closeLauncherPop(remember = true) {
+  if (!launcherPop) return;
+
+  launcherPop.classList.remove("is-open");
+  launcherPop.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-launcher-pop-open");
+
+  if (remember) {
+    try {
+      sessionStorage.setItem("deushimaLauncherPopSeen", "true");
+    } catch {
+      // Ignore storage restrictions in embedded previews.
+    }
+  }
+
+  if (lastFocusedElement?.focus) {
+    window.setTimeout(() => lastFocusedElement.focus({ preventScroll: true }), 80);
+  }
+}
+
+function initLauncherPop() {
+  if (!launcherPop || !launcherPopPanel) return;
+
+  let alreadySeen = false;
+  try {
+    alreadySeen = sessionStorage.getItem("deushimaLauncherPopSeen") === "true";
+  } catch {
+    alreadySeen = false;
+  }
+
+  launcherPop.querySelectorAll("[data-launcher-pop-close]").forEach((button) => {
+    button.addEventListener("click", () => closeLauncherPop(true));
+  });
+
+  launcherPop.querySelectorAll("a[href]").forEach((link) => {
+    link.addEventListener("click", () => closeLauncherPop(true));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!launcherPop.classList.contains("is-open")) return;
+
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeLauncherPop(true);
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(launcherPop.querySelectorAll("a[href], button, [tabindex]:not([tabindex='-1'])"))
+      .filter((item) => !item.hasAttribute("disabled"));
+    if (!focusable.length) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+
+  if (alreadySeen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  window.setTimeout(openLauncherPop, 10000);
+}
+
 function initWorkArchive() {
   if (!workArchive) return;
 
@@ -874,6 +967,42 @@ function initFooterPromptTyping() {
   }, { threshold: 0.34 });
 
   observer.observe(footerPrompt);
+}
+
+function initSiteCursor() {
+  if (!siteCursor || compactPointerQuery.matches || compactLayoutQuery.matches) return;
+
+  const interactiveSelector = "a, button, input, textarea, [role='button'], .floating-card, .design-viewer__stage";
+  document.body.classList.add("has-site-cursor");
+
+  window.addEventListener("pointerenter", () => {
+    document.body.classList.add("is-cursor-active");
+  });
+
+  window.addEventListener("pointerleave", () => {
+    document.body.classList.remove("is-cursor-active", "is-cursor-hover");
+  });
+
+  window.addEventListener("pointermove", () => {
+    document.body.classList.add("is-cursor-active");
+  }, { passive: true });
+
+  document.addEventListener("pointerover", (event) => {
+    if (event.target instanceof Element && event.target.closest(interactiveSelector)) {
+      document.body.classList.add("is-cursor-hover");
+    }
+  }, { passive: true });
+
+  document.addEventListener("pointerout", (event) => {
+    const nextTarget = event.relatedTarget;
+    if (
+      event.target instanceof Element &&
+      event.target.closest(interactiveSelector) &&
+      (!(nextTarget instanceof Element) || !nextTarget.closest(interactiveSelector))
+    ) {
+      document.body.classList.remove("is-cursor-hover");
+    }
+  }, { passive: true });
 }
 
 function releaseMatterScroll(mouse) {
@@ -1640,9 +1769,11 @@ updateScrollParallax();
 initTextReveals();
 initPageTransitions();
 initDesignViewer();
+initLauncherPop();
 initWorkArchive();
 initContactForm();
 initFooterPromptTyping();
+initSiteCursor();
 window.setTimeout(hidePreloader, 650);
 
 if (document.readyState === "complete") {

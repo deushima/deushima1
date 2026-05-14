@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260514-1">
+  <link rel="stylesheet" href="style.css?v=20260514-6">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -280,12 +280,36 @@
     </section>
   </div>
 
+  <div class="launcher-pop" data-launcher-pop aria-hidden="true">
+    <button class="launcher-pop__backdrop" type="button" data-launcher-pop-close aria-label="Cerrar aviso" tabindex="-1"></button>
+    <section class="launcher-pop__panel" role="dialog" aria-modal="true" aria-labelledby="launcher-pop-title" tabindex="-1">
+      <button class="launcher-pop__close" type="button" data-launcher-pop-close aria-label="Cerrar">&times;</button>
+      <p class="launcher-pop__kicker">Interactive tool</p>
+      <h2 id="launcher-pop-title">Explore the 3D Launcher.</h2>
+      <p class="launcher-pop__copy">
+        Un espacio experimental para recorrer materiales, escenas y sistemas visuales de Deushima en tiempo real.
+      </p>
+      <a class="launcher-pop__action" href="https://www.deushima.com.ar/deushima-home/3deushima" data-launcher-nav="true" target="_blank" rel="noopener noreferrer">
+        Open Launcher 3D
+        <span aria-hidden="true">-&gt;</span>
+      </a>
+      <span class="launcher-pop__corner launcher-pop__corner--nw" aria-hidden="true"></span>
+      <span class="launcher-pop__corner launcher-pop__corner--ne" aria-hidden="true"></span>
+      <span class="launcher-pop__corner launcher-pop__corner--se" aria-hidden="true"></span>
+      <span class="launcher-pop__corner launcher-pop__corner--sw" aria-hidden="true"></span>
+    </section>
+  </div>
+
   <div class="page-transition" data-page-transition aria-hidden="true">
     <span class="page-transition__iris"></span>
     <img class="page-transition__logo" src="deushima.svg.svg" alt="">
   </div>
 
+  <div class="site-cursor" data-site-cursor aria-hidden="true">
+    <span></span>
+  </div>
+
   <script src="liquid-gradient.js?v=20260512-7"></script>
-  <script src="script.js?v=20260514-1"></script>
+  <script src="script.js?v=20260514-6"></script>
 </body>
 </html>
