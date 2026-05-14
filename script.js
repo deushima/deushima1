@@ -6,6 +6,7 @@ const floatingSection = document.querySelector(".floating-section");
 const pageTransition = document.querySelector("[data-page-transition]");
 const workArchive = document.querySelector("[data-work-archive]");
 const contactForm = document.querySelector("[data-contact-form]");
+const footerPrompt = document.querySelector("[data-footer-prompt]");
 const designViewer = document.querySelector("[data-design-viewer]");
 const designViewerPanel = designViewer?.querySelector(".design-viewer__panel");
 const designViewerStage = designViewer?.querySelector("[data-design-stage]");
@@ -835,6 +836,46 @@ function initContactForm() {
   });
 }
 
+function initFooterPromptTyping() {
+  if (!footerPrompt) return;
+
+  const fullText = footerPrompt.dataset.fullText || "";
+  if (!fullText.trim()) return;
+
+  footerPrompt.textContent = "";
+  let started = false;
+
+  function writePrompt() {
+    if (started) return;
+    started = true;
+
+    let index = 0;
+    const step = () => {
+      index = Math.min(index + 4, fullText.length);
+      footerPrompt.textContent = fullText.slice(0, index);
+      if (index < fullText.length) {
+        window.setTimeout(step, 14);
+      }
+    };
+
+    window.setTimeout(step, 180);
+  }
+
+  if (!("IntersectionObserver" in window)) {
+    writePrompt();
+    return;
+  }
+
+  const observer = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting)) {
+      writePrompt();
+      observer.disconnect();
+    }
+  }, { threshold: 0.34 });
+
+  observer.observe(footerPrompt);
+}
+
 function releaseMatterScroll(mouse) {
   if (!mouse || !mouse.element || !mouse.mousewheel) return;
   mouse.element.removeEventListener("mousewheel", mouse.mousewheel);
@@ -1601,6 +1642,7 @@ initPageTransitions();
 initDesignViewer();
 initWorkArchive();
 initContactForm();
+initFooterPromptTyping();
 window.setTimeout(hidePreloader, 650);
 
 if (document.readyState === "complete") {
