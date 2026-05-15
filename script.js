@@ -8,6 +8,7 @@ const workArchive = document.querySelector("[data-work-archive]");
 const contactForm = document.querySelector("[data-contact-form]");
 const footerPrompt = document.querySelector("[data-footer-prompt]");
 const siteCursor = document.querySelector("[data-site-cursor]");
+const backgroundToggle = document.querySelector("[data-background-toggle]");
 const designViewer = document.querySelector("[data-design-viewer]");
 const designViewerPanel = designViewer?.querySelector(".design-viewer__panel");
 const designViewerStage = designViewer?.querySelector("[data-design-stage]");
@@ -1005,6 +1006,36 @@ function initSiteCursor() {
   }, { passive: true });
 }
 
+function setBackgroundMode(enabled) {
+  document.body.classList.toggle("is-liquid-mode", enabled);
+  if (!backgroundToggle) return;
+
+  backgroundToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
+  backgroundToggle.setAttribute("aria-label", enabled ? "Desactivar fondo liquido" : "Activar fondo liquido");
+}
+
+function initBackgroundToggle() {
+  if (!backgroundToggle) return;
+
+  let enabled = false;
+  try {
+    enabled = localStorage.getItem("deushimaLiquidMode") === "true";
+  } catch {
+    enabled = false;
+  }
+
+  setBackgroundMode(enabled);
+  backgroundToggle.addEventListener("click", () => {
+    enabled = !document.body.classList.contains("is-liquid-mode");
+    setBackgroundMode(enabled);
+    try {
+      localStorage.setItem("deushimaLiquidMode", enabled ? "true" : "false");
+    } catch {
+      // Ignore storage restrictions in embedded previews.
+    }
+  });
+}
+
 function releaseMatterScroll(mouse) {
   if (!mouse || !mouse.element || !mouse.mousewheel) return;
   mouse.element.removeEventListener("mousewheel", mouse.mousewheel);
@@ -1774,6 +1805,7 @@ initWorkArchive();
 initContactForm();
 initFooterPromptTyping();
 initSiteCursor();
+initBackgroundToggle();
 window.setTimeout(hidePreloader, 650);
 
 if (document.readyState === "complete") {

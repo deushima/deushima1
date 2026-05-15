@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260514-6">
+  <link rel="stylesheet" href="style.css?v=20260514-7">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -65,6 +65,13 @@
           <span>ART</span>
           <span>ARG</span>
         </div>
+
+        <button class="background-toggle intro-fade" type="button" data-background-toggle aria-pressed="false" style="--intro-delay: 0.68s">
+          <span class="background-toggle__track" aria-hidden="true">
+            <span class="background-toggle__knob"></span>
+          </span>
+          <span class="background-toggle__label">Wave</span>
+        </button>
 
         <a class="discover-link intro-fade" href="#works" style="--intro-delay: 0.74s">Discover</a>
       </header>
@@ -203,17 +210,22 @@
           </div>
 
           <form class="contact-form" data-contact-form>
+            <div class="contact-form__intro">
+              <span>Contactame</span>
+              <h2>Start a project / Contact Deushima</h2>
+              <p>Contame tu idea, marca o pieza visual. Respondo desde Buenos Aires, ARG.</p>
+            </div>
             <label>
               <span>Nombre</span>
-              <input type="text" name="name" autocomplete="name" required>
+              <input type="text" name="name" autocomplete="name" placeholder="Tu nombre" required>
             </label>
             <label>
               <span>Email</span>
-              <input type="email" name="email" autocomplete="email" required>
+              <input type="email" name="email" autocomplete="email" placeholder="tu@email.com" required>
             </label>
             <label class="contact-form__message">
               <span>Mensaje</span>
-              <textarea name="message" rows="5" required></textarea>
+              <textarea name="message" rows="5" placeholder="Hola Ivan, quiero desarrollar..." required></textarea>
             </label>
             <div class="contact-form__footer">
               <button type="submit">Send message -&gt;</button>
@@ -310,6 +322,6 @@
   </div>
 
   <script src="liquid-gradient.js?v=20260512-7"></script>
-  <script src="script.js?v=20260514-6"></script>
+  <script src="script.js?v=20260514-7"></script>
 </body>
 </html>
