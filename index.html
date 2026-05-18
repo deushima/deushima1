@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260514-7">
+  <link rel="stylesheet" href="style.css?v=20260518-19">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -29,6 +29,7 @@
       <video class="hero__video" data-hero-video autoplay muted loop playsinline preload="auto">
         <source src="Video%20Background/Video%201.mp4" type="video/mp4">
       </video>
+      <canvas class="ascii-trail" data-ascii-trail aria-hidden="true"></canvas>
       <div class="cursor-distortion" data-cursor-distortion aria-hidden="true">
         <span class="cursor-distortion__wake"></span>
         <span class="cursor-distortion__lens"></span>
@@ -56,7 +57,7 @@
           <div class="directory__group intro-fade" style="--intro-delay: 0.5s">
             <span class="directory__title directory__title--square js-type-text">Programas</span>
             <a href="https://www.deushima.com.ar/3deushima" class="js-wipe-link" data-launcher-nav="true" target="_blank" rel="noopener noreferrer">Launcher 3D</a>
-            <a href="#developing" class="js-wipe-link">Second Developing...</a>
+            <a href="#works" class="js-wipe-link" data-panel-open="works">Second Developing...</a>
           </div>
         </nav>
 
@@ -73,12 +74,26 @@
           <span class="background-toggle__label">Wave</span>
         </button>
 
-        <a class="discover-link intro-fade" href="#works" style="--intro-delay: 0.74s">Discover</a>
+        <div class="audio-control intro-fade" data-audio-control style="--intro-delay: 0.71s">
+          <button class="audio-control__button" type="button" data-audio-toggle aria-pressed="false" aria-label="Activar sonido">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 9.25h3.5L13 5v14l-5.5-4.25H4z"></path>
+              <path d="M16 8.4c1.1.95 1.7 2.16 1.7 3.6s-.6 2.65-1.7 3.6"></path>
+              <path d="M18.7 6c1.75 1.58 2.65 3.58 2.65 6s-.9 4.42-2.65 6"></path>
+            </svg>
+          </button>
+          <label class="audio-control__volume">
+            <span>Vol</span>
+            <input type="range" min="0" max="1" step="0.01" value="0.22" data-audio-volume aria-label="Volumen">
+          </label>
+        </div>
+
+        <a class="discover-link intro-fade" href="#about" data-panel-open="about" style="--intro-delay: 0.74s">Discover</a>
       </header>
 
       <a class="floating-cta cta-reveal" href="https://www.deushima.com.ar/3deushima" data-launcher-nav="true" target="_blank" rel="noopener noreferrer">
         <span>Get launch 3D</span>
-        <span aria-hidden="true">-&gt;</span>
+        <span class="cta-chevron" aria-hidden="true">&gt;</span>
       </a>
 
       <div class="hero__copy">
@@ -87,6 +102,18 @@
         <h1 class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.2s">Iv&aacute;n Rodr&iacute;guez</span></h1>
         <p class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.34s">Design, code & AI for interactive experiences.</span></p>
         <strong class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
+      </div>
+
+      <div class="section-launchers" aria-label="Secciones principales">
+        <button class="section-launcher" type="button" data-panel-open="works" style="--launcher-delay: 0.52s">
+          <span>01 / Works</span>
+        </button>
+        <button class="section-launcher is-featured" type="button" data-panel-open="about" style="--launcher-delay: 0.62s">
+          <span>02 / About me</span>
+        </button>
+        <button class="section-launcher" type="button" data-panel-open="contact" style="--launcher-delay: 0.72s">
+          <span>03 / Contact</span>
+        </button>
       </div>
     </section>
 
@@ -127,7 +154,10 @@
       </div>
     </section>
 
-    <section class="floating-section" id="works" aria-label="Archivo interactivo">
+    <section class="floating-section content-panel" id="about" data-panel="about" aria-label="About me" aria-hidden="true">
+      <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar about"></button>
+      <div class="content-panel__surface content-panel__surface--about">
+        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
       <div class="floating-section__header">
         <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">About / visual practice</span></p>
         <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Art &amp; Visual Director &mdash; Multimedia Designer</span></h2>
@@ -138,9 +168,13 @@
         </div>
       </div>
       <div class="floating-stage" data-floating-world aria-label="Lienzo interactivo con piezas flotantes"></div>
+      </div>
     </section>
 
-    <section class="work-archive" id="developing" data-work-archive aria-label="Trabajos realizados">
+    <section class="work-archive content-panel" id="works" data-panel="works" data-work-archive aria-label="Trabajos realizados" aria-hidden="true">
+      <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar works"></button>
+      <div class="content-panel__surface content-panel__surface--works">
+        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
       <div class="work-archive__meta" aria-hidden="true">
         <span>DEUSHIMA / 2021-2024</span>
         <span>PACKAGING / SOCIAL / GARMENTS / 3D</span>
@@ -193,53 +227,59 @@
           </button>
         </div>
 
-        <section class="contact-strip" aria-label="Contacto">
-          <div class="contact-strip__intro contact-strip__intro--media">
-            <div class="contact-media">
-              <video class="contact-media__video" autoplay muted loop playsinline preload="metadata">
-                <source src="Video%20Background/Video%20footer.mp4" type="video/mp4">
-                <source src="Video%20Background/Video%20footer.mov" type="video/quicktime">
-              </video>
-              <div class="contact-media__veil" aria-hidden="true"></div>
-              <div class="contact-media__prompt">
-                <span>/PROMPT/</span>
-                <p data-footer-prompt data-full-text="Cinematic CGI hero landscape featuring the official Deushima logo as a massive optical glass sculpture emerging from dark volcanic basalt rocks, warm red-orange ambient atmosphere, glowing internal caustics, sharp luminous edges, dramatic orange backlight and base accent light, deep crimson-to-black gradient background, small volcanic flowers and lichen, ultra realistic Octane/Redshift render, luxury editorial aesthetic, physically accurate glass reflections/refractions, monumental composition, high-detail cinematic photography, 4:5 portrait."></p>
-              </div>
-            </div>
-            <small>deushima@gmail.com / Buenos Aires, ARG</small>
-          </div>
+      </div>
+      </div>
+    </section>
 
-          <form class="contact-form" data-contact-form>
-            <div class="contact-form__intro">
-              <span>Contactame</span>
-              <h2>Start a project / Contact Deushima</h2>
-              <p>Contame tu idea, marca o pieza visual. Respondo desde Buenos Aires, ARG.</p>
+    <section class="contact-strip content-panel" id="contact" data-panel="contact" aria-label="Contacto" aria-hidden="true">
+      <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar contacto"></button>
+      <div class="content-panel__surface content-panel__surface--contact">
+        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
+        <div class="contact-strip__intro contact-strip__intro--media">
+          <div class="contact-media">
+            <video class="contact-media__video" autoplay muted loop playsinline preload="metadata">
+              <source src="Video%20Background/Video%20footer.mp4" type="video/mp4">
+              <source src="Video%20Background/Video%20footer.mov" type="video/quicktime">
+            </video>
+            <div class="contact-media__veil" aria-hidden="true"></div>
+            <div class="contact-media__prompt">
+              <span>/PROMPT/</span>
+              <p data-footer-prompt data-full-text="Cinematic CGI hero landscape featuring the official Deushima logo as a massive optical glass sculpture emerging from dark volcanic basalt rocks, warm red-orange ambient atmosphere, glowing internal caustics, sharp luminous edges, dramatic orange backlight and base accent light, deep crimson-to-black gradient background, small volcanic flowers and lichen, ultra realistic Octane/Redshift render, luxury editorial aesthetic, physically accurate glass reflections/refractions, monumental composition, high-detail cinematic photography, 4:5 portrait."></p>
             </div>
-            <label>
-              <span>Nombre</span>
-              <input type="text" name="name" autocomplete="name" placeholder="Tu nombre" required>
-            </label>
-            <label>
-              <span>Email</span>
-              <input type="email" name="email" autocomplete="email" placeholder="tu@email.com" required>
-            </label>
-            <label class="contact-form__message">
-              <span>Mensaje</span>
-              <textarea name="message" rows="5" placeholder="Hola Ivan, quiero desarrollar..." required></textarea>
-            </label>
-            <div class="contact-form__footer">
-              <button type="submit">Send message -&gt;</button>
-              <p data-contact-status aria-live="polite"></p>
-            </div>
-          </form>
-        </section>
+          </div>
+          <small>deushima@gmail.com / Buenos Aires, ARG</small>
+        </div>
+
+        <form class="contact-form" data-contact-form>
+          <div class="contact-form__intro">
+            <span>Contactame</span>
+            <h2>Start a project / Contact Deushima</h2>
+            <p>Contame tu idea, marca o pieza visual. Respondo desde Buenos Aires, ARG.</p>
+          </div>
+          <label>
+            <span>Nombre</span>
+            <input type="text" name="name" autocomplete="name" placeholder="Tu nombre" required>
+          </label>
+          <label>
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="email" placeholder="tu@email.com" required>
+          </label>
+          <label class="contact-form__message">
+            <span>Mensaje</span>
+            <textarea name="message" rows="5" placeholder="Hola Ivan, quiero desarrollar..." required></textarea>
+          </label>
+          <div class="contact-form__footer">
+            <button type="submit">Send message -&gt;</button>
+            <p data-contact-status aria-live="polite"></p>
+          </div>
+        </form>
       </div>
     </section>
 
     <footer class="site-footer" aria-label="Footer">
       <p>&copy; 2025 Deushima. Todos los derechos reservados.</p>
       <nav class="site-footer__links" aria-label="Redes y contacto">
-        <a href="mailto:deushima@gmail.com" aria-label="Contacto">
+        <a href="#contact" data-panel-open="contact" aria-label="Contacto">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 6.5h16v11H4z"></path>
             <path d="m4.75 7.25 7.25 6 7.25-6"></path>
@@ -303,7 +343,7 @@
       </p>
       <a class="launcher-pop__action" href="https://www.deushima.com.ar/3deushima" data-launcher-nav="true" target="_blank" rel="noopener noreferrer">
         Open Launcher 3D
-        <span aria-hidden="true">-&gt;</span>
+        <span class="cta-chevron" aria-hidden="true">&gt;</span>
       </a>
       <span class="launcher-pop__corner launcher-pop__corner--nw" aria-hidden="true"></span>
       <span class="launcher-pop__corner launcher-pop__corner--ne" aria-hidden="true"></span>
@@ -317,11 +357,9 @@
     <img class="page-transition__logo" src="deushima.svg.svg" alt="">
   </div>
 
-  <div class="site-cursor" data-site-cursor aria-hidden="true">
-    <span></span>
-  </div>
+  <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="auto"></audio>
 
   <script src="liquid-gradient.js?v=20260512-7"></script>
-  <script src="script.js?v=20260514-7"></script>
+  <script src="script.js?v=20260518-5"></script>
 </body>
 </html>

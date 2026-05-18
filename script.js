@@ -2,6 +2,7 @@ const hero = document.querySelector(".hero");
 const preloader = document.querySelector("[data-preloader]");
 const timeNode = document.querySelector("[data-current-time]");
 const video = document.querySelector("[data-hero-video]");
+const asciiTrailCanvas = document.querySelector("[data-ascii-trail]");
 const floatingSection = document.querySelector(".floating-section");
 const pageTransition = document.querySelector("[data-page-transition]");
 const workArchive = document.querySelector("[data-work-archive]");
@@ -9,6 +10,11 @@ const contactForm = document.querySelector("[data-contact-form]");
 const footerPrompt = document.querySelector("[data-footer-prompt]");
 const siteCursor = document.querySelector("[data-site-cursor]");
 const backgroundToggle = document.querySelector("[data-background-toggle]");
+const ambientAudio = document.querySelector("[data-ambient-audio]");
+const audioToggle = document.querySelector("[data-audio-toggle]");
+const audioVolume = document.querySelector("[data-audio-volume]");
+const panelTriggers = Array.from(document.querySelectorAll("[data-panel-open]"));
+const contentPanels = Array.from(document.querySelectorAll("[data-panel]"));
 const designViewer = document.querySelector("[data-design-viewer]");
 const designViewerPanel = designViewer?.querySelector(".design-viewer__panel");
 const designViewerStage = designViewer?.querySelector("[data-design-stage]");
@@ -104,6 +110,11 @@ function syncInitialHashScroll() {
 
   const target = document.getElementById(id);
   if (!target) return;
+
+  if (target.matches("[data-panel]")) {
+    window.setTimeout(() => openContentPanel(id), 140);
+    return;
+  }
 
   function jumpToTarget() {
     const top = target.getBoundingClientRect().top + window.scrollY;
@@ -735,7 +746,7 @@ function initLauncherPop() {
   });
 
   if (alreadySeen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  window.setTimeout(openLauncherPop, 10000);
+  window.setTimeout(openLauncherPop, 5000);
 }
 
 function initWorkArchive() {
@@ -770,9 +781,10 @@ function initWorkArchive() {
 
   function syncVideoPlayback() {
     const compact = isCompactArchive();
+    const forcedVisible = workArchive.classList.contains("is-panel-open");
     videos.forEach((videoNode, videoIndex) => {
       videoNode.preload = compact ? "metadata" : "auto";
-      if (archiveVisible && (!compact || videoIndex === activeIndex)) {
+      if ((archiveVisible || forcedVisible) && (!compact || videoIndex === activeIndex)) {
         playVideo(videoNode);
       } else {
         pauseVideo(videoNode);
@@ -949,11 +961,15 @@ function initFooterPromptTyping() {
       footerPrompt.textContent = fullText.slice(0, index);
       if (index < fullText.length) {
         window.setTimeout(step, 14);
+      } else if (typeof window.refreshAsciiTextEffect === "function") {
+        window.setTimeout(window.refreshAsciiTextEffect, 80);
       }
     };
 
     window.setTimeout(step, 180);
   }
+
+  window.startFooterPromptTyping = writePrompt;
 
   if (!("IntersectionObserver" in window)) {
     writePrompt();
@@ -968,6 +984,217 @@ function initFooterPromptTyping() {
   }, { threshold: 0.34 });
 
   observer.observe(footerPrompt);
+}
+
+function initAsciiTextEffect(root = document) {
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#$%&*+-";
+  const selector = [
+    "a",
+    "button",
+    "h1",
+    "h2",
+    "h3",
+    "p",
+    "small",
+    "span",
+    "strong",
+    "label"
+  ].join(",");
+
+  root.querySelectorAll(selector).forEach((element) => {
+    if (element.dataset.asciiReady === "true") return;
+    if (element.closest("svg, input, textarea, [data-no-ascii], .site-cursor, .preloader")) return;
+    if (element.children.length > 0) return;
+
+    const originalText = element.textContent.replace(/\s+/g, " ").trim();
+    if (originalText.length < 2) return;
+    if (element.matches("[data-footer-prompt]") && originalText.length < (element.dataset.fullText || "").length) return;
+
+    element.dataset.asciiReady = "true";
+    element.dataset.asciiText = originalText;
+    element.classList.add("ascii-text");
+
+    let frame = 0;
+    let raf = 0;
+
+    const restore = () => {
+      window.cancelAnimationFrame(raf);
+      raf = 0;
+      element.textContent = element.dataset.asciiText || originalText;
+    };
+
+    const animateText = () => {
+      const text = element.dataset.asciiText || originalText;
+      const maxFrames = Math.max(18, Math.min(44, text.length * 1.9));
+      frame = 0;
+      window.cancelAnimationFrame(raf);
+
+      const tick = () => {
+        const progress = frame / maxFrames;
+        element.textContent = text
+          .split("")
+          .map((letter, index) => {
+            if (letter === " ") return " ";
+            if (index < progress * text.length) return text[index];
+            return characters[Math.floor(Math.random() * characters.length)];
+          })
+          .join("");
+
+        frame += 0.82;
+        if (frame <= maxFrames) {
+          raf = window.requestAnimationFrame(tick);
+        } else {
+          restore();
+        }
+      };
+
+      tick();
+    };
+
+    element.addEventListener("pointerenter", animateText);
+    element.addEventListener("focus", animateText);
+    element.addEventListener("pointerleave", restore);
+    element.addEventListener("blur", restore);
+  });
+}
+
+function initAsciiTextObserver() {
+  window.refreshAsciiTextEffect = () => initAsciiTextEffect(document);
+  initAsciiTextEffect(document);
+
+  if (!("MutationObserver" in window)) return;
+
+  let queued = false;
+  const observer = new MutationObserver(() => {
+    if (queued) return;
+    queued = true;
+    window.setTimeout(() => {
+      queued = false;
+      initAsciiTextEffect(document);
+    }, 220);
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+    characterData: true
+  });
+}
+
+function initAsciiCursorTrail() {
+  if (!asciiTrailCanvas || compactPointerQuery.matches || compactLayoutQuery.matches) return;
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const ctx = asciiTrailCanvas.getContext("2d", { alpha: true });
+  if (!ctx) return;
+
+  const config = {
+    chars: [".", ":", "-", "~", "+", "=", "^", "*", "#"],
+    charWidth: 8,
+    charHeight: 12,
+    influenceRadius: 210,
+    decayRate: 0.94,
+    densityFalloff: 2.15,
+    velocityMax: 23,
+    noiseStrength: 0.34,
+    brightnessThreshold: 0.012
+  };
+
+  let width = 0;
+  let height = 0;
+  let cols = 0;
+  let rows = 0;
+  let dpr = 1;
+  let grid = [];
+  let mouseX = window.innerWidth / 2;
+  let mouseY = window.innerHeight / 2;
+  let prevMouseX = mouseX;
+  let prevMouseY = mouseY;
+  let velocity = 0;
+  let running = true;
+
+  const noise = (x, y, time) => {
+    const a = Math.sin(x * 0.036 + y * 0.014 + time * 0.0019);
+    const b = Math.sin(x * 0.012 - y * 0.028 + time * 0.0013);
+    return (a + b) * 0.5;
+  };
+
+  const resize = () => {
+    const rect = asciiTrailCanvas.getBoundingClientRect();
+    dpr = Math.min(window.devicePixelRatio || 1, 1.6);
+    width = Math.max(1, rect.width);
+    height = Math.max(1, rect.height);
+    asciiTrailCanvas.width = Math.round(width * dpr);
+    asciiTrailCanvas.height = Math.round(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cols = Math.ceil(width / config.charWidth);
+    rows = Math.ceil(height / config.charHeight);
+    grid = Array.from({ length: rows }, () => Array(cols).fill(0));
+    ctx.font = "10px 'IBM Plex Mono', ui-monospace, SFMono-Regular, Consolas, monospace";
+    ctx.textBaseline = "top";
+  };
+
+  const onMove = (event) => {
+    const rect = asciiTrailCanvas.getBoundingClientRect();
+    prevMouseX = mouseX;
+    prevMouseY = mouseY;
+    mouseX = event.clientX - rect.left;
+    mouseY = event.clientY - rect.top;
+  };
+
+  const frame = (time) => {
+    if (!running) return;
+
+    const dx = mouseX - prevMouseX;
+    const dy = mouseY - prevMouseY;
+    const movement = Math.hypot(dx, dy);
+    velocity = velocity * 0.7 + movement * 0.3;
+    const radius = config.influenceRadius * Math.min(1, velocity / config.velocityMax);
+
+    ctx.clearRect(0, 0, width, height);
+
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        let activation = grid[row][col] * config.decayRate;
+        const px = col * config.charWidth;
+        const py = row * config.charHeight;
+
+        if (movement > 0.45 && radius > 6) {
+          const dist = Math.hypot(px - mouseX, py - mouseY);
+          const distortion = 1 + noise(px, py, time) * config.noiseStrength;
+          const activeRadius = radius * distortion;
+
+          if (dist < activeRadius) {
+            const normalized = dist / activeRadius;
+            const influence = Math.pow(1 - normalized, config.densityFalloff);
+            activation = Math.min(1, activation + influence * 0.28);
+          }
+        }
+
+        grid[row][col] = activation;
+        if (activation < config.brightnessThreshold) continue;
+
+        const charIndex = Math.max(0, Math.min(config.chars.length - 1, Math.floor(activation * (config.chars.length - 1))));
+        const gray = Math.floor(58 + activation * 197);
+        ctx.fillStyle = `rgba(${gray}, ${gray}, ${gray}, ${Math.min(0.96, 0.34 + activation * 0.66)})`;
+        ctx.fillText(config.chars[charIndex], px, py);
+      }
+    }
+
+    prevMouseX = mouseX;
+    prevMouseY = mouseY;
+    window.requestAnimationFrame(frame);
+  };
+
+  resize();
+  window.addEventListener("resize", resize, { passive: true });
+  window.addEventListener("pointermove", onMove, { passive: true });
+  window.addEventListener("pagehide", () => {
+    running = false;
+  }, { once: true });
+  window.requestAnimationFrame(frame);
 }
 
 function initSiteCursor() {
@@ -1004,6 +1231,81 @@ function initSiteCursor() {
       document.body.classList.remove("is-cursor-hover");
     }
   }, { passive: true });
+}
+
+function initAmbientAudio() {
+  if (!ambientAudio || !audioToggle || !audioVolume) return;
+
+  const defaultVolume = 0.22;
+  let userPaused = false;
+  let hasTriedAutoplay = false;
+
+  const readSavedVolume = () => {
+    try {
+      const saved = Number.parseFloat(localStorage.getItem("deushimaAudioVolume") || "");
+      return Number.isFinite(saved) ? Math.max(0, Math.min(1, saved)) : defaultVolume;
+    } catch {
+      return defaultVolume;
+    }
+  };
+
+  const syncAudioUi = () => {
+    const playing = !ambientAudio.paused && !ambientAudio.ended;
+    audioToggle.setAttribute("aria-pressed", playing ? "true" : "false");
+    audioToggle.setAttribute("aria-label", playing ? "Pausar sonido" : "Activar sonido");
+    audioToggle.closest("[data-audio-control]")?.classList.toggle("is-playing", playing);
+  };
+
+  const playAudio = async () => {
+    try {
+      await ambientAudio.play();
+      syncAudioUi();
+      return true;
+    } catch {
+      syncAudioUi();
+      return false;
+    }
+  };
+
+  ambientAudio.volume = readSavedVolume();
+  audioVolume.value = String(ambientAudio.volume);
+  syncAudioUi();
+
+  audioVolume.addEventListener("input", () => {
+    ambientAudio.volume = Number.parseFloat(audioVolume.value);
+    try {
+      localStorage.setItem("deushimaAudioVolume", String(ambientAudio.volume));
+    } catch {
+      // Ignore storage restrictions in embedded previews.
+    }
+  });
+
+  audioToggle.addEventListener("click", async () => {
+    if (ambientAudio.paused) {
+      userPaused = false;
+      await playAudio();
+    } else {
+      userPaused = true;
+      ambientAudio.pause();
+      syncAudioUi();
+    }
+  });
+
+  ambientAudio.addEventListener("play", syncAudioUi);
+  ambientAudio.addEventListener("pause", syncAudioUi);
+
+  window.setTimeout(async () => {
+    hasTriedAutoplay = true;
+    await playAudio();
+  }, 720);
+
+  const unlockOnInteraction = async () => {
+    if (!hasTriedAutoplay || userPaused || !ambientAudio.paused) return;
+    await playAudio();
+  };
+
+  window.addEventListener("pointerdown", unlockOnInteraction, { passive: true });
+  window.addEventListener("keydown", unlockOnInteraction);
 }
 
 function setBackgroundMode(enabled) {
@@ -1784,6 +2086,107 @@ function scheduleFloatingWorld() {
   }
 }
 
+async function ensureFloatingWorld() {
+  const stage = document.querySelector("[data-floating-world]");
+  if (!stage || floatingWorldStarted || floatingWorldStarting) return;
+
+  floatingWorldStarting = true;
+  if (!isCompactFloatingLayout(stage) && !window.Matter) {
+    try {
+      await loadMatterLibrary();
+    } catch {
+      // If the CDN is blocked, the lightweight fallback keeps the section usable.
+    }
+  }
+
+  const cleanup = initFloatingWorld();
+  if (cleanup) {
+    floatingWorldStarted = true;
+  }
+  floatingWorldStarting = false;
+}
+
+function syncPanelMedia(panel, shouldPlay) {
+  if (!panel) return;
+  panel.querySelectorAll("video").forEach((videoNode) => {
+    videoNode.muted = true;
+    videoNode.playsInline = true;
+    if (shouldPlay) {
+      const playPromise = videoNode.play();
+      if (playPromise?.catch) playPromise.catch(() => {});
+    } else {
+      videoNode.pause();
+    }
+  });
+}
+
+function closeContentPanel() {
+  const activePanel = contentPanels.find((panel) => panel.classList.contains("is-panel-open"));
+  if (!activePanel) return;
+
+  activePanel.classList.remove("is-panel-open");
+  activePanel.setAttribute("aria-hidden", "true");
+  document.body.classList.remove("is-content-panel-open");
+  syncPanelMedia(activePanel, false);
+
+  if (lastFocusedElement?.focus) {
+    window.setTimeout(() => lastFocusedElement.focus({ preventScroll: true }), 80);
+  }
+}
+
+function openContentPanel(panelName) {
+  const panel = contentPanels.find((item) => item.dataset.panel === panelName || item.id === panelName);
+  if (!panel) return;
+
+  closeContentPanel();
+  lastFocusedElement = document.activeElement;
+  panel.classList.add("is-panel-open");
+  panel.setAttribute("aria-hidden", "false");
+  document.body.classList.add("is-content-panel-open");
+  syncPanelMedia(panel, true);
+
+  if (panel.dataset.panel === "about") {
+    window.setTimeout(ensureFloatingWorld, 120);
+  }
+
+  if (panel.dataset.panel === "contact" && typeof window.startFooterPromptTyping === "function") {
+    window.setTimeout(window.startFooterPromptTyping, 220);
+  }
+
+  const focusTarget = panel.querySelector(".content-panel__close") || panel;
+  window.requestAnimationFrame(() => focusTarget.focus?.({ preventScroll: true }));
+}
+
+function initContentPanels() {
+  if (!contentPanels.length || !panelTriggers.length) return;
+
+  panelTriggers.forEach((trigger) => {
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      openContentPanel(trigger.dataset.panelOpen);
+    });
+  });
+
+  contentPanels.forEach((panel) => {
+    panel.querySelectorAll("[data-panel-close]").forEach((button) => {
+      button.addEventListener("click", closeContentPanel);
+    });
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (!document.body.classList.contains("is-content-panel-open")) return;
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeContentPanel();
+    }
+  });
+
+  const initialPanel = window.location.hash ? window.location.hash.slice(1) : "";
+  if (initialPanel && contentPanels.some((panel) => panel.id === initialPanel || panel.dataset.panel === initialPanel)) {
+    window.setTimeout(() => openContentPanel(initialPanel), 260);
+  }
+}
+
 if (!compactPointerQuery.matches) {
   window.addEventListener("pointermove", handlePointerMove, { passive: true });
   window.addEventListener("mousemove", handlePointerMove, { passive: true });
@@ -1804,8 +2207,11 @@ initLauncherPop();
 initWorkArchive();
 initContactForm();
 initFooterPromptTyping();
-initSiteCursor();
+initAsciiTextObserver();
+initAsciiCursorTrail();
+initAmbientAudio();
 initBackgroundToggle();
+initContentPanels();
 window.setTimeout(hidePreloader, 650);
 
 if (document.readyState === "complete") {
