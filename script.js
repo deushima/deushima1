@@ -25,6 +25,10 @@ const launcherPop = document.querySelector("[data-launcher-pop]");
 const launcherPopPanel = launcherPop?.querySelector(".launcher-pop__panel");
 const CONTACT_ENDPOINT = "https://api.web3forms.com/submit";
 const CONTACT_ACCESS_KEY = "8b8a51cd-3ec4-4b6d-8712-1bdc14969f4f";
+const HERO_VIDEO_SOURCES = [
+  "Video%20Background/Video%201.mp4",
+  "Video%20Background/Video%202.mp4"
+];
 const compactPointerQuery = window.matchMedia("(pointer: coarse)");
 const compactLayoutQuery = window.matchMedia("(max-width: 760px)");
 
@@ -235,6 +239,15 @@ function requestScrollParallax() {
 function initVideo() {
   if (!video) return;
 
+  const selectedSource = getHeroVideoSource();
+  if (selectedSource && !video.currentSrc.endsWith(selectedSource) && video.getAttribute("src") !== selectedSource) {
+    video.querySelectorAll("source").forEach((sourceNode) => {
+      sourceNode.src = selectedSource;
+    });
+    video.src = selectedSource;
+    video.load();
+  }
+
   video.muted = true;
   video.playsInline = true;
 
@@ -243,6 +256,31 @@ function initVideo() {
     playPromise.catch(() => {
       video.setAttribute("controls", "");
     });
+  }
+}
+
+function getHeroVideoSource() {
+  if (!HERO_VIDEO_SOURCES.length) return "";
+
+  try {
+    const state = JSON.parse(sessionStorage.getItem("deushimaHeroVideoState") || "null");
+    const loads = Number.isFinite(state?.loads) ? state.loads : 0;
+    let index = 0;
+
+    if (loads === 1 && HERO_VIDEO_SOURCES.length > 1) {
+      index = 1;
+    } else if (loads > 1) {
+      index = Math.floor(Math.random() * HERO_VIDEO_SOURCES.length);
+    }
+
+    sessionStorage.setItem("deushimaHeroVideoState", JSON.stringify({
+      loads: loads + 1,
+      lastIndex: index
+    }));
+
+    return HERO_VIDEO_SOURCES[index];
+  } catch {
+    return HERO_VIDEO_SOURCES[0];
   }
 }
 
