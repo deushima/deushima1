@@ -4,6 +4,8 @@ const timeNode = document.querySelector("[data-current-time]");
 const video = document.querySelector("[data-hero-video]");
 const asciiTrailCanvas = document.querySelector("[data-ascii-trail]");
 const floatingSection = document.querySelector(".floating-section");
+const logoBridge = document.querySelector(".logo-bridge");
+const logoBridgeTrack = document.querySelector(".logo-bridge__track");
 const pageTransition = document.querySelector("[data-page-transition]");
 const workArchive = document.querySelector("[data-work-archive]");
 const contactForm = document.querySelector("[data-contact-form]");
@@ -915,6 +917,138 @@ function initWorkArchive() {
 
   setActiveWork(0);
   window.addEventListener("resize", syncVideoPlayback);
+}
+
+function initLogoBridgeCarousel() {
+  if (!logoBridge || !logoBridgeTrack) return;
+
+  const firstSet = logoBridgeTrack.querySelector(".logo-bridge__set");
+  if (!firstSet) return;
+
+  const marqueeDuration = 52;
+  const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let loopWidth = 0;
+  let position = 0;
+  let baseVelocity = 0;
+  let throwVelocity = 0;
+  let lastFrameTime = performance.now();
+  let isDragging = false;
+  let activePointerId = null;
+  let dragStartX = 0;
+  let lastDragX = 0;
+  let lastDragTime = 0;
+  let gestureVelocity = 0;
+  let wasDragged = false;
+
+  function wrapPosition(value) {
+    if (!loopWidth) return value;
+
+    let wrapped = value % loopWidth;
+    if (wrapped > 0) wrapped -= loopWidth;
+    return wrapped;
+  }
+
+  function measure() {
+    loopWidth = firstSet.getBoundingClientRect().width;
+    baseVelocity = prefersReducedMotion.matches || !loopWidth ? 0 : -loopWidth / marqueeDuration;
+    position = wrapPosition(position);
+  }
+
+  function applyPosition() {
+    logoBridgeTrack.style.transform = `translate3d(${wrapPosition(position).toFixed(2)}px, 0, 0)`;
+  }
+
+  function animateLogoBridge(now) {
+    const dt = Math.min(0.05, (now - lastFrameTime) / 1000 || 0);
+    lastFrameTime = now;
+
+    if (!isDragging) {
+      position += (baseVelocity + throwVelocity) * dt;
+      throwVelocity *= Math.pow(0.925, dt * 60);
+
+      if (Math.abs(throwVelocity) < 4) {
+        throwVelocity = 0;
+      }
+    }
+
+    position = wrapPosition(position);
+    applyPosition();
+    window.requestAnimationFrame(animateLogoBridge);
+  }
+
+  function onPointerDown(event) {
+    if (!loopWidth || event.button > 0) return;
+
+    isDragging = true;
+    activePointerId = event.pointerId;
+    dragStartX = event.clientX;
+    lastDragX = event.clientX;
+    lastDragTime = performance.now();
+    gestureVelocity = 0;
+    throwVelocity = 0;
+    wasDragged = false;
+    logoBridge.classList.add("is-dragging");
+    logoBridgeTrack.setPointerCapture?.(event.pointerId);
+  }
+
+  function onPointerMove(event) {
+    if (!isDragging || event.pointerId !== activePointerId) return;
+
+    const now = performance.now();
+    const dx = event.clientX - lastDragX;
+    const dt = Math.max(16, now - lastDragTime);
+
+    if (Math.abs(event.clientX - dragStartX) > 3) {
+      wasDragged = true;
+    }
+
+    position += dx;
+    gestureVelocity = gestureVelocity * 0.72 + (dx / dt) * 1000 * 0.28;
+    lastDragX = event.clientX;
+    lastDragTime = now;
+    applyPosition();
+  }
+
+  function endDrag(event) {
+    if (!isDragging || event.pointerId !== activePointerId) return;
+
+    isDragging = false;
+    activePointerId = null;
+    throwVelocity = clamp(gestureVelocity, -2600, 2600);
+    logoBridge.classList.remove("is-dragging");
+    logoBridgeTrack.releasePointerCapture?.(event.pointerId);
+  }
+
+  function preventClickAfterDrag(event) {
+    if (!wasDragged) return;
+    event.preventDefault();
+    event.stopPropagation();
+    wasDragged = false;
+  }
+
+  measure();
+  logoBridgeTrack.querySelectorAll("img").forEach((image) => {
+    image.draggable = false;
+    image.addEventListener("dragstart", (event) => event.preventDefault());
+  });
+  logoBridge.classList.add("is-physics-ready");
+  logoBridgeTrack.addEventListener("pointerdown", onPointerDown);
+  logoBridgeTrack.addEventListener("pointermove", onPointerMove);
+  logoBridgeTrack.addEventListener("pointerup", endDrag);
+  logoBridgeTrack.addEventListener("pointercancel", endDrag);
+  logoBridgeTrack.addEventListener("lostpointercapture", () => {
+    if (!isDragging) return;
+    isDragging = false;
+    activePointerId = null;
+    logoBridge.classList.remove("is-dragging");
+  });
+  logoBridgeTrack.addEventListener("click", preventClickAfterDrag, true);
+  window.addEventListener("resize", measure);
+  prefersReducedMotion.addEventListener?.("change", measure);
+  window.requestAnimationFrame((now) => {
+    lastFrameTime = now;
+    animateLogoBridge(now);
+  });
 }
 
 function initContactForm() {
@@ -2243,6 +2377,7 @@ initPageTransitions();
 initDesignViewer();
 initLauncherPop();
 initWorkArchive();
+initLogoBridgeCarousel();
 initContactForm();
 initFooterPromptTyping();
 initAsciiTextObserver();
