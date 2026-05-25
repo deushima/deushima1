@@ -449,6 +449,7 @@ a {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center center;
   filter: brightness(0.9) contrast(1.08) saturate(1.06);
   transform: translate3d(var(--video-x), calc(var(--video-y) + var(--hero-scroll-y)), 0) scale(var(--video-scroll-scale));
   transform-origin: center;
@@ -3933,8 +3934,9 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .hero__video {
+    object-position: right center;
     filter: brightness(0.82) contrast(1.04) saturate(1);
-    transform: translate3d(0, var(--hero-scroll-y), 0) scale(1.045);
+    transform: translate3d(-12vw, var(--hero-scroll-y), 0) scale(1.015);
     will-change: transform;
   }
 
