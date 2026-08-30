@@ -620,14 +620,10 @@ a {
 
 .hero__grain {
   z-index: 5;
-  opacity: 0.36;
-  mix-blend-mode: screen;
-  background-image:
-    radial-gradient(circle at 18% 26%, rgba(255, 255, 255, 0.2) 0 0.55px, transparent 0.82px),
-    radial-gradient(circle at 72% 62%, rgba(126, 183, 255, 0.16) 0 0.55px, transparent 0.86px);
-  background-size: 2px 2px, 3px 3px;
-  filter: contrast(215%);
-  animation: grainShift 0.58s steps(2) infinite;
+  opacity: 0;
+  background: none;
+  animation: none;
+  mix-blend-mode: normal;
 }
 
 .hero__vignette {
@@ -3968,8 +3964,8 @@ body.is-page-leaving .page-transition__logo {
   }
 
   .hero__grain {
-    opacity: 0.28;
-    animation-duration: 1.2s;
+    opacity: 0;
+    animation: none;
   }
 
   .nav {
