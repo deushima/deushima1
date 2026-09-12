@@ -31,6 +31,8 @@ const HERO_VIDEO_SOURCES = [
   "Video%20Background/Video%201.mp4",
   "Video%20Background/Video%202.mp4"
 ];
+const CRT_TRANSITION_KEY = "deushimaCrtTransition";
+const CRT_TRANSITION_DURATION = 720;
 const compactPointerQuery = window.matchMedia("(pointer: coarse)");
 const compactLayoutQuery = window.matchMedia("(max-width: 760px)");
 
@@ -310,14 +312,6 @@ function shouldUsePageTransition(link, event) {
   return true;
 }
 
-function isEmbeddedPage() {
-  try {
-    return window.self !== window.top;
-  } catch {
-    return true;
-  }
-}
-
 function isPrimaryLinkClick(link, event) {
   if (!link || !link.href) return false;
   if (event.defaultPrevented) return false;
@@ -335,30 +329,42 @@ function startPageTransition(destination) {
 
   if (pageTransitionStarted) return;
   pageTransitionStarted = true;
+
+  try {
+    const nextUrl = new URL(destination, window.location.href);
+    if (nextUrl.origin === window.location.origin) {
+      sessionStorage.setItem(CRT_TRANSITION_KEY, "pending");
+    }
+  } catch {}
+
   document.body.classList.add("is-page-leaving");
 
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.setTimeout(() => {
     window.location.href = destination;
-  }, prefersReducedMotion ? 80 : 900);
+  }, prefersReducedMotion ? 80 : CRT_TRANSITION_DURATION);
 }
 
 function initPageTransitions() {
+  if (document.documentElement.classList.contains("is-crt-entering")) {
+    const finishEntry = () => document.documentElement.classList.remove("is-crt-entering");
+    const onEntryAnimationEnd = (event) => {
+      if (event.target !== pageTransition || event.animationName !== "crtOverlayOn") return;
+      pageTransition.removeEventListener("animationend", onEntryAnimationEnd);
+      finishEntry();
+    };
+
+    pageTransition?.addEventListener("animationend", onEntryAnimationEnd);
+    window.setTimeout(finishEntry, 1200);
+  }
+
   document.addEventListener("click", (event) => {
     const link = event.target.closest("a[href]");
 
     if (link?.dataset.launcherNav === "true") {
       if (!isPrimaryLinkClick(link, event)) return;
 
-      if (link.getAttribute("target") === "_blank" || isEmbeddedPage()) {
-        if (pageTransition && !pageTransitionStarted) {
-          pageTransitionStarted = true;
-          document.body.classList.add("is-page-leaving");
-          window.setTimeout(() => {
-            pageTransitionStarted = false;
-            document.body.classList.remove("is-page-leaving");
-          }, 900);
-        }
+      if (link.getAttribute("target") === "_blank") {
         return;
       }
 

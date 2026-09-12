@@ -5,11 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="Portfolio interactivo de Ivan Rodriguez.">
   <title>Ivan Rodriguez - Interactive Portfolio</title>
+  <script>
+    (() => {
+      try {
+        const transitionKey = "deushimaCrtTransition";
+        if (sessionStorage.getItem(transitionKey) === "pending") {
+          sessionStorage.removeItem(transitionKey);
+          document.documentElement.classList.add("is-crt-entering");
+        }
+      } catch {}
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260830-02">
+  <link rel="stylesheet" href="style.css?v=20260912-crt1">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -56,7 +67,7 @@
           </div>
           <div class="directory__group intro-fade" style="--intro-delay: 0.5s">
             <span class="directory__title directory__title--square js-type-text">Programas</span>
-            <a href="https://www.deushima.com.ar/3deushima" class="js-wipe-link" data-launcher-nav="true" target="_blank" rel="noopener noreferrer">Launcher 3D</a>
+            <a href="/3deushima/" class="js-wipe-link" data-launcher-nav="true">Launcher 3D</a>
             <a href="#works" class="js-wipe-link" data-panel-open="works">Second Developing...</a>
           </div>
         </nav>
@@ -91,7 +102,7 @@
         <a class="discover-link intro-fade" href="#about" data-panel-open="about" style="--intro-delay: 0.74s">Discover</a>
       </header>
 
-      <a class="floating-cta cta-reveal" href="https://www.deushima.com.ar/3deushima" data-launcher-nav="true" target="_blank" rel="noopener noreferrer">
+      <a class="floating-cta cta-reveal" href="/3deushima/" data-launcher-nav="true">
         <span class="floating-cta__label">Get launch 3D</span>
         <span class="cta-chevron cta-chevron--triangle" aria-hidden="true">
           <svg class="cta-chevron__triangle" viewBox="0 0 9 10" focusable="false">
@@ -345,7 +356,7 @@
       <p class="launcher-pop__copy">
         Un espacio experimental para recorrer materiales, escenas y sistemas visuales de Deushima en tiempo real.
       </p>
-      <a class="launcher-pop__action" href="https://www.deushima.com.ar/3deushima" data-launcher-nav="true" target="_blank" rel="noopener noreferrer">
+      <a class="launcher-pop__action" href="/3deushima/" data-launcher-nav="true">
         Open Launcher 3D
         <span class="cta-chevron cta-chevron--triangle" aria-hidden="true">
           <svg class="cta-chevron__triangle" viewBox="0 0 9 10" focusable="false">
@@ -361,13 +372,13 @@
   </div>
 
   <div class="page-transition" data-page-transition aria-hidden="true">
-    <span class="page-transition__iris"></span>
-    <img class="page-transition__logo" src="deushima.svg.svg" alt="">
+    <span class="page-transition__beam"></span>
+    <span class="page-transition__flare"></span>
   </div>
 
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="auto"></audio>
 
   <script src="liquid-gradient.js?v=20260512-7"></script>
-  <script src="script.js?v=20260525-3"></script>
+  <script src="script.js?v=20260912-crt1"></script>
 </body>
 </html>
