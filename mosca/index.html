@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050506">
+  <meta name="description" content="MOSCA — visualizador interactivo del conectoma FlyWire FAFB v783 por Deushima.">
+  <title>MOSCA — Deushima / FlyWire Connectome</title>
+  <script>
+    (() => {
+      try {
+        const key = 'deushimaShutterTransition';
+        if (sessionStorage.getItem(key) === 'pending') {
+          sessionStorage.removeItem(key);
+          document.documentElement.classList.add('is-shutter-entering');
+        }
+      } catch {}
+    })();
+  </script>
+  <link rel="icon" type="image/svg+xml" href="../simbolo%20deushima.svg">
+  <link rel="stylesheet" href="./style.css?v=20260912-1">
+</head>
+<body>
+  <div class="transition" data-transition aria-hidden="true">
+    <span class="transition__panel transition__panel--top"></span>
+    <span class="transition__panel transition__panel--right"></span>
+    <span class="transition__panel transition__panel--bottom"></span>
+    <span class="transition__panel transition__panel--left"></span>
+  </div>
+
+  <div class="noise" aria-hidden="true"></div>
+  <canvas id="brain" class="brain-canvas" aria-label="Visualización interactiva del conectoma de Drosophila"></canvas>
+
+  <header class="topbar">
+    <a class="brand" href="/" data-internal-link aria-label="Volver a Deushima">
+      <img src="../simbolo%20deushima.svg" alt="" aria-hidden="true">
+      <span>DEUSHIMA</span>
+    </a>
+
+    <div class="project-title">
+      <span class="project-title__index">EXPERIMENT / 001</span>
+      <strong>MOSCA</strong>
+      <span>FlyWire FAFB v783</span>
+    </div>
+
+    <div class="live-state" data-live-state>
+      <span class="live-state__dot"></span>
+      <span data-live-copy>PROJECTION MODE</span>
+    </div>
+  </header>
+
+  <main class="ui-shell">
+    <aside class="panel panel--left">
+      <div class="panel__eyebrow">CONNECTOME NAVIGATOR</div>
+      <h1>139,255<br>NEURONS.</h1>
+      <p class="panel__lede">Explorá circuitos del cerebro completo de una mosca adulta como una red navegable.</p>
+
+      <label class="search">
+        <span>BUSCAR GRUPO</span>
+        <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="MB_KC / VIS_ME / CX_PFN">
+      </label>
+      <div id="searchResults" class="search-results" role="listbox" aria-label="Resultados"></div>
+
+      <div class="mode-switch" aria-label="Modo de visualización">
+        <button class="is-active" type="button" data-mode="map">MAP</button>
+        <button type="button" data-mode="signal">SIGNAL</button>
+        <button type="button" data-mode="data">DATA</button>
+      </div>
+
+      <section class="selection" data-selection>
+        <span class="selection__kicker">SELECTED</span>
+        <strong data-selected-name>WHOLE BRAIN</strong>
+        <dl>
+          <div><dt>REGION</dt><dd data-selected-region>ALL</dd></div>
+          <div><dt>NEURONS</dt><dd data-selected-count>139,255</dd></div>
+          <div><dt>OUTFLOW</dt><dd data-selected-out>—</dd></div>
+          <div><dt>INFLOW</dt><dd data-selected-in>—</dd></div>
+        </dl>
+        <button class="stimulate" type="button" data-stimulate disabled>
+          <span>STIMULATE</span>
+          <i></i>
+        </button>
+      </section>
+    </aside>
+
+    <section class="viewport-hud" aria-live="polite">
+      <div class="hud-stat hud-stat--left">
+        <span>VISIBLE</span>
+        <strong data-visible>1,600</strong>
+        <small>sampled neurons</small>
+      </div>
+      <div class="hud-center">
+        <div class="reticle" aria-hidden="true"><span></span><span></span></div>
+        <p data-hint>DRAG TO ORBIT · WHEEL TO ZOOM · CLICK A CLUSTER</p>
+      </div>
+      <div class="hud-stat hud-stat--right">
+        <span>CONNECTIONS</span>
+        <strong data-edge-count>2.70M</strong>
+        <small data-edge-copy>dataset topology</small>
+      </div>
+    </section>
+
+    <aside class="panel panel--right">
+      <section class="data-status">
+        <div class="data-status__head">
+          <span>DATA SOURCE</span>
+          <span class="status-pill" data-status-pill>READY TO LOAD</span>
+        </div>
+        <strong>FlyWire FAFB v783</strong>
+        <p data-load-copy>La visualización inicia con las proporciones reales de 63 grupos neuronales. Cargá la topología completa para calcular conexiones reales entre grupos.</p>
+        <button class="load-data" type="button" data-load-real>
+          <span data-load-label>LOAD REAL CONNECTOME</span>
+          <span class="load-data__meter"><i data-load-meter></i></span>
+        </button>
+        <small class="data-status__note" data-load-note>~12.4 MB comprimidos · procesamiento local en tu navegador</small>
+      </section>
+
+      <section class="filters">
+        <div class="filters__title">REGIONS</div>
+        <label><input type="checkbox" checked data-region="sensory"><span class="swatch swatch--sensory"></span>SENSORY <em data-region-count="sensory">—</em></label>
+        <label><input type="checkbox" checked data-region="central"><span class="swatch swatch--central"></span>CENTRAL <em data-region-count="central">—</em></label>
+        <label><input type="checkbox" checked data-region="drives"><span class="swatch swatch--drives"></span>DRIVES <em data-region-count="drives">—</em></label>
+        <label><input type="checkbox" checked data-region="motor"><span class="swatch swatch--motor"></span>MOTOR <em data-region-count="motor">—</em></label>
+      </section>
+
+      <section class="toggles">
+        <label><span>CONNECTIONS</span><input type="checkbox" checked data-toggle="edges"><i></i></label>
+        <label><span>LABELS</span><input type="checkbox" checked data-toggle="labels"><i></i></label>
+        <label><span>AUTO ROTATE</span><input type="checkbox" checked data-toggle="rotate"><i></i></label>
+      </section>
+
+      <section class="science-note">
+        <span>READ THIS CORRECTLY</span>
+        <p>El cableado y los conteos provienen del conectoma. La disposición espacial de esta interfaz es una proyección visual, no una reconstrucción anatómica 1:1. “Signal” es una simulación exploratoria.</p>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="footerbar">
+    <span>DEUSHIMA / DATA EXPERIMENT</span>
+    <span>DATA: FLYWIRE CONSORTIUM · DORKENWALD ET AL. 2024</span>
+    <span>RUNTIME BRIDGE: FLYBRAIN OPEN-SOURCE PREPROCESSING</span>
+  </footer>
+
+  <div class="mobile-note">Rotá el teléfono o usá una pantalla más grande para explorar el conectoma con mayor detalle.</div>
+
+  <script src="./app.js?v=20260912-1"></script>
+</body>
+</html>
