@@ -31,8 +31,8 @@ const HERO_VIDEO_SOURCES = [
   "Video%20Background/Video%201.mp4",
   "Video%20Background/Video%202.mp4"
 ];
-const CRT_TRANSITION_KEY = "deushimaCrtTransition";
-const CRT_TRANSITION_DURATION = 720;
+const PAGE_TRANSITION_KEY = "deushimaShutterTransition";
+const PAGE_TRANSITION_DURATION = 820;
 const compactPointerQuery = window.matchMedia("(pointer: coarse)");
 const compactLayoutQuery = window.matchMedia("(max-width: 760px)");
 
@@ -333,7 +333,7 @@ function startPageTransition(destination) {
   try {
     const nextUrl = new URL(destination, window.location.href);
     if (nextUrl.origin === window.location.origin) {
-      sessionStorage.setItem(CRT_TRANSITION_KEY, "pending");
+      sessionStorage.setItem(PAGE_TRANSITION_KEY, "pending");
     }
   } catch {}
 
@@ -342,20 +342,20 @@ function startPageTransition(destination) {
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.setTimeout(() => {
     window.location.href = destination;
-  }, prefersReducedMotion ? 80 : CRT_TRANSITION_DURATION);
+  }, prefersReducedMotion ? 80 : PAGE_TRANSITION_DURATION);
 }
 
 function initPageTransitions() {
-  if (document.documentElement.classList.contains("is-crt-entering")) {
-    const finishEntry = () => document.documentElement.classList.remove("is-crt-entering");
+  if (document.documentElement.classList.contains("is-shutter-entering")) {
+    const finishEntry = () => document.documentElement.classList.remove("is-shutter-entering");
     const onEntryAnimationEnd = (event) => {
-      if (event.target !== pageTransition || event.animationName !== "crtOverlayOn") return;
+      if (!event.target.classList?.contains("page-transition__panel") || event.animationName !== "preloaderPanelOpen") return;
       pageTransition.removeEventListener("animationend", onEntryAnimationEnd);
       finishEntry();
     };
 
     pageTransition?.addEventListener("animationend", onEntryAnimationEnd);
-    window.setTimeout(finishEntry, 1200);
+    window.setTimeout(finishEntry, 1000);
   }
 
   document.addEventListener("click", (event) => {

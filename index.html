@@ -8,10 +8,10 @@
   <script>
     (() => {
       try {
-        const transitionKey = "deushimaCrtTransition";
+        const transitionKey = "deushimaShutterTransition";
         if (sessionStorage.getItem(transitionKey) === "pending") {
           sessionStorage.removeItem(transitionKey);
-          document.documentElement.classList.add("is-crt-entering");
+          document.documentElement.classList.add("is-shutter-entering");
         }
       } catch {}
     })();
@@ -20,7 +20,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260912-crt1">
+  <link rel="stylesheet" href="style.css?v=20260912-shutter1">
 </head>
 <body>
   <div class="preloader" data-preloader>
@@ -372,13 +372,18 @@
   </div>
 
   <div class="page-transition" data-page-transition aria-hidden="true">
-    <span class="page-transition__beam"></span>
-    <span class="page-transition__flare"></span>
+    <div class="page-transition__shutter" aria-hidden="true">
+      <span class="page-transition__panel page-transition__panel--top"></span>
+      <span class="page-transition__panel page-transition__panel--right"></span>
+      <span class="page-transition__panel page-transition__panel--bottom"></span>
+      <span class="page-transition__panel page-transition__panel--left"></span>
+    </div>
+    <img class="page-transition__logo" src="deushima.svg.svg" alt="">
   </div>
 
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="auto"></audio>
 
   <script src="liquid-gradient.js?v=20260512-7"></script>
-  <script src="script.js?v=20260912-crt1"></script>
+  <script src="script.js?v=20260912-shutter1"></script>
 </body>
 </html>
