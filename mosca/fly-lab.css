@@ -1,4 +1,5 @@
 /* FLY LAB / glowing terminal layer */
+.mode-switch { grid-template-columns: repeat(4,1fr); }
 .fly-lab-stage {
   position: fixed;
   inset: 0;
@@ -27,7 +28,6 @@ body.is-fly-mode .footerbar {
   background: linear-gradient(180deg,rgba(4,5,8,.89),rgba(4,5,8,.62));
   border-color: rgba(126,152,255,.11);
 }
-body.is-fly-mode .mode-switch { grid-template-columns: repeat(4,1fr); }
 body.is-fly-mode .mode-switch button.is-active {
   background: linear-gradient(180deg,#edf3ff,#fff);
   color: #050607;
@@ -103,5 +103,4 @@ body.is-fly-mode .science-note p { color:rgba(214,227,255,.46); }
 
 @media(max-width:780px){
   body.is-fly-mode .panel--left{max-height:47vh}
-  body.is-fly-mode .mode-switch{grid-template-columns:repeat(4,1fr)}
 }
