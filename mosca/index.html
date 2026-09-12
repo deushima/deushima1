@@ -19,6 +19,7 @@
   </script>
   <link rel="icon" type="image/svg+xml" href="../simbolo%20deushima.svg">
   <link rel="stylesheet" href="./style.css?v=20260912-1">
+  <link rel="stylesheet" href="./fly-lab.css?v=20260912-glow1">
 </head>
 <body>
   <div class="transition" data-transition aria-hidden="true">
@@ -51,11 +52,11 @@
 
   <main class="ui-shell">
     <aside class="panel panel--left">
-      <div class="panel__eyebrow">CONNECTOME NAVIGATOR</div>
-      <h1>139,255<br>NEURONS.</h1>
-      <p class="panel__lede">Explorá circuitos del cerebro completo de una mosca adulta como una red navegable.</p>
+      <div class="panel__eyebrow" data-panel-eyebrow>CONNECTOME NAVIGATOR</div>
+      <h1 data-panel-title>139,255<br>NEURONS.</h1>
+      <p class="panel__lede" data-panel-lede>Explorá circuitos del cerebro completo de una mosca adulta como una red navegable.</p>
 
-      <label class="search">
+      <label class="search" data-search-wrap>
         <span>BUSCAR GRUPO</span>
         <input id="search" type="search" autocomplete="off" spellcheck="false" placeholder="MB_KC / VIS_ME / CX_PFN">
       </label>
@@ -65,16 +66,17 @@
         <button class="is-active" type="button" data-mode="map">MAP</button>
         <button type="button" data-mode="signal">SIGNAL</button>
         <button type="button" data-mode="data">DATA</button>
+        <button type="button" data-mode="fly">FLY LAB</button>
       </div>
 
       <section class="selection" data-selection>
         <span class="selection__kicker">SELECTED</span>
         <strong data-selected-name>WHOLE BRAIN</strong>
         <dl>
-          <div><dt>REGION</dt><dd data-selected-region>ALL</dd></div>
-          <div><dt>NEURONS</dt><dd data-selected-count>139,255</dd></div>
-          <div><dt>OUTFLOW</dt><dd data-selected-out>—</dd></div>
-          <div><dt>INFLOW</dt><dd data-selected-in>—</dd></div>
+          <div><dt data-stat-label="1">REGION</dt><dd data-selected-region>ALL</dd></div>
+          <div><dt data-stat-label="2">NEURONS</dt><dd data-selected-count>139,255</dd></div>
+          <div><dt data-stat-label="3">OUTFLOW</dt><dd data-selected-out>—</dd></div>
+          <div><dt data-stat-label="4">INFLOW</dt><dd data-selected-in>—</dd></div>
         </dl>
         <button class="stimulate" type="button" data-stimulate disabled>
           <span>STIMULATE</span>
@@ -85,23 +87,23 @@
 
     <section class="viewport-hud" aria-live="polite">
       <div class="hud-stat hud-stat--left">
-        <span>VISIBLE</span>
+        <span data-left-label>VISIBLE</span>
         <strong data-visible>1,600</strong>
-        <small>sampled neurons</small>
+        <small data-left-copy>sampled neurons</small>
       </div>
       <div class="hud-center">
         <div class="reticle" aria-hidden="true"><span></span><span></span></div>
         <p data-hint>DRAG TO ORBIT · WHEEL TO ZOOM · CLICK A CLUSTER</p>
       </div>
       <div class="hud-stat hud-stat--right">
-        <span>CONNECTIONS</span>
+        <span data-right-label>CONNECTIONS</span>
         <strong data-edge-count>2.70M</strong>
         <small data-edge-copy>dataset topology</small>
       </div>
     </section>
 
     <aside class="panel panel--right">
-      <section class="data-status">
+      <section class="data-status" data-connectome-panel>
         <div class="data-status__head">
           <span>DATA SOURCE</span>
           <span class="status-pill" data-status-pill>READY TO LOAD</span>
@@ -115,7 +117,7 @@
         <small class="data-status__note" data-load-note>~12.4 MB comprimidos · procesamiento local en tu navegador</small>
       </section>
 
-      <section class="filters">
+      <section class="filters" data-connectome-panel>
         <div class="filters__title">REGIONS</div>
         <label><input type="checkbox" checked data-region="sensory"><span class="swatch swatch--sensory"></span>SENSORY <em data-region-count="sensory">—</em></label>
         <label><input type="checkbox" checked data-region="central"><span class="swatch swatch--central"></span>CENTRAL <em data-region-count="central">—</em></label>
@@ -123,15 +125,62 @@
         <label><input type="checkbox" checked data-region="motor"><span class="swatch swatch--motor"></span>MOTOR <em data-region-count="motor">—</em></label>
       </section>
 
-      <section class="toggles">
+      <section class="toggles" data-connectome-panel>
         <label><span>CONNECTIONS</span><input type="checkbox" checked data-toggle="edges"><i></i></label>
         <label><span>LABELS</span><input type="checkbox" checked data-toggle="labels"><i></i></label>
         <label><span>AUTO ROTATE</span><input type="checkbox" checked data-toggle="rotate"><i></i></label>
       </section>
 
+      <section class="fly-lab" data-fly-lab hidden>
+        <div class="fly-lab__head">
+          <span>BEHAVIOURAl SANDBOX</span>
+          <strong>Adult fly actor</strong>
+        </div>
+
+        <div class="fly-vitals">
+          <div><span>STATE</span><strong data-fly-state>IDLE</strong></div>
+          <div><span>FOCUS</span><strong data-fly-focus>Ambient scan</strong></div>
+          <div><span>ALTITUDE</span><strong data-fly-altitude>0 px</strong></div>
+          <div><span>REACTION</span><strong data-fly-reaction>Calm</strong></div>
+        </div>
+
+        <div class="fly-parts">
+          <div class="fly-parts__title">ANATOMY</div>
+          <div class="fly-parts__grid">
+            <div><span>HEAD</span><strong>Eyes · antennae · proboscis</strong></div>
+            <div><span>THORAX</span><strong>Wing mount · leg control</strong></div>
+            <div><span>ABDOMEN</span><strong>Balance · posture</strong></div>
+            <div><span>APPENDAGES</span><strong>2 wings · 6 legs</strong></div>
+          </div>
+        </div>
+
+        <label class="fly-range">
+          <div><span>AMBIENT BREEZE</span><small data-breeze-output>0%</small></div>
+          <input type="range" min="0" max="100" value="0" data-breeze-range>
+        </label>
+        <label class="fly-range">
+          <div><span>WIND DIRECTION</span><small data-wind-output>0</small></div>
+          <input type="range" min="-100" max="100" value="0" data-wind-dir>
+        </label>
+
+        <div class="fly-tools">
+          <div class="fly-tools__title">TOOLS</div>
+          <div class="fly-tools__grid">
+            <button type="button" data-fly-action="gust">Pulse breeze</button>
+            <button type="button" data-fly-action="throw">Throw object</button>
+            <button type="button" data-fly-action="food">Drop food</button>
+            <button type="button" data-fly-action="light">Flash light</button>
+            <button type="button" data-fly-action="obstacle">Add obstacle</button>
+            <button type="button" data-fly-action="clear">Clear scene</button>
+          </div>
+        </div>
+
+        <p class="fly-log" data-fly-log>Usá herramientas para alterar el entorno: brisa, objetos cercanos, comida, obstáculos o destellos. La reacción es una simulación conductual ligera.</p>
+      </section>
+
       <section class="science-note">
         <span>READ THIS CORRECTLY</span>
-        <p>El cableado y los conteos provienen del conectoma. La disposición espacial de esta interfaz es una proyección visual, no una reconstrucción anatómica 1:1. “Signal” es una simulación exploratoria.</p>
+        <p data-science-note>El cableado y los conteos provienen del conectoma. La disposición espacial de esta interfaz es una proyección visual, no una reconstrucción anatómica 1:1. “Signal” es una simulación exploratoria.</p>
       </section>
     </aside>
   </main>
@@ -139,11 +188,12 @@
   <footer class="footerbar">
     <span>DEUSHIMA / DATA EXPERIMENT</span>
     <span>DATA: FLYWIRE CONSORTIUM · DORKENWALD ET AL. 2024</span>
-    <span>RUNTIME BRIDGE: FLYBRAIN OPEN-SOURCE PREPROCESSING</span>
+    <span>FLY LAB: VISUAL BEHAVIOURAL SANDBOX</span>
   </footer>
 
   <div class="mobile-note">Rotá el teléfono o usá una pantalla más grande para explorar el conectoma con mayor detalle.</div>
 
   <script src="./app.js?v=20260912-1"></script>
+  <script src="./fly-lab.js?v=20260912-glow1"></script>
 </body>
 </html>
