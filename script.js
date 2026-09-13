@@ -11,7 +11,6 @@ const workArchive = document.querySelector("[data-work-archive]");
 const contactForm = document.querySelector("[data-contact-form]");
 const footerPrompt = document.querySelector("[data-footer-prompt]");
 const siteCursor = document.querySelector("[data-site-cursor]");
-const backgroundToggle = document.querySelector("[data-background-toggle]");
 const ambientAudio = document.querySelector("[data-ambient-audio]");
 const audioToggle = document.querySelector("[data-audio-toggle]");
 const audioVolume = document.querySelector("[data-audio-volume]");
@@ -1486,36 +1485,6 @@ function initAmbientAudio() {
   window.addEventListener("keydown", unlockOnInteraction);
 }
 
-function setBackgroundMode(enabled) {
-  document.body.classList.toggle("is-liquid-mode", enabled);
-  if (!backgroundToggle) return;
-
-  backgroundToggle.setAttribute("aria-pressed", enabled ? "true" : "false");
-  backgroundToggle.setAttribute("aria-label", enabled ? "Desactivar fondo liquido" : "Activar fondo liquido");
-}
-
-function initBackgroundToggle() {
-  if (!backgroundToggle) return;
-
-  let enabled = false;
-  try {
-    enabled = localStorage.getItem("deushimaLiquidMode") === "true";
-  } catch {
-    enabled = false;
-  }
-
-  setBackgroundMode(enabled);
-  backgroundToggle.addEventListener("click", () => {
-    enabled = !document.body.classList.contains("is-liquid-mode");
-    setBackgroundMode(enabled);
-    try {
-      localStorage.setItem("deushimaLiquidMode", enabled ? "true" : "false");
-    } catch {
-      // Ignore storage restrictions in embedded previews.
-    }
-  });
-}
-
 function releaseMatterScroll(mouse) {
   if (!mouse || !mouse.element || !mouse.mousewheel) return;
   mouse.element.removeEventListener("mousewheel", mouse.mousewheel);
@@ -2389,7 +2358,6 @@ initFooterPromptTyping();
 initAsciiTextObserver();
 initAsciiCursorTrail();
 initAmbientAudio();
-initBackgroundToggle();
 initContentPanels();
 window.setTimeout(hidePreloader, 650);
 

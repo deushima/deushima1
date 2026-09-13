@@ -109,49 +109,6 @@ body {
   }
 }
 
-.liquid-gradient-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  opacity: var(--liquid-opacity, 0.42);
-  background:
-    radial-gradient(ellipse at 50% 106%, rgba(126, 183, 255, 0.52), transparent 42rem),
-    radial-gradient(ellipse at 52% 84%, rgba(0, 0, 237, 0.66), transparent 54rem),
-    radial-gradient(ellipse at 50% 118%, rgba(244, 244, 241, 0.24), transparent 36rem),
-    linear-gradient(180deg, #050505 0%, #070716 32%, #050579 78%, #0f0f0f 124%);
-  transform: translateZ(0);
-  transition: opacity 0.28s linear;
-  will-change: opacity;
-}
-
-body.is-liquid-mode {
-  --liquid-opacity: 0.82;
-}
-
-body.is-liquid-mode .logo-bridge,
-body.is-liquid-mode .floating-section,
-body.is-liquid-mode .work-archive {
-  background: rgba(5, 5, 5, 0.68);
-}
-
-body.is-liquid-mode .contact-strip {
-  background: rgba(8, 8, 8, 0.72);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
-}
-
-body.is-liquid-mode .contact-form {
-  background: rgba(13, 13, 13, 0.78);
-}
-
-.liquid-gradient-bg.is-fallback {
-  animation: liquidFallbackDrift 14s ease-in-out infinite alternate;
-  background-size: 130% 130%, 150% 150%, 100% 100%;
-}
-
 a {
   color: inherit;
   text-decoration: none;
@@ -637,7 +594,7 @@ a {
   position: relative;
   z-index: 8;
   display: grid;
-  grid-template-columns: minmax(9rem, 21vw) minmax(31rem, 1fr) auto auto auto minmax(5rem, auto);
+  grid-template-columns: minmax(9rem, 21vw) minmax(31rem, 1fr) auto auto minmax(5rem, auto);
   gap: clamp(1rem, 3vw, 4.75rem);
   align-items: start;
   padding: clamp(0.95rem, 1.35vw, 2.1rem) clamp(1.25rem, 2.75vw, 3.45rem);
@@ -781,71 +738,6 @@ a {
   padding: 0.17rem 0.28rem;
   border: 1px solid currentColor;
   border-radius: 0.06rem;
-}
-
-.background-toggle {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  gap: 0.44rem;
-  border: 0;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.7);
-  cursor: pointer;
-  font: inherit;
-  font-size: 0.68rem;
-  font-weight: 600;
-  line-height: 1;
-  text-transform: uppercase;
-  transition:
-    color 0.28s ease,
-    transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.background-toggle:hover,
-.background-toggle:focus-visible {
-  color: rgba(255, 255, 255, 0.96);
-  outline: none;
-  transform: translateY(-0.06rem);
-}
-
-.background-toggle__track {
-  position: relative;
-  display: block;
-  width: 2.15rem;
-  height: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  background: rgba(15, 15, 15, 0.68);
-  box-shadow: inset 0 0 0.8rem rgba(0, 0, 0, 0.42);
-  transition:
-    border-color 0.28s ease,
-    background 0.28s ease;
-}
-
-.background-toggle__knob {
-  position: absolute;
-  left: 0.17rem;
-  top: 50%;
-  display: block;
-  width: 0.56rem;
-  height: 0.56rem;
-  background: rgba(255, 255, 255, 0.9);
-  transform: translate3d(0, -50%, 0);
-  transition:
-    transform 0.34s cubic-bezier(0.16, 1, 0.3, 1),
-    background 0.28s ease,
-    box-shadow 0.28s ease;
-}
-
-.background-toggle[aria-pressed="true"] .background-toggle__track {
-  border-color: rgba(126, 183, 255, 0.82);
-  background: rgba(8, 19, 70, 0.68);
-}
-
-.background-toggle[aria-pressed="true"] .background-toggle__knob {
-  background: #fff;
-  box-shadow: 0 0 0.8rem rgba(126, 183, 255, 0.72);
-  transform: translate3d(1.18rem, -50%, 0);
 }
 
 .audio-control {
@@ -1626,7 +1518,7 @@ a {
 
 @media (min-width: 901px) and (max-width: 1440px) {
   .nav {
-    grid-template-columns: minmax(5.5rem, 12vw) minmax(34rem, 1fr) auto auto minmax(4.75rem, auto);
+    grid-template-columns: minmax(5.5rem, 12vw) minmax(34rem, 1fr) auto minmax(4.75rem, auto);
     gap: clamp(0.85rem, 1.8vw, 2.25rem);
   }
 
@@ -3731,18 +3623,6 @@ html.is-shutter-entering .page-transition__logo {
   }
 }
 
-@keyframes liquidFallbackDrift {
-  0% {
-    background-position: 48% 52%, 56% 44%, 50% 50%;
-    filter: saturate(1.02) brightness(0.92);
-  }
-
-  100% {
-    background-position: 52% 48%, 44% 56%, 50% 50%;
-    filter: saturate(1.16) brightness(1);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .intro-fade,
   .wipe-text,
@@ -3760,10 +3640,6 @@ html.is-shutter-entering .page-transition__logo {
   html.is-shutter-entering .page-transition__panel,
   html.is-shutter-entering .page-transition__shutter::before,
   html.is-shutter-entering .page-transition__logo {
-    animation: none;
-  }
-
-  .liquid-gradient-bg.is-fallback {
     animation: none;
   }
 
@@ -3812,7 +3688,7 @@ html.is-shutter-entering .page-transition__logo {
 
 @media (max-width: 900px) {
   .nav {
-    grid-template-columns: 1fr auto auto auto;
+    grid-template-columns: 1fr auto auto;
   }
 
   .directory {
@@ -3824,10 +3700,6 @@ html.is-shutter-entering .page-transition__logo {
 
   .status-panel {
     display: none;
-  }
-
-  .background-toggle {
-    justify-self: end;
   }
 
   .audio-control {
@@ -3968,10 +3840,6 @@ html.is-shutter-entering .page-transition__logo {
     grid-template-columns: auto 1fr auto;
     gap: 0.75rem;
     padding-inline: 1rem;
-  }
-
-  .background-toggle__label {
-    display: none;
   }
 
   .audio-control {
@@ -4127,25 +3995,6 @@ html.is-shutter-entering .page-transition__logo {
 
   .content-panel__surface--contact .contact-form {
     justify-self: stretch;
-  }
-
-  .background-toggle {
-    gap: 0.3rem;
-    font-size: 0.58rem;
-  }
-
-  .background-toggle__track {
-    width: 1.85rem;
-    height: 0.88rem;
-  }
-
-  .background-toggle__knob {
-    width: 0.48rem;
-    height: 0.48rem;
-  }
-
-  .background-toggle[aria-pressed="true"] .background-toggle__knob {
-    transform: translate3d(1.02rem, -50%, 0);
   }
 
   .directory {
