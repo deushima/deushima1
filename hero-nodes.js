@@ -147,12 +147,39 @@
     };
   }
 
+  function cubicPoint(points, t) {
+    const u = 1 - t;
+    const tt = t * t;
+    const uu = u * u;
+    const uuu = uu * u;
+    const ttt = tt * t;
+    return {
+      x: uuu * points.from.x + 3 * uu * t * points.c1.x + 3 * u * tt * points.c2.x + ttt * points.to.x,
+      y: uuu * points.from.y + 3 * uu * t * points.c1.y + 3 * u * tt * points.c2.y + ttt * points.to.y
+    };
+  }
+
+  function curveFor(points) {
+    const dx = points.to.x - points.from.x;
+    const dy = points.to.y - points.from.y;
+    const tension = Math.max(34, Math.min(150, Math.abs(dx) * 0.46 + Math.abs(dy) * 0.08));
+    const direction = dx >= 0 ? 1 : -1;
+    return {
+      ...points,
+      c1: { x: points.from.x + tension * direction, y: points.from.y },
+      c2: { x: points.to.x - tension * direction, y: points.to.y }
+    };
+  }
+
+  function curvePath(points) {
+    return `M ${points.from.x.toFixed(2)} ${points.from.y.toFixed(2)} C ${points.c1.x.toFixed(2)} ${points.c1.y.toFixed(2)}, ${points.c2.x.toFixed(2)} ${points.c2.y.toFixed(2)}, ${points.to.x.toFixed(2)} ${points.to.y.toFixed(2)}`;
+  }
+
   function positionDisconnectButton(points, t = 0.5) {
     if (!disconnectButton || !points) return;
-    const x = points.from.x + (points.to.x - points.from.x) * t;
-    const y = points.from.y + (points.to.y - points.from.y) * t;
-    disconnectButton.style.setProperty('--disconnect-x', `${x.toFixed(2)}px`);
-    disconnectButton.style.setProperty('--disconnect-y', `${y.toFixed(2)}px`);
+    const point = cubicPoint(curveFor(points), t);
+    disconnectButton.style.setProperty('--disconnect-x', `${point.x.toFixed(2)}px`);
+    disconnectButton.style.setProperty('--disconnect-y', `${point.y.toFixed(2)}px`);
   }
 
   function showDisconnect(edgeKey, t = 0.5) {
@@ -174,16 +201,17 @@
     disconnectButton.tabIndex = -1;
   }
 
-  function closestPointOnSegment(px, py, a, b) {
-    const dx = b.x - a.x;
-    const dy = b.y - a.y;
-    const lengthSq = dx * dx + dy * dy;
-    if (!lengthSq) return { x: a.x, y: a.y, t: 0, distance: Math.hypot(px - a.x, py - a.y) };
-    const rawT = ((px - a.x) * dx + (py - a.y) * dy) / lengthSq;
-    const t = Math.max(0, Math.min(1, rawT));
-    const x = a.x + dx * t;
-    const y = a.y + dy * t;
-    return { x, y, t, distance: Math.hypot(px - x, py - y) };
+  function closestPointOnCurve(px, py, rawPoints) {
+    const points = curveFor(rawPoints);
+    let best = null;
+    const steps = 28;
+    for (let index = 0; index <= steps; index += 1) {
+      const t = index / steps;
+      const point = cubicPoint(points, t);
+      const distance = Math.hypot(px - point.x, py - point.y);
+      if (!best || distance < best.distance) best = { ...point, t, distance };
+    }
+    return best;
   }
 
   function updateEdgeProximity(event) {
@@ -192,6 +220,23 @@
     const stageRect = stage.getBoundingClientRect();
     const px = event.clientX - stageRect.left;
     const py = event.clientY - stageRect.top;
+
+    if (hoveredEdge?.key) {
+      const locked = edges.find(([from, to]) => pairKey(from, to) === hoveredEdge.key);
+      if (locked) {
+        const fromNode = nodeByName[locked[0]];
+        const toNode = nodeByName[locked[1]];
+        if (fromNode && toNode) {
+          const lockedPoints = connectionPoints(fromNode, toNode);
+          const lockedNearest = closestPointOnCurve(px, py, lockedPoints);
+          if (lockedNearest.distance <= 78) {
+            positionDisconnectButton(lockedPoints, hoveredEdge.t);
+            return;
+          }
+        }
+      }
+    }
+
     let best = null;
 
     edges.forEach(([from, to]) => {
@@ -199,14 +244,13 @@
       const toNode = nodeByName[to];
       if (!fromNode || !toNode) return;
       const points = connectionPoints(fromNode, toNode);
-      const nearest = closestPointOnSegment(px, py, points.from, points.to);
+      const nearest = closestPointOnCurve(px, py, points);
       if (!best || nearest.distance < best.distance) {
         best = { ...nearest, key: pairKey(from, to), points };
       }
     });
 
-    const threshold = best && hoveredEdge?.key === best.key ? 46 : 18;
-    if (best && best.distance <= threshold) {
+    if (best && best.distance <= 18) {
       showDisconnect(best.key, best.t);
       positionDisconnectButton(best.points, hoveredEdge?.t ?? best.t);
     } else {
@@ -230,36 +274,47 @@
     });
   }
 
+  function appendPath(points, className, edgeKey, dashOffset) {
+    const el = document.createElementNS(ns, 'path');
+    el.setAttribute('d', curvePath(points));
+    el.setAttribute('class', `${className}${hoveredEdge?.key === edgeKey ? ' is-hovered' : ''}`);
+    if (dashOffset !== undefined) el.setAttribute('stroke-dashoffset', dashOffset.toFixed(2));
+    svg.appendChild(el);
+    return el;
+  }
+
+  function appendFlare(point, hot) {
+    const halo = document.createElementNS(ns, 'ellipse');
+    halo.setAttribute('cx', point.x.toFixed(2));
+    halo.setAttribute('cy', point.y.toFixed(2));
+    halo.setAttribute('rx', '2.4');
+    halo.setAttribute('ry', '12.5');
+    halo.setAttribute('class', `hero-node-line-flare hero-node-line-flare--halo${hot ? ' is-hovered' : ''}`);
+    svg.appendChild(halo);
+
+    const core = document.createElementNS(ns, 'ellipse');
+    core.setAttribute('cx', point.x.toFixed(2));
+    core.setAttribute('cy', point.y.toFixed(2));
+    core.setAttribute('rx', '1.05');
+    core.setAttribute('ry', '7.2');
+    core.setAttribute('class', `hero-node-line-flare hero-node-line-flare--core${hot ? ' is-hovered' : ''}`);
+    svg.appendChild(core);
+  }
+
   function line(x1, y1, x2, y2, edgeKey, glintOffset = 0) {
     const hot = hoveredEdge?.key === edgeKey;
-    const el = document.createElementNS(ns, 'line');
-    el.setAttribute('x1', x1.toFixed(2));
-    el.setAttribute('y1', y1.toFixed(2));
-    el.setAttribute('x2', x2.toFixed(2));
-    el.setAttribute('y2', y2.toFixed(2));
-    el.setAttribute('class', `hero-node-line${hot ? ' is-hovered' : ''}`);
-    svg.appendChild(el);
-
+    const points = curveFor({ from: { x: x1, y: y1 }, to: { x: x2, y: y2 } });
+    if (!mobilePerformance) appendPath(points, 'hero-node-line--halo', edgeKey);
+    appendPath(points, 'hero-node-line', edgeKey);
     if (mobilePerformance) return;
-
-    const glint = document.createElementNS(ns, 'line');
-    glint.setAttribute('x1', x1.toFixed(2));
-    glint.setAttribute('y1', y1.toFixed(2));
-    glint.setAttribute('x2', x2.toFixed(2));
-    glint.setAttribute('y2', y2.toFixed(2));
-    glint.setAttribute('class', `hero-node-line--glint${hot ? ' is-hovered' : ''}`);
-    glint.setAttribute('stroke-dashoffset', glintOffset.toFixed(2));
-    svg.appendChild(glint);
+    appendPath(points, 'hero-node-line--glint', edgeKey, glintOffset);
+    appendFlare(points.from, hot);
+    appendFlare(points.to, hot);
   }
 
   function previewLine(x1, y1, x2, y2) {
-    const el = document.createElementNS(ns, 'line');
-    el.setAttribute('x1', x1.toFixed(2));
-    el.setAttribute('y1', y1.toFixed(2));
-    el.setAttribute('x2', x2.toFixed(2));
-    el.setAttribute('y2', y2.toFixed(2));
-    el.setAttribute('class', 'hero-node-line--preview');
-    svg.appendChild(el);
+    const points = curveFor({ from: { x: x1, y: y1 }, to: { x: x2, y: y2 } });
+    appendPath(points, 'hero-node-line--preview', '__preview__');
   }
 
   function drawMesh(elapsed = 0) {
