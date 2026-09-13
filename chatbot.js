@@ -6,7 +6,14 @@
   const form = chat.querySelector('[data-chat-form]');
   const textarea = form?.elements?.message;
   const status = chat.querySelector('[data-chat-status]');
+  const suggestionButtons = [...chat.querySelectorAll('[data-chat-suggestions] button')];
   let busy = false;
+
+  const presetPrompts = {
+    what: '¿Qué hace Deushima?',
+    work: '¿En qué trabaja Iván?',
+    lab: 'Mostrame el 3D Lab'
+  };
 
   const context = {
     identity: 'Deushima es la práctica independiente de Iván Lautaro Rodríguez, diseñador gráfico y director visual radicado en Buenos Aires, Argentina.',
@@ -71,14 +78,44 @@
     return fallback;
   };
 
+  const setBusy = (nextBusy) => {
+    busy = nextBusy;
+    suggestionButtons.forEach((button) => {
+      button.disabled = nextBusy;
+      button.setAttribute('aria-disabled', String(nextBusy));
+    });
+  };
+
+  const sendMessage = async (rawMessage) => {
+    if (busy) return;
+    const message = String(rawMessage || '').normalize('NFC').trim();
+    if (!message) return;
+
+    setBusy(true);
+    appendMessage('user', message);
+    if (textarea) {
+      textarea.value = '';
+      textarea.style.height = 'auto';
+    }
+    if (status) status.textContent = 'D/AI / THINKING…';
+
+    try {
+      const reply = await askAssistant(message);
+      appendMessage('bot', reply);
+    } finally {
+      setBusy(false);
+      textarea?.focus({ preventScroll: true });
+    }
+  };
+
   document.querySelectorAll('[data-chat-open]').forEach((button) => button.addEventListener('click', openChat));
   chat.querySelectorAll('[data-chat-close]').forEach((button) => button.addEventListener('click', closeChat));
 
-  chat.querySelectorAll('[data-chat-suggestions] button').forEach((button) => {
+  suggestionButtons.forEach((button) => {
     button.addEventListener('click', () => {
-      if (!textarea) return;
-      textarea.value = button.textContent.trim();
-      form?.requestSubmit();
+      const prompt = presetPrompts[button.dataset.chatSuggestion];
+      if (!prompt) return;
+      sendMessage(prompt);
     });
   });
 
@@ -89,19 +126,8 @@
 
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
-    if (busy || !textarea) return;
-    const message = textarea.value.trim();
-    if (!message) return;
-
-    busy = true;
-    appendMessage('user', message);
-    textarea.value = '';
-    textarea.style.height = 'auto';
-    if (status) status.textContent = 'D/AI / THINKING…';
-
-    const reply = await askAssistant(message);
-    appendMessage('bot', reply);
-    busy = false;
+    if (!textarea) return;
+    await sendMessage(textarea.value);
   });
 
   document.addEventListener('keydown', (event) => {
