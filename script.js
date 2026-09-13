@@ -30,10 +30,17 @@ const HERO_VIDEO_SOURCES = [
   "Video%20Background/Video%201.mp4",
   "Video%20Background/Video%202.mp4"
 ];
+const HERO_MOBILE_VIDEO_SOURCE = "Video%20Background/Video%202%20mobile.mp4";
 const PAGE_TRANSITION_KEY = "deushimaShutterTransition";
 const PAGE_TRANSITION_DURATION = 820;
 const compactPointerQuery = window.matchMedia("(pointer: coarse)");
 const compactLayoutQuery = window.matchMedia("(max-width: 760px)");
+const isMobilePerformanceMode = () => compactLayoutQuery.matches;
+
+document.documentElement.classList.toggle("is-mobile-performance", isMobilePerformanceMode());
+compactLayoutQuery.addEventListener?.("change", (event) => {
+  document.documentElement.classList.toggle("is-mobile-performance", event.matches);
+});
 
 let pointerX = 0;
 let pointerY = 0;
@@ -68,6 +75,8 @@ let viewerBaseY = 0;
 let viewerTouchMode = null;
 let viewerTouchDistance = 0;
 let viewerTouchScale = 1;
+let heroInView = true;
+let heroVisibilityObserver = null;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -102,6 +111,16 @@ function hidePreloader() {
   preloaderHideStarted = true;
 
   preloader?.classList.add("is-opening");
+
+  if (isMobilePerformanceMode()) {
+    window.setTimeout(() => {
+      preloader?.classList.add("is-hidden");
+      document.body.classList.add("is-site-ready");
+      initIntroText();
+      syncInitialHashScroll();
+    }, 120);
+    return;
+  }
 
   window.setTimeout(() => {
     preloader?.classList.add("is-hidden");
@@ -186,6 +205,30 @@ function animate() {
 }
 
 function updateScrollParallax() {
+  if (isMobilePerformanceMode()) {
+    if (hero) {
+      hero.style.setProperty("--hero-scroll-y", "0px");
+      hero.style.setProperty("--hero-nav-y", "0px");
+      hero.style.setProperty("--hero-copy-y", "0px");
+      hero.style.setProperty("--hero-dim", "0");
+      hero.style.setProperty("--hero-eat-opacity", "0");
+      hero.style.setProperty("--video-scroll-scale", "1");
+    }
+    if (floatingSection) {
+      floatingSection.style.setProperty("--works-header-y", "0px");
+      floatingSection.style.setProperty("--works-panel-y", "0px");
+      floatingSection.style.setProperty("--works-panel-scale", "1");
+      floatingSection.style.setProperty("--works-panel-opacity", "1");
+      floatingSection.style.setProperty("--works-panel-glow-opacity", "0");
+      floatingSection.style.setProperty("--works-header-opacity", "1");
+      floatingSection.style.setProperty("--works-stage-y", "0px");
+      floatingSection.style.setProperty("--works-stage-opacity", "1");
+      floatingSection.style.setProperty("--works-stage-scale", "1");
+      floatingSection.style.setProperty("--works-stage-blur", "0px");
+    }
+    return;
+  }
+
   const viewportHeight = window.innerHeight || 1;
   const heroProgress = clamp(window.scrollY / viewportHeight, 0, 1);
   const heroFade = smoothstep(clamp(window.scrollY / (viewportHeight * 0.82), 0, 1));
@@ -254,20 +297,46 @@ function initVideo() {
   video.muted = true;
   video.playsInline = true;
 
+  if (isMobilePerformanceMode() && hero && !heroVisibilityObserver && "IntersectionObserver" in window) {
+    heroVisibilityObserver = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      heroInView = Boolean(entry?.isIntersecting && entry.intersectionRatio > 0.06);
+      syncHeroVideoPlayback();
+    }, { threshold: [0, 0.06, 0.2] });
+    heroVisibilityObserver.observe(hero);
+  }
+
+  document.addEventListener("visibilitychange", syncHeroVideoPlayback, { passive: true });
+  syncHeroVideoPlayback();
+}
+
+function syncHeroVideoPlayback() {
+  if (!video) return;
+
+  const shouldPlay = !isMobilePerformanceMode() || (
+    !document.hidden &&
+    heroInView &&
+    !document.body.classList.contains("is-content-panel-open")
+  );
+
+  if (!shouldPlay) {
+    video.pause();
+    return;
+  }
+
   const playPromise = video.play();
-  if (playPromise) {
-    playPromise.catch(() => {
-      video.setAttribute("controls", "");
-    });
+  if (playPromise?.catch) {
+    playPromise.catch(() => {});
   }
 }
 
 function getHeroVideoSource() {
   if (!HERO_VIDEO_SOURCES.length) return "";
 
-  // Mobile always uses Video 2. Video 1 is intentionally desktop-only.
-  if (compactLayoutQuery.matches && HERO_VIDEO_SOURCES.length > 1) {
-    return HERO_VIDEO_SOURCES[1];
+  // Mobile always uses the lightweight central crop of Video 2.
+  // Video 1 is intentionally desktop-only.
+  if (compactLayoutQuery.matches) {
+    return HERO_MOBILE_VIDEO_SOURCE;
   }
 
   try {
@@ -344,9 +413,10 @@ function startPageTransition(destination) {
   document.body.classList.add("is-page-leaving");
 
   const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const fastMobileTransition = isMobilePerformanceMode();
   window.setTimeout(() => {
     window.location.href = destination;
-  }, prefersReducedMotion ? 80 : PAGE_TRANSITION_DURATION);
+  }, prefersReducedMotion || fastMobileTransition ? 90 : PAGE_TRANSITION_DURATION);
 }
 
 function initPageTransitions() {
@@ -445,10 +515,22 @@ async function initIntroText() {
   if (introTextStarted) return;
   introTextStarted = true;
 
-  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
   const titles = Array.from(document.querySelectorAll(".directory__title.js-type-text"));
   const wipeLinks = Array.from(document.querySelectorAll(".directory .js-wipe-link"));
+
+  if (isMobilePerformanceMode()) {
+    titles.forEach((item) => {
+      const text = item.textContent.trim();
+      item.dataset.typeText = text;
+      item.setAttribute("aria-label", text);
+      item.classList.remove("is-type-pending", "is-typing");
+      item.classList.add("is-type-complete");
+    });
+    wipeLinks.forEach((link) => link.classList.add("is-wipe-ready"));
+    return;
+  }
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
   titles.forEach((item) => {
     const text = item.textContent.trim();
@@ -499,11 +581,11 @@ function initTextReveals() {
 
 function getFloatingAssets() {
   return [
-    { title: "Heroines", src: "Flotantes/Optimizados/heroines-2.webp", width: 306, height: 434, x: 0.86, angle: 8, floatY: 0.43, imageScale: 0.96, controlInset: "-0.22rem", collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
+    { title: "Heroines", src: "Flotantes/Optimizados/heroines-2.webp", mobileSrc: "Flotantes/Optimizados/mobile/heroines-2.webp", width: 306, height: 434, x: 0.86, angle: 8, floatY: 0.43, imageScale: 0.96, controlInset: "-0.22rem", collisionScale: 1.14, mobileX: 0.72, mobileY: 0.46, mobileWidth: 170, mobileAngle: 9 },
     { title: "Bestseller", src: "Flotantes/Optimizados/bestseller.webp", width: 294, height: 388, x: 0.18, angle: -9, floatY: 0.64, imageScale: 0.92, controlInset: "-0.58rem", collisionScale: 1.18, mobileX: 0.3, mobileY: 0.59, mobileWidth: 142, mobileAngle: -13, mobileHidden: true },
-    { title: "New Era Classic", src: "Flotantes/Optimizados/new-era-classic-png-negro.webp", width: 304, height: 365, x: 0.39, angle: -4, floatY: 0.66, imageScale: 0.84, imageOffsetY: "-0.72rem", controlInset: "-0.68rem -0.58rem -1.22rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
-    { title: "Existence Design", src: "Flotantes/Optimizados/Existencia y destino.webp", width: 432, height: 487, x: 0.68, angle: 10, floatY: 0.4, imageScale: 0.95, controlInset: "-0.42rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
-    { title: "Cultural Change", src: "Flotantes/Optimizados/Cultural-change.webp", width: 358, height: 446, x: 0.58, angle: -15, floatY: 0.6, imageScale: 0.96, controlInset: "-0.34rem", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
+    { title: "New Era Classic", src: "Flotantes/Optimizados/new-era-classic-png-negro.webp", mobileSrc: "Flotantes/Optimizados/mobile/new-era-classic-png-negro.webp", width: 304, height: 365, x: 0.39, angle: -4, floatY: 0.66, imageScale: 0.84, imageOffsetY: "-0.72rem", controlInset: "-0.68rem -0.58rem -1.22rem", collisionScale: 1.2, mobileX: 0.29, mobileY: 0.35, mobileWidth: 166, mobileAngle: -5 },
+    { title: "Existence Design", src: "Flotantes/Optimizados/Existencia y destino.webp", mobileSrc: "Flotantes/Optimizados/mobile/Existencia y destino.webp", width: 432, height: 487, x: 0.68, angle: 10, floatY: 0.4, imageScale: 0.95, controlInset: "-0.42rem", collisionScale: 1.16, mobileX: 0.68, mobileY: 0.68, mobileWidth: 202, mobileAngle: 12 },
+    { title: "Cultural Change", src: "Flotantes/Optimizados/Cultural-change.webp", mobileSrc: "Flotantes/Optimizados/mobile/Cultural-change.webp", width: 358, height: 446, x: 0.58, angle: -15, floatY: 0.6, imageScale: 0.96, controlInset: "-0.34rem", collisionScale: 1.16, mobileX: 0.58, mobileY: 0.25, mobileWidth: 184, mobileAngle: -18 },
     { title: "Big Boss", src: "Flotantes/Optimizados/big-boss-negativo.webp", width: 282, height: 376, x: 0.31, angle: 5, floatY: 0.48, imageScale: 0.95, controlInset: "-0.32rem", collisionScale: 1.14, mobileX: 0.46, mobileY: 0.79, mobileWidth: 150, mobileAngle: 5, mobileHidden: true }
   ];
 }
@@ -795,7 +877,7 @@ function initLauncherPop() {
     }
   });
 
-  if (alreadySeen || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (alreadySeen || isMobilePerformanceMode() || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   window.setTimeout(openLauncherPop, 5000);
 }
 
@@ -833,8 +915,11 @@ function initWorkArchive() {
     const compact = isCompactArchive();
     const forcedVisible = workArchive.classList.contains("is-panel-open");
     videos.forEach((videoNode, videoIndex) => {
-      videoNode.preload = compact ? "metadata" : "auto";
-      if ((archiveVisible || forcedVisible) && (!compact || videoIndex === activeIndex)) {
+      const isActiveVideo = videoIndex === activeIndex;
+      videoNode.preload = compact
+        ? (forcedVisible && isActiveVideo ? "metadata" : "none")
+        : "auto";
+      if ((compact ? forcedVisible : (archiveVisible || forcedVisible)) && (!compact || isActiveVideo)) {
         playVideo(videoNode);
       } else {
         pauseVideo(videoNode);
@@ -931,6 +1016,15 @@ function initWorkArchive() {
 
 function initLogoBridgeCarousel() {
   if (!logoBridge || !logoBridgeTrack) return;
+
+  if (isMobilePerformanceMode()) {
+    logoBridge.classList.add("is-mobile-native-scroll");
+    logoBridgeTrack.querySelectorAll("img").forEach((image) => {
+      image.draggable = false;
+      image.addEventListener("dragstart", (event) => event.preventDefault());
+    });
+    return;
+  }
 
   const firstSet = logoBridgeTrack.querySelector(".logo-bridge__set");
   if (!firstSet) return;
@@ -1130,6 +1224,14 @@ function initFooterPromptTyping() {
   const fullText = footerPrompt.dataset.fullText || "";
   if (!fullText.trim()) return;
 
+  if (isMobilePerformanceMode()) {
+    footerPrompt.textContent = fullText;
+    window.startFooterPromptTyping = () => {
+      footerPrompt.textContent = fullText;
+    };
+    return;
+  }
+
   footerPrompt.textContent = "";
   let started = false;
 
@@ -1173,7 +1275,9 @@ function initAsciiTextEffect(root = document.querySelector(".directory")) {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#$%&*+-";
-  const selector = ".directory__title, .wipe-link-text";
+  const selector = isMobilePerformanceMode()
+    ? ".directory__title, .directory a"
+    : ".directory__title, .wipe-link-text";
 
   root.querySelectorAll(selector).forEach((element) => {
     if (element.dataset.asciiReady === "true") return;
@@ -1498,7 +1602,8 @@ function createFloatingElement(asset, index, width, height) {
   }
 
   image.className = "floating-card__image";
-  image.src = asset.src;
+  image.src = isMobilePerformanceMode() && asset.mobileSrc ? asset.mobileSrc : asset.src;
+  image.decoding = "async";
   image.alt = asset.title || "";
   image.draggable = false;
 
@@ -1540,13 +1645,51 @@ function initFloatingMobile(stage) {
   const assets = getFloatingAssets().filter((asset) => !asset.mobileHidden);
   const cards = [];
   let activeCard = null;
-  let frameId = 0;
-  let lastFrame = 0;
 
   function setActiveCard(card) {
     if (activeCard) activeCard.element.classList.remove("is-active");
     activeCard = card;
     if (activeCard) activeCard.element.classList.add("is-active");
+  }
+
+  function moveActiveCard(event) {
+    const card = activeCard;
+    if (!card?.dragging || event.isPrimary === false) return;
+
+    event.preventDefault();
+    const now = performance.now();
+    const rect = stage.getBoundingClientRect();
+    card.x = event.clientX - rect.left - card.grabX;
+    card.y = event.clientY - rect.top - card.grabY;
+    card.lastX = event.clientX;
+    card.lastY = event.clientY;
+    card.lastTime = now;
+    clampCard(card, rect);
+    applyCard(card);
+  }
+
+  function releaseActiveCard(event) {
+    if (!activeCard?.dragging || event.isPrimary === false) return;
+    releaseCard(activeCard);
+  }
+
+  function clampCard(card, rect = stage.getBoundingClientRect()) {
+    const minY = Math.min(132, rect.height * 0.16);
+    const edgePadding = Math.min(20, rect.width * 0.05);
+    card.x = clamp(
+      card.x,
+      edgePadding,
+      Math.max(edgePadding, rect.width - card.width - edgePadding)
+    );
+    card.y = clamp(
+      card.y,
+      minY,
+      Math.max(minY, rect.height - card.height - edgePadding)
+    );
+  }
+
+  function applyCard(card) {
+    card.element.style.transform = `translate3d(${card.x.toFixed(2)}px, ${card.y.toFixed(2)}px, 0) rotate(${card.angle.toFixed(4)}rad)`;
   }
 
   function releaseCard(card) {
@@ -1555,12 +1698,12 @@ function initFloatingMobile(stage) {
     if (rect.width > 0 && rect.height > 0) {
       card.anchorX = clamp((card.x + card.width / 2) / rect.width, 0.04, 0.96);
       card.anchorY = clamp((card.y + card.height / 2) / rect.height, 0.06, 0.94);
-      card.vx *= 0.28;
-      card.vy *= 0.28;
     }
     card.dragging = false;
     stage.classList.remove("is-grabbing");
     card.element.releasePointerCapture?.(card.pointerId);
+    clampCard(card, rect);
+    applyCard(card);
   }
 
   function createCard(asset, index) {
@@ -1578,11 +1721,7 @@ function initFloatingMobile(stage) {
       anchorY: asset.mobileY || asset.floatY,
       x: 0,
       y: 0,
-      vx: 0,
-      vy: 0,
       angle: (asset.mobileAngle ?? asset.angle) * Math.PI / 180,
-      phase: index * 1.91,
-      wander: makeWander(index),
       dragging: false,
       pointerId: null,
       grabX: 0,
@@ -1607,6 +1746,7 @@ function initFloatingMobile(stage) {
 
     stage.appendChild(element);
     cards.push(card);
+    applyCard(card);
 
     element.addEventListener("pointerdown", (event) => {
       const now = performance.now();
@@ -1623,68 +1763,17 @@ function initFloatingMobile(stage) {
       stage.classList.add("is-grabbing");
     });
 
-    element.addEventListener("pointermove", (event) => {
-      if (!card.dragging) return;
-
-      const now = performance.now();
-      const rect = stage.getBoundingClientRect();
-      const dt = Math.max(16, now - card.lastTime);
-      card.x = event.clientX - rect.left - card.grabX;
-      card.y = event.clientY - rect.top - card.grabY;
-      card.vx = (event.clientX - card.lastX) / dt * 5;
-      card.vy = (event.clientY - card.lastY) / dt * 5;
-      card.lastX = event.clientX;
-      card.lastY = event.clientY;
-      card.lastTime = now;
-    });
-
-    element.addEventListener("pointerup", () => releaseCard(card));
-    element.addEventListener("pointercancel", () => releaseCard(card));
-  }
-
-  function animateMobile(now = performance.now()) {
-    frameId = window.requestAnimationFrame(animateMobile);
-    if (document.hidden || now - lastFrame < 32) return;
-    lastFrame = now;
-
-    const rect = stage.getBoundingClientRect();
-    const time = performance.now() * 0.001;
-    const minY = Math.min(132, rect.height * 0.16);
-    const edgePadding = Math.min(20, rect.width * 0.05);
-
-    for (const card of cards) {
-      if (!card.dragging) {
-        updateWander(card.wander, time, card.index);
-        const targetX = rect.width * card.anchorX - card.width / 2 + card.wander.x * rect.width * 0.064;
-        const targetY = rect.height * card.anchorY - card.height / 2 + card.wander.y * rect.height * 0.052;
-
-        card.vx += (targetX - card.x) * 0.0038;
-        card.vy += (targetY - card.y) * 0.0038;
-        card.vx *= 0.905;
-        card.vy *= 0.905;
-        card.x += clamp(card.vx, -1.04, 1.04);
-        card.y += clamp(card.vy, -1.04, 1.04);
-      }
-
-      card.x = clamp(
-        card.x,
-        edgePadding,
-        Math.max(edgePadding, rect.width - card.width - edgePadding)
-      );
-      card.y = clamp(
-        card.y,
-        minY,
-        Math.max(minY, rect.height - card.height - edgePadding)
-      );
-      card.element.style.transform = `translate3d(${card.x.toFixed(2)}px, ${card.y.toFixed(2)}px, 0) rotate(${card.angle.toFixed(4)}rad)`;
-    }
   }
 
   assets.forEach(createCard);
-  frameId = window.requestAnimationFrame(animateMobile);
+  window.addEventListener("pointermove", moveActiveCard, { passive: false });
+  window.addEventListener("pointerup", releaseActiveCard);
+  window.addEventListener("pointercancel", releaseActiveCard);
 
   return () => {
-    window.cancelAnimationFrame(frameId);
+    window.removeEventListener("pointermove", moveActiveCard);
+    window.removeEventListener("pointerup", releaseActiveCard);
+    window.removeEventListener("pointercancel", releaseActiveCard);
     stage.classList.remove("floating-stage--mobile", "is-grabbing");
     stage.innerHTML = "";
   };
@@ -2180,6 +2269,10 @@ function scheduleFloatingWorld() {
   const stage = document.querySelector("[data-floating-world]");
   if (!stage) return;
 
+  // On phones the About assets are created only after the user opens About.
+  // This avoids image decoding and setup work during the initial hero load.
+  if (isMobilePerformanceMode()) return;
+
   async function startFloatingWorld() {
     if (floatingWorldStarted || floatingWorldStarting) return;
     floatingWorldStarting = true;
@@ -2264,7 +2357,11 @@ function syncPanelMedia(panel, shouldPlay) {
   panel.querySelectorAll("video").forEach((videoNode) => {
     videoNode.muted = true;
     videoNode.playsInline = true;
-    if (shouldPlay) {
+    const isCompactWorkPreview = isMobilePerformanceMode() && panel.dataset.panel === "works";
+    const isDecorativeMobileContact = isMobilePerformanceMode() && panel.dataset.panel === "contact" && videoNode.classList.contains("contact-media__video");
+    const canPlay = shouldPlay && !isDecorativeMobileContact && (!isCompactWorkPreview || videoNode.classList.contains("is-active"));
+    videoNode.preload = canPlay ? "metadata" : "none";
+    if (canPlay) {
       const playPromise = videoNode.play();
       if (playPromise?.catch) playPromise.catch(() => {});
     } else {
@@ -2281,6 +2378,7 @@ function closeContentPanel() {
   activePanel.setAttribute("aria-hidden", "true");
   document.body.classList.remove("is-content-panel-open");
   syncPanelMedia(activePanel, false);
+  syncHeroVideoPlayback();
 
   if (lastFocusedElement?.focus) {
     window.setTimeout(() => lastFocusedElement.focus({ preventScroll: true }), 80);
@@ -2296,6 +2394,7 @@ function openContentPanel(panelName) {
   panel.classList.add("is-panel-open");
   panel.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-content-panel-open");
+  syncHeroVideoPlayback();
   syncPanelMedia(panel, true);
 
   if (panel.dataset.panel === "about") {
@@ -2340,7 +2439,7 @@ function initContentPanels() {
   }
 }
 
-if (!compactPointerQuery.matches) {
+if (!compactPointerQuery.matches && !isMobilePerformanceMode()) {
   window.addEventListener("pointermove", handlePointerMove, { passive: true });
   window.addEventListener("mousemove", handlePointerMove, { passive: true });
   requestAnimationFrame(animate);
@@ -2348,8 +2447,10 @@ if (!compactPointerQuery.matches) {
   hero.style.setProperty("--cursor-opacity", "0");
 }
 
-window.addEventListener("scroll", requestScrollParallax, { passive: true });
-window.addEventListener("resize", requestScrollParallax);
+if (!isMobilePerformanceMode()) {
+  window.addEventListener("scroll", requestScrollParallax, { passive: true });
+  window.addEventListener("resize", requestScrollParallax);
+}
 
 scheduleFloatingWorld();
 updateScrollParallax();

@@ -234,6 +234,29 @@ body.deu-chat-open { overflow: hidden !important; }
     bottom: max(14px, env(safe-area-inset-bottom));
     width: 52px;
     height: 52px;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    box-shadow: 0 8px 18px rgba(0,0,0,.28);
+  }
+
+  .deu-chat-launcher__pulse {
+    animation: none;
+    opacity: .35;
+  }
+
+  .deu-chat,
+  .deu-chat__panel {
+    transition-duration: .14s;
+  }
+
+  .deu-chat__backdrop {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background: rgba(0,0,0,.9);
+  }
+
+  .deu-chat__panel {
+    box-shadow: none;
   }
 
   .deu-chat__panel {

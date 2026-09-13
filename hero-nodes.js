@@ -9,6 +9,7 @@
   const ns = 'http://www.w3.org/2000/svg';
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
+  const mobilePerformance = window.matchMedia('(max-width: 760px)').matches;
   const nodeByName = Object.fromEntries(nodes.map(node => [node.dataset.heroNode, node]));
   const depthByName = { works: 0.55, about: 0.82, launcher: 1, chat: 0.68 };
   const defaultEdges = [
@@ -35,6 +36,7 @@
 
   let edges = defaultEdges.map(edge => [...edge]);
   let raf = 0;
+  let drawQueued = 0;
   let startTime = performance.now();
   let pointerX = 0;
   let pointerY = 0;
@@ -101,7 +103,15 @@
     edges = defaultEdges.map(edge => [...edge]);
     try { localStorage.removeItem(storageKey()); } catch {}
     setCustomizedState();
-    requestAnimationFrame(() => drawMesh());
+    queueDraw();
+  }
+
+  function queueDraw() {
+    if (drawQueued) return;
+    drawQueued = requestAnimationFrame(() => {
+      drawQueued = 0;
+      drawMesh();
+    });
   }
 
   function centerOf(node) {
@@ -228,6 +238,8 @@
     el.setAttribute('class', `hero-node-line${hot ? ' is-hovered' : ''}`);
     svg.appendChild(el);
 
+    if (mobilePerformance) return;
+
     const glint = document.createElementNS(ns, 'line');
     glint.setAttribute('x1', x1.toFixed(2));
     glint.setAttribute('y1', y1.toFixed(2));
@@ -315,6 +327,7 @@
     const pos = freeNodePosition(event.clientX, event.clientY, dragState.grabOffsetX, dragState.grabOffsetY);
     dragState.node.style.setProperty('--node-x', `${(pos.x / pos.stageRect.width * 100).toFixed(4)}%`);
     dragState.node.style.setProperty('--node-y', `${(pos.y / pos.stageRect.height * 100).toFixed(4)}%`);
+    if (mobilePerformance) queueDraw();
   }
 
   function endNodeDrag(event) {
@@ -363,6 +376,7 @@
     const targetName = hit?.dataset?.heroNode;
     connectionState.targetName = targetName && targetName !== connectionState.sourceName ? targetName : null;
     setConnectTarget(connectionState.targetName);
+    if (mobilePerformance) queueDraw();
   }
 
   function endConnection(event) {
@@ -388,7 +402,7 @@
     }
 
     connectionState = null;
-    requestAnimationFrame(drawMesh);
+    queueDraw();
   }
 
   function animate(now) {
@@ -418,21 +432,21 @@
 
   function scheduleDraw() {
     cancelAnimationFrame(raf);
-    if (reducedMotion) {
+    if (reducedMotion || mobilePerformance) {
       nodes.forEach(node => {
         node.style.setProperty('--node-drift-x', '0px');
         node.style.setProperty('--node-drift-y', '0px');
         node.style.setProperty('--node-parallax-x', '0px');
         node.style.setProperty('--node-parallax-y', '0px');
       });
-      requestAnimationFrame(drawMesh);
+      queueDraw();
       return;
     }
     startTime = performance.now();
     raf = requestAnimationFrame(animate);
   }
 
-  const resizeObserver = new ResizeObserver(() => requestAnimationFrame(drawMesh));
+  const resizeObserver = new ResizeObserver(queueDraw);
   resizeObserver.observe(stage);
   nodes.forEach(node => resizeObserver.observe(node));
 
@@ -447,10 +461,10 @@
       edges = defaultEdges.map(edge => [...edge]);
       readSavedCanvas();
     }
-    drawMesh();
+    queueDraw();
   }, { passive: true });
-  window.addEventListener('orientationchange', () => window.setTimeout(drawMesh, 160));
-  window.addEventListener('load', drawMesh, { once: true });
+  window.addEventListener('orientationchange', () => window.setTimeout(queueDraw, 160));
+  window.addEventListener('load', queueDraw, { once: true });
 
   window.addEventListener('pointermove', (event) => {
     if (!coarsePointer && !reducedMotion) {
@@ -543,7 +557,7 @@
     disconnectHover = false;
     hideDisconnect();
     saveCanvas();
-    requestAnimationFrame(drawMesh);
+    queueDraw();
   });
 
   readSavedCanvas();
