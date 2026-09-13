@@ -8,6 +8,7 @@
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
   const nodeByName = Object.fromEntries(nodes.map(node => [node.dataset.heroNode, node]));
+  const depthByName = { works: 0.55, about: 0.82, launcher: 1, chat: 0.68 };
 
   const mainEdges = [
     ['chat', 'launcher'],
@@ -28,6 +29,10 @@
 
   let raf = 0;
   let startTime = performance.now();
+  let pointerX = 0;
+  let pointerY = 0;
+  let targetPointerX = 0;
+  let targetPointerY = 0;
 
   function centerOf(node) {
     const stageRect = stage.getBoundingClientRect();
@@ -38,7 +43,7 @@
     };
   }
 
-  function line(x1, y1, x2, y2, soft = false) {
+  function line(x1, y1, x2, y2, soft = false, glintOffset = 0) {
     const el = document.createElementNS(ns, 'line');
     el.setAttribute('x1', x1.toFixed(2));
     el.setAttribute('y1', y1.toFixed(2));
@@ -46,6 +51,17 @@
     el.setAttribute('y2', y2.toFixed(2));
     el.setAttribute('class', `hero-node-line${soft ? ' hero-node-line--soft' : ''}`);
     svg.appendChild(el);
+
+    if (!soft) {
+      const glint = document.createElementNS(ns, 'line');
+      glint.setAttribute('x1', x1.toFixed(2));
+      glint.setAttribute('y1', y1.toFixed(2));
+      glint.setAttribute('x2', x2.toFixed(2));
+      glint.setAttribute('y2', y2.toFixed(2));
+      glint.setAttribute('class', 'hero-node-line--glint');
+      glint.setAttribute('stroke-dashoffset', glintOffset.toFixed(2));
+      svg.appendChild(glint);
+    }
   }
 
   function dot(x, y, accent = false, radius = 1.7) {
@@ -57,7 +73,7 @@
     svg.appendChild(el);
   }
 
-  function drawMesh() {
+  function drawMesh(elapsed = 0) {
     const width = stage.clientWidth;
     const height = stage.clientHeight;
     if (!width || !height) return;
@@ -70,17 +86,17 @@
       centers[name] = centerOf(node);
     });
 
-    mainEdges.forEach(([from, to]) => {
+    mainEdges.forEach(([from, to], index) => {
       const a = centers[from];
       const b = centers[to];
-      if (a && b) line(a.x, a.y, b.x, b.y, false);
+      if (a && b) line(a.x, a.y, b.x, b.y, false, -(elapsed * 34 + index * 19) % 108);
     });
 
     const satellites = satellitePoints.map(([x, y]) => ({ x: x * width, y: y * height }));
     satelliteEdges.forEach(([from, to]) => {
       const a = satellites[from];
       const b = satellites[to];
-      line(a.x, a.y, b.x, b.y, true);
+      line(a.x, a.y, b.x, b.y, true, 0);
     });
 
     satellites.forEach((point, index) => dot(point.x, point.y, index === 3 || index === 5, index === 3 || index === 5 ? 2.1 : 1.35));
@@ -89,23 +105,35 @@
 
   function animate(now) {
     const elapsed = (now - startTime) / 1000;
+    pointerX += (targetPointerX - pointerX) * 0.045;
+    pointerY += (targetPointerY - pointerY) * 0.045;
+
     nodes.forEach((node, index) => {
       const phase = index * 1.63;
-      const x = Math.sin(elapsed * 0.42 + phase) * (index % 2 ? 2.8 : 2.1);
-      const y = Math.cos(elapsed * 0.36 + phase) * (index % 2 ? 2.1 : 2.7);
+      const name = node.dataset.heroNode;
+      const depth = depthByName[name] || 0.7;
+      const driftMultiplier = coarsePointer ? 0.42 : 1;
+      const x = Math.sin(elapsed * (0.31 + index * 0.025) + phase) * (index % 2 ? 4.6 : 3.6) * driftMultiplier;
+      const y = Math.cos(elapsed * (0.27 + index * 0.022) + phase) * (index % 2 ? 3.6 : 4.4) * driftMultiplier;
+      const parallaxX = coarsePointer ? 0 : pointerX * 8.5 * depth;
+      const parallaxY = coarsePointer ? 0 : pointerY * 6.4 * depth;
       node.style.setProperty('--node-drift-x', `${x.toFixed(2)}px`);
       node.style.setProperty('--node-drift-y', `${y.toFixed(2)}px`);
+      node.style.setProperty('--node-parallax-x', `${parallaxX.toFixed(2)}px`);
+      node.style.setProperty('--node-parallax-y', `${parallaxY.toFixed(2)}px`);
     });
-    drawMesh();
+    drawMesh(elapsed);
     raf = requestAnimationFrame(animate);
   }
 
   function scheduleDraw() {
     cancelAnimationFrame(raf);
-    if (reducedMotion || coarsePointer) {
+    if (reducedMotion) {
       nodes.forEach(node => {
         node.style.setProperty('--node-drift-x', '0px');
         node.style.setProperty('--node-drift-y', '0px');
+        node.style.setProperty('--node-parallax-x', '0px');
+        node.style.setProperty('--node-parallax-y', '0px');
       });
       requestAnimationFrame(drawMesh);
       return;
@@ -120,6 +148,37 @@
   window.addEventListener('resize', drawMesh, { passive: true });
   window.addEventListener('orientationchange', () => window.setTimeout(drawMesh, 160));
   window.addEventListener('load', drawMesh, { once: true });
+
+  window.addEventListener('pointermove', (event) => {
+    if (coarsePointer || reducedMotion) return;
+    targetPointerX = Math.max(-1, Math.min(1, (event.clientX / Math.max(window.innerWidth, 1) - 0.5) * 2));
+    targetPointerY = Math.max(-1, Math.min(1, (event.clientY / Math.max(window.innerHeight, 1) - 0.5) * 2));
+  });
+
+  window.addEventListener('blur', () => {
+    targetPointerX = 0;
+    targetPointerY = 0;
+  });
+
+  nodes.forEach((node) => {
+    node.addEventListener('pointermove', (event) => {
+      if (coarsePointer || reducedMotion) return;
+      const rect = node.getBoundingClientRect();
+      const localX = (event.clientX - rect.left) / rect.width;
+      const localY = (event.clientY - rect.top) / rect.height;
+      node.style.setProperty('--node-sheen-x', `${(localX * 100).toFixed(1)}%`);
+      node.style.setProperty('--node-sheen-y', `${(localY * 100).toFixed(1)}%`);
+      node.style.setProperty('--node-tilt-x', `${((0.5 - localY) * 3.2).toFixed(2)}deg`);
+      node.style.setProperty('--node-tilt-y', `${((localX - 0.5) * 4.2).toFixed(2)}deg`);
+    });
+
+    node.addEventListener('pointerleave', () => {
+      node.style.setProperty('--node-sheen-x', '50%');
+      node.style.setProperty('--node-sheen-y', '50%');
+      node.style.setProperty('--node-tilt-x', '0deg');
+      node.style.setProperty('--node-tilt-y', '0deg');
+    });
+  });
 
   scheduleDraw();
 })();
