@@ -1168,22 +1168,12 @@ function initFooterPromptTyping() {
   observer.observe(footerPrompt);
 }
 
-function initAsciiTextEffect(root = document) {
+function initAsciiTextEffect(root = document.querySelector(".directory")) {
+  if (!root) return;
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
   const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/#$%&*+-";
-  const selector = [
-    "a",
-    "button",
-    "h1",
-    "h2",
-    "h3",
-    "p",
-    "small",
-    "span",
-    "strong",
-    "label"
-  ].join(",");
+  const selector = ".directory__title, .wipe-link-text";
 
   root.querySelectorAll(selector).forEach((element) => {
     if (element.dataset.asciiReady === "true") return;
@@ -1192,7 +1182,6 @@ function initAsciiTextEffect(root = document) {
 
     const originalText = element.textContent.replace(/\s+/g, " ").trim();
     if (originalText.length < 2) return;
-    if (element.matches("[data-footer-prompt]") && originalText.length < (element.dataset.fullText || "").length) return;
 
     element.dataset.asciiReady = "true";
     element.dataset.asciiText = originalText;
@@ -1243,8 +1232,11 @@ function initAsciiTextEffect(root = document) {
 }
 
 function initAsciiTextObserver() {
-  window.refreshAsciiTextEffect = () => initAsciiTextEffect(document);
-  initAsciiTextEffect(document);
+  const directory = document.querySelector(".directory");
+  if (!directory) return;
+
+  window.refreshAsciiTextEffect = () => initAsciiTextEffect(directory);
+  initAsciiTextEffect(directory);
 
   if (!("MutationObserver" in window)) return;
 
@@ -1254,11 +1246,11 @@ function initAsciiTextObserver() {
     queued = true;
     window.setTimeout(() => {
       queued = false;
-      initAsciiTextEffect(document);
+      initAsciiTextEffect(directory);
     }, 220);
   });
 
-  observer.observe(document.body, {
+  observer.observe(directory, {
     childList: true,
     subtree: true,
     characterData: true
