@@ -2706,6 +2706,12 @@ a {
   gap: 0.46rem;
 }
 
+@media (min-width: 761px) {
+  .site-footer__links {
+    margin-right: 4.4rem;
+  }
+}
+
 .site-footer__links a {
   position: relative;
   display: grid;
