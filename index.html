@@ -20,8 +20,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260913-footer1">
-  <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes11">
+  <link rel="stylesheet" href="style.css?v=20260913-mobile4">
+  <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes12">
   <link rel="stylesheet" href="chatbot.css?v=20260913-chat3">
 </head>
 <body>
@@ -41,6 +41,7 @@
         <source src="Video%20Background/Video%202%20mobile.mp4" type="video/mp4" media="(max-width: 760px)">
         <source src="Video%20Background/Video%201.mp4" type="video/mp4" media="(min-width: 761px)">
       </video>
+      <div class="hero__veil" aria-hidden="true"></div>
       <canvas class="ascii-trail" data-ascii-trail aria-hidden="true"></canvas>
       <div class="cursor-distortion" data-cursor-distortion aria-hidden="true">
         <span class="cursor-distortion__wake"></span>
@@ -140,7 +141,6 @@
             <strong>Selected work</strong>
             <small>Brand / campaigns / motion</small>
           </span>
-          <span class="hero-node__arrow" aria-hidden="true">↗</span>
         </button>
 
         <button class="hero-node hero-node--about" type="button" data-hero-node="about" data-panel-open="about">
@@ -151,7 +151,6 @@
             <strong>About me</strong>
             <small>Practice / profile / tools</small>
           </span>
-          <span class="hero-node__arrow" aria-hidden="true">↗</span>
         </button>
 
         <a class="hero-node hero-node--launcher" href="/3deushima/" data-hero-node="launcher" data-launcher-nav="true" draggable="false">
@@ -162,7 +161,6 @@
             <strong>3D launcher</strong>
             <small>Interactive material lab</small>
           </span>
-          <span class="hero-node__arrow" aria-hidden="true">↗</span>
         </a>
 
         <button class="hero-node hero-node--chat" type="button" data-hero-node="chat" data-chat-open>
@@ -173,7 +171,6 @@
             <strong>Ask Deushima</strong>
             <small>Portfolio assistant</small>
           </span>
-          <span class="hero-node__arrow" aria-hidden="true">↗</span>
         </button>
 
         <button class="hero-node hero-node--contact hero-node--featured" type="button" data-hero-node="contact" data-panel-open="contact">
@@ -185,7 +182,6 @@
             <strong>Contact me</strong>
             <small>Start a project</small>
           </span>
-          <span class="hero-node__arrow" aria-hidden="true">↗</span>
         </button>
       </div>
     </section>
@@ -486,7 +482,7 @@
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="none"></audio>
 
   <script src="script.js?v=20260913-mobileperf1"></script>
-  <script src="hero-nodes.js?v=20260913-nodes11" defer></script>
+  <script src="hero-nodes.js?v=20260913-nodes12" defer></script>
   <script src="chatbot.js?v=20260913-chat2" defer></script>
 </body>
 </html>
