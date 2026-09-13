@@ -3815,15 +3815,16 @@ html.is-shutter-entering .page-transition__logo {
   }
 
   .hero {
-    width: 100vw;
-    max-width: 100vw;
+    width: 100%;
+    max-width: 100%;
     min-height: 100svh;
   }
 
   .hero__video {
-    object-position: right center;
+    object-position: 72% center;
     filter: brightness(0.82) contrast(1.04) saturate(1);
-    transform: translate3d(-12vw, var(--hero-scroll-y), 0) scale(1.015);
+    transform: translate3d(0, var(--hero-scroll-y), 0) scale(1.065);
+    transform-origin: center;
     will-change: transform;
   }
 
@@ -3901,15 +3902,22 @@ html.is-shutter-entering .page-transition__logo {
   }
 
   .content-panel__surface--about {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr);
+    row-gap: 0.35rem;
     overflow: hidden;
+    min-height: 0;
+    padding: calc(2.55rem + env(safe-area-inset-top)) 0 env(safe-area-inset-bottom);
   }
 
   .content-panel__surface--about .floating-section__header {
-    top: 3rem;
-    left: 1rem;
+    position: relative;
+    top: auto;
+    left: auto;
     right: auto;
-    width: calc(100vw - 2rem);
-    max-width: calc(100vw - 2rem);
+    width: auto;
+    max-width: none;
+    margin: 0.45rem 1rem 0;
     box-sizing: border-box;
     overflow: hidden;
   }
@@ -3939,7 +3947,12 @@ html.is-shutter-entering .page-transition__logo {
   }
 
   .content-panel__surface--about .floating-stage {
-    inset: 24rem 0 0;
+    position: relative;
+    inset: auto;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    margin-top: 0;
   }
 
   .content-panel__surface--works {
@@ -4078,12 +4091,13 @@ html.is-shutter-entering .page-transition__logo {
 
   .hero__copy p {
     max-width: 17rem;
+    margin-bottom: 0;
     font-size: 0.9rem;
     line-height: 1.18;
   }
 
   .hero__copy strong {
-    font-size: 0.98rem;
+    display: none;
   }
 
   .hero__pin {
@@ -4127,6 +4141,13 @@ html.is-shutter-entering .page-transition__logo {
     min-height: calc(104svh + var(--works-overlap));
     perspective: none;
     background: #050505;
+  }
+
+  .floating-section.content-panel {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
   }
 
   .floating-section__header {

@@ -1570,6 +1570,13 @@ function initFloatingMobile(stage) {
 
   function releaseCard(card) {
     if (!card) return;
+    const rect = stage.getBoundingClientRect();
+    if (rect.width > 0 && rect.height > 0) {
+      card.anchorX = clamp((card.x + card.width / 2) / rect.width, 0.04, 0.96);
+      card.anchorY = clamp((card.y + card.height / 2) / rect.height, 0.06, 0.94);
+      card.vx *= 0.28;
+      card.vy *= 0.28;
+    }
     card.dragging = false;
     stage.classList.remove("is-grabbing");
     card.element.releasePointerCapture?.(card.pointerId);
@@ -1605,8 +1612,17 @@ function initFloatingMobile(stage) {
     };
 
     const minY = Math.min(132, rect.height * 0.16);
-    card.x = clamp(rect.width * card.anchorX - width / 2, -width * 0.18, rect.width - width * 0.82);
-    card.y = clamp(rect.height * card.anchorY - height / 2, minY, rect.height - height * 0.55);
+    const edgePadding = Math.min(20, rect.width * 0.05);
+    card.x = clamp(
+      rect.width * card.anchorX - width / 2,
+      edgePadding,
+      Math.max(edgePadding, rect.width - width - edgePadding)
+    );
+    card.y = clamp(
+      rect.height * card.anchorY - height / 2,
+      minY,
+      Math.max(minY, rect.height - height - edgePadding)
+    );
 
     stage.appendChild(element);
     cards.push(card);
@@ -1653,6 +1669,7 @@ function initFloatingMobile(stage) {
     const rect = stage.getBoundingClientRect();
     const time = performance.now() * 0.001;
     const minY = Math.min(132, rect.height * 0.16);
+    const edgePadding = Math.min(20, rect.width * 0.05);
 
     for (const card of cards) {
       if (!card.dragging) {
@@ -1668,8 +1685,16 @@ function initFloatingMobile(stage) {
         card.y += clamp(card.vy, -1.04, 1.04);
       }
 
-      card.x = clamp(card.x, -card.width * 0.32, rect.width - card.width * 0.68);
-      card.y = clamp(card.y, minY, rect.height - card.height * 0.58);
+      card.x = clamp(
+        card.x,
+        edgePadding,
+        Math.max(edgePadding, rect.width - card.width - edgePadding)
+      );
+      card.y = clamp(
+        card.y,
+        minY,
+        Math.max(minY, rect.height - card.height - edgePadding)
+      );
       card.element.style.transform = `translate3d(${card.x.toFixed(2)}px, ${card.y.toFixed(2)}px, 0) rotate(${card.angle.toFixed(4)}rad)`;
     }
   }
