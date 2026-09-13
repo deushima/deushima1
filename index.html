@@ -21,6 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
   <link rel="stylesheet" href="style.css?v=20260912-shutter1">
+  <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes1">
   <link rel="stylesheet" href="chatbot.css?v=20260912-chat1">
 </head>
 <body>
@@ -120,15 +121,39 @@
         <strong class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
       </div>
 
-      <div class="section-launchers" aria-label="Secciones principales">
-        <button class="section-launcher" type="button" data-panel-open="works" style="--launcher-delay: 0.52s">
-          <span>01 / Works</span>
+      <div class="hero-node-stage" data-hero-node-stage aria-label="Accesos principales">
+        <svg class="hero-node-stage__mesh" data-hero-node-mesh aria-hidden="true"></svg>
+
+        <button class="hero-node hero-node--works" type="button" data-hero-node="works" data-panel-open="works">
+          <span class="hero-node__index">01</span>
+          <span class="hero-node__copy">
+            <strong>Selected work</strong>
+            <small>Brand / campaigns / motion</small>
+          </span>
         </button>
-        <button class="section-launcher is-featured" type="button" data-panel-open="about" style="--launcher-delay: 0.62s">
-          <span>02 / About me</span>
+
+        <button class="hero-node hero-node--about" type="button" data-hero-node="about" data-panel-open="about">
+          <span class="hero-node__index">02</span>
+          <span class="hero-node__copy">
+            <strong>About me</strong>
+            <small>Practice / profile / tools</small>
+          </span>
         </button>
-        <button class="section-launcher" type="button" data-panel-open="contact" style="--launcher-delay: 0.72s">
-          <span>03 / Contact</span>
+
+        <a class="hero-node hero-node--launcher" href="/3deushima/" data-hero-node="launcher" data-launcher-nav="true">
+          <span class="hero-node__index">03</span>
+          <span class="hero-node__copy">
+            <strong>3D launcher</strong>
+            <small>Interactive material lab</small>
+          </span>
+        </a>
+
+        <button class="hero-node hero-node--chat" type="button" data-hero-node="chat" data-chat-open>
+          <span class="hero-node__index">04</span>
+          <span class="hero-node__copy">
+            <strong>Ask Deushima</strong>
+            <small>Portfolio assistant</small>
+          </span>
         </button>
       </div>
     </section>
@@ -426,6 +451,7 @@
 
   <script src="liquid-gradient.js?v=20260512-7"></script>
   <script src="script.js?v=20260912-shutter1"></script>
+  <script src="hero-nodes.js?v=20260913-nodes1" defer></script>
   <script src="chatbot.js?v=20260912-chat1" defer></script>
 </body>
 </html>

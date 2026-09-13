@@ -230,14 +230,17 @@ body.deu-chat-open { overflow: hidden !important; }
 
 @media (max-width: 640px) {
   .deu-chat-launcher {
-    right: 14px;
-    bottom: 14px;
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(14px, env(safe-area-inset-bottom));
     width: 52px;
     height: 52px;
   }
 
   .deu-chat__panel {
-    inset: 8px;
+    top: max(8px, env(safe-area-inset-top));
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
     width: auto;
   }
 
