@@ -65,27 +65,20 @@
 
 .hero-node-stage__hud {
   position: absolute;
-  left: 50%;
-  right: auto;
-  bottom: 0.1rem;
+  left: auto;
+  right: 0.2rem;
+  bottom: 0.18rem;
   z-index: 8;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  width: max-content;
-  max-width: calc(100% - 1.25rem);
-  text-align: center;
-  white-space: nowrap;
+  display: block;
   color: rgba(255,255,255,0.28);
   font-family: "Inter", sans-serif;
-  font-size: 0.48rem;
+  font-size: 0.44rem;
   font-weight: 600;
-  letter-spacing: 0.11em;
+  letter-spacing: 0.13em;
   line-height: 1;
   pointer-events: auto;
-  opacity: 0.72;
-  transform: translateX(-50%);
+  opacity: 0.34;
+  transform: none;
   transition: opacity 0.25s ease;
 }
 
@@ -97,9 +90,9 @@
 
 .hero-node-stage__hud button {
   border: 0;
-  padding: 0;
+  padding: 0.22rem 0.3rem;
   background: transparent;
-  color: rgba(255,255,255,0.36);
+  color: rgba(255,255,255,0.46);
   cursor: pointer;
   font: inherit;
   letter-spacing: inherit;
@@ -551,27 +544,27 @@
 }
 
 .hero-node--chat {
-  --node-x: 28%;
-  --node-y: 16%;
+  --node-x: 21%;
+  --node-y: 18%;
 }
 
 .hero-node--works {
-  --node-x: 16%;
-  --node-y: 76%;
+  --node-x: 18%;
+  --node-y: 58%;
 }
 
 .hero-node--launcher {
-  --node-x: 51%;
-  --node-y: 58%;
+  --node-x: 50%;
+  --node-y: 84%;
 }
 
 .hero-node--about {
   --node-x: 82%;
-  --node-y: 55%;
+  --node-y: 59%;
 }
 
 .hero-node--contact {
-  --node-x: 64%;
+  --node-x: 79%;
   --node-y: 18%;
 }
 
@@ -620,14 +613,9 @@
   }
 
   .hero-node-stage__hud {
-    right: 0.7rem;
-    bottom: 0.35rem;
-    gap: 0.42rem;
+    right: 0.45rem;
+    bottom: 0.18rem;
     font-size: 0.42rem;
-  }
-
-  .hero-node-stage__hud span:nth-child(2) {
-    display: none;
   }
 
   .hero-node__port {
@@ -777,9 +765,9 @@
   }
 
   .hero-node-stage__hud {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+    left: auto;
+    right: 0.45rem;
+    transform: none;
     transition: none;
   }
 

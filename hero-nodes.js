@@ -22,7 +22,7 @@
     ['contact', 'works']
   ];
   const layoutMode = () => window.matchMedia('(max-width: 640px)').matches ? 'mobile' : 'desktop';
-  const storageKey = () => `deushimaHeroCanvas:v4:${layoutMode()}`;
+  const storageKey = () => `deushimaHeroCanvas:v5:${layoutMode()}`;
   const pairKey = (a, b) => [a, b].sort().join('::');
   const normalizeEdges = edges => {
     const seen = new Set();
