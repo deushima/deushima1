@@ -18,6 +18,19 @@ function localReply(message) {
   return 'Puedo contarte sobre el perfil de Iván, sus áreas de trabajo, 3Deushima, proyectos seleccionados y contacto.';
 }
 
+function extractReply(data) {
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content === 'string') return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => typeof part?.text === 'string' ? part.text : '')
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+  }
+  return '';
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -27,30 +40,40 @@ module.exports = async function handler(req, res) {
   const message = String(req.body?.message || '').trim().slice(0, 600);
   if (!message) return res.status(400).json({ error: 'Message required' });
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return res.status(200).json({ reply: localReply(message), mode: 'local' });
 
   try {
-    const response = await fetch('https://api.openai.com/v1/responses', {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://www.deushima.com.ar',
+        'X-Title': 'Deushima Portfolio Assistant'
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-5.6-luna',
-        input: [
-          { role: 'system', content: [{ type: 'input_text', text: SYSTEM_PROMPT }] },
-          { role: 'user', content: [{ type: 'input_text', text: message }] }
+        model: process.env.OPENROUTER_MODEL || 'openrouter/free',
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: message }
         ],
-        max_output_tokens: 280
+        max_tokens: 280,
+        temperature: 0.55
       })
     });
 
-    if (!response.ok) throw new Error(`OpenAI ${response.status}`);
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      throw new Error(`OpenRouter ${response.status}${detail ? `: ${detail.slice(0, 180)}` : ''}`);
+    }
+
     const data = await response.json();
-    const reply = data.output_text || data.output?.flatMap(item => item.content || []).find(item => item.type === 'output_text')?.text;
-    return res.status(200).json({ reply: reply?.trim() || localReply(message), mode: reply ? 'ai' : 'local' });
+    const reply = extractReply(data);
+    return res.status(200).json({
+      reply: reply || localReply(message),
+      mode: reply ? 'ai' : 'local'
+    });
   } catch (error) {
     console.error('Portfolio assistant fallback:', error);
     return res.status(200).json({ reply: localReply(message), mode: 'local' });
