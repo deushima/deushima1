@@ -65,12 +65,18 @@
 
 .hero-node-stage__hud {
   position: absolute;
-  right: 0.2rem;
+  left: 50%;
+  right: auto;
   bottom: 0.1rem;
   z-index: 8;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.55rem;
+  width: max-content;
+  max-width: calc(100% - 1.25rem);
+  text-align: center;
+  white-space: nowrap;
   color: rgba(255,255,255,0.28);
   font-family: "Inter", sans-serif;
   font-size: 0.48rem;
@@ -79,6 +85,7 @@
   line-height: 1;
   pointer-events: auto;
   opacity: 0.72;
+  transform: translateX(-50%);
   transition: opacity 0.25s ease;
 }
 
