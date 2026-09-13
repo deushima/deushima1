@@ -21,7 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
   <link rel="stylesheet" href="style.css?v=20260912-shutter1">
-  <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes3">
+  <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes4">
   <link rel="stylesheet" href="chatbot.css?v=20260912-chat1">
 </head>
 <body>
@@ -117,7 +117,7 @@
 
         <div class="hero-node-stage__hud" aria-label="Controles del node canvas">
           <span>NODE CANVAS</span>
-          <span>DRAG / CONNECT · REPEAT TO UNLINK</span>
+          <span>DRAG NODE / DRAG PORT TO CONNECT · REPEAT TO UNLINK</span>
           <button type="button" data-node-reset aria-label="Restaurar posiciones y conexiones">RESET</button>
         </div>
 
@@ -143,7 +143,7 @@
           <span class="hero-node__arrow" aria-hidden="true">↗</span>
         </button>
 
-        <a class="hero-node hero-node--launcher" href="/3deushima/" data-hero-node="launcher" data-launcher-nav="true">
+        <a class="hero-node hero-node--launcher" href="/3deushima/" data-hero-node="launcher" data-launcher-nav="true" draggable="false">
           <span class="hero-node__port hero-node__port--in" data-node-port="in" aria-hidden="true"></span>
           <span class="hero-node__port hero-node__port--out" data-node-port="out" aria-hidden="true"></span>
           <span class="hero-node__index">03</span>
@@ -459,7 +459,7 @@
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="auto"></audio>
 
   <script src="script.js?v=20260912-shutter1"></script>
-  <script src="hero-nodes.js?v=20260913-nodes3" defer></script>
+  <script src="hero-nodes.js?v=20260913-nodes4" defer></script>
   <script src="chatbot.js?v=20260913-chat2" defer></script>
 </body>
 </html>

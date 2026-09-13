@@ -17,16 +17,8 @@
     ['works', 'launcher'],
     ['works', 'about']
   ];
-  const satellitePoints = [
-    [0.34, 0.35], [0.42, 0.29], [0.47, 0.44], [0.59, 0.35],
-    [0.62, 0.63], [0.43, 0.72], [0.31, 0.58], [0.70, 0.47]
-  ];
-  const satelliteEdges = [
-    [0,1],[1,2],[2,0],[1,3],[2,3],[2,4],[3,4],[2,5],[4,5],[5,6],[6,2],[3,7],[7,4]
-  ];
-
   const layoutMode = () => window.matchMedia('(max-width: 640px)').matches ? 'mobile' : 'desktop';
-  const storageKey = () => `deushimaHeroCanvas:${layoutMode()}`;
+  const storageKey = () => `deushimaHeroCanvas:v2:${layoutMode()}`;
   const pairKey = (a, b) => [a, b].sort().join('::');
   const normalizeEdges = edges => {
     const seen = new Set();
@@ -71,8 +63,8 @@
         Object.entries(saved.positions).forEach(([name, pos]) => {
           const node = nodeByName[name];
           if (!node || !Number.isFinite(pos?.x) || !Number.isFinite(pos?.y)) return;
-          node.style.setProperty('--node-x', `${Math.max(0, Math.min(1, pos.x)) * 100}%`);
-          node.style.setProperty('--node-y', `${Math.max(0, Math.min(1, pos.y)) * 100}%`);
+          node.style.setProperty('--node-x', `${pos.x * 100}%`);
+          node.style.setProperty('--node-y', `${pos.y * 100}%`);
         });
       }
       if (saved?.edges) edges = normalizeEdges(saved.edges);
@@ -118,25 +110,45 @@
     };
   }
 
-  function line(x1, y1, x2, y2, soft = false, glintOffset = 0) {
+  function pointOf(element) {
+    if (!element) return null;
+    const stageRect = stage.getBoundingClientRect();
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.left - stageRect.left + rect.width / 2,
+      y: rect.top - stageRect.top + rect.height / 2
+    };
+  }
+
+  function connectionPoints(fromNode, toNode) {
+    const fromCenter = centerOf(fromNode);
+    const toCenter = centerOf(toNode);
+    const targetIsRight = toCenter.x >= fromCenter.x;
+    const fromPort = fromNode.querySelector(targetIsRight ? '.hero-node__port--out' : '.hero-node__port--in');
+    const toPort = toNode.querySelector(targetIsRight ? '.hero-node__port--in' : '.hero-node__port--out');
+    return {
+      from: pointOf(fromPort) || fromCenter,
+      to: pointOf(toPort) || toCenter
+    };
+  }
+
+  function line(x1, y1, x2, y2, glintOffset = 0) {
     const el = document.createElementNS(ns, 'line');
     el.setAttribute('x1', x1.toFixed(2));
     el.setAttribute('y1', y1.toFixed(2));
     el.setAttribute('x2', x2.toFixed(2));
     el.setAttribute('y2', y2.toFixed(2));
-    el.setAttribute('class', `hero-node-line${soft ? ' hero-node-line--soft' : ''}`);
+    el.setAttribute('class', 'hero-node-line');
     svg.appendChild(el);
 
-    if (!soft) {
-      const glint = document.createElementNS(ns, 'line');
-      glint.setAttribute('x1', x1.toFixed(2));
-      glint.setAttribute('y1', y1.toFixed(2));
-      glint.setAttribute('x2', x2.toFixed(2));
-      glint.setAttribute('y2', y2.toFixed(2));
-      glint.setAttribute('class', 'hero-node-line--glint');
-      glint.setAttribute('stroke-dashoffset', glintOffset.toFixed(2));
-      svg.appendChild(glint);
-    }
+    const glint = document.createElementNS(ns, 'line');
+    glint.setAttribute('x1', x1.toFixed(2));
+    glint.setAttribute('y1', y1.toFixed(2));
+    glint.setAttribute('x2', x2.toFixed(2));
+    glint.setAttribute('y2', y2.toFixed(2));
+    glint.setAttribute('class', 'hero-node-line--glint');
+    glint.setAttribute('stroke-dashoffset', glintOffset.toFixed(2));
+    svg.appendChild(glint);
   }
 
   function previewLine(x1, y1, x2, y2) {
@@ -149,15 +161,6 @@
     svg.appendChild(el);
   }
 
-  function dot(x, y, accent = false, radius = 1.7) {
-    const el = document.createElementNS(ns, 'circle');
-    el.setAttribute('cx', x.toFixed(2));
-    el.setAttribute('cy', y.toFixed(2));
-    el.setAttribute('r', radius);
-    el.setAttribute('class', `hero-node-dot${accent ? ' hero-node-dot--accent' : ''}`);
-    svg.appendChild(el);
-  }
-
   function drawMesh(elapsed = 0) {
     const width = stage.clientWidth;
     const height = stage.clientHeight;
@@ -166,41 +169,24 @@
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
     svg.replaceChildren();
 
-    const centers = {};
-    Object.entries(nodeByName).forEach(([name, node]) => {
-      centers[name] = centerOf(node);
-    });
-
     edges.forEach(([from, to], index) => {
-      const a = centers[from];
-      const b = centers[to];
-      if (a && b) line(a.x, a.y, b.x, b.y, false, -(elapsed * 34 + index * 19) % 108);
+      const fromNode = nodeByName[from];
+      const toNode = nodeByName[to];
+      if (!fromNode || !toNode) return;
+      const points = connectionPoints(fromNode, toNode);
+      line(points.from.x, points.from.y, points.to.x, points.to.y, -(elapsed * 34 + index * 19) % 108);
     });
-
-    const satellites = satellitePoints.map(([x, y]) => ({ x: x * width, y: y * height }));
-    satelliteEdges.forEach(([from, to]) => {
-      const a = satellites[from];
-      const b = satellites[to];
-      line(a.x, a.y, b.x, b.y, true, 0);
-    });
-
-    satellites.forEach((point, index) => dot(point.x, point.y, index === 3 || index === 5, index === 3 || index === 5 ? 2.1 : 1.35));
-    Object.values(centers).forEach((point, index) => dot(point.x, point.y, index === 1 || index === 2, 1.9));
 
     if (connectionState) {
-      const source = centers[connectionState.sourceName];
+      const source = pointOf(connectionState.activePort) || centerOf(nodeByName[connectionState.sourceName]);
       if (source) previewLine(source.x, source.y, connectionState.pointerX, connectionState.pointerY);
     }
   }
 
-  function clampNodePosition(node, clientX, clientY, grabOffsetX, grabOffsetY) {
+  function freeNodePosition(clientX, clientY, grabOffsetX, grabOffsetY) {
     const stageRect = stage.getBoundingClientRect();
-    const nodeRect = node.getBoundingClientRect();
-    const halfW = nodeRect.width / 2;
-    const halfH = nodeRect.height / 2;
-    const margin = 5;
-    const x = Math.max(halfW + margin, Math.min(stageRect.width - halfW - margin, clientX - stageRect.left - grabOffsetX));
-    const y = Math.max(halfH + margin, Math.min(stageRect.height - halfH - margin, clientY - stageRect.top - grabOffsetY));
+    const x = clientX - stageRect.left - grabOffsetX;
+    const y = clientY - stageRect.top - grabOffsetY;
     return { x, y, stageRect };
   }
 
@@ -236,7 +222,7 @@
     }
 
     event.preventDefault();
-    const pos = clampNodePosition(dragState.node, event.clientX, event.clientY, dragState.grabOffsetX, dragState.grabOffsetY);
+    const pos = freeNodePosition(event.clientX, event.clientY, dragState.grabOffsetX, dragState.grabOffsetY);
     dragState.node.style.setProperty('--node-x', `${(pos.x / pos.stageRect.width * 100).toFixed(4)}%`);
     dragState.node.style.setProperty('--node-y', `${(pos.y / pos.stageRect.height * 100).toFixed(4)}%`);
   }
@@ -280,8 +266,8 @@
     if (!connectionState || event.pointerId !== connectionState.pointerId) return;
     event.preventDefault();
     const stageRect = stage.getBoundingClientRect();
-    connectionState.pointerX = Math.max(0, Math.min(stageRect.width, event.clientX - stageRect.left));
-    connectionState.pointerY = Math.max(0, Math.min(stageRect.height, event.clientY - stageRect.top));
+    connectionState.pointerX = event.clientX - stageRect.left;
+    connectionState.pointerY = event.clientY - stageRect.top;
     const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-hero-node]');
     const targetName = hit?.dataset?.heroNode;
     connectionState.targetName = targetName && targetName !== connectionState.sourceName ? targetName : null;
@@ -399,6 +385,8 @@
   });
 
   nodes.forEach((node) => {
+    node.draggable = false;
+    node.addEventListener('dragstart', event => event.preventDefault());
     node.addEventListener('pointerdown', (event) => beginNodeDrag(event, node));
     node.addEventListener('click', (event) => {
       if (performance.now() < suppressClickUntil) {
