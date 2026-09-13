@@ -9,9 +9,18 @@
     (() => {
       try {
         const transitionKey = "deushimaShutterTransition";
-        if (sessionStorage.getItem(transitionKey) === "pending") {
+        const splashKey = "deushimaStudioSplashV1";
+        const shutterPending = sessionStorage.getItem(transitionKey) === "pending";
+        const forceSplash = new URLSearchParams(window.location.search).get("intro") === "1";
+        const splashSeen = sessionStorage.getItem(splashKey) === "seen";
+
+        if (shutterPending) {
           sessionStorage.removeItem(transitionKey);
           document.documentElement.classList.add("is-shutter-entering");
+        }
+
+        if (!shutterPending && (forceSplash || !splashSeen)) {
+          document.documentElement.classList.add("has-studio-splash");
         }
       } catch {}
     })();
@@ -23,8 +32,53 @@
   <link rel="stylesheet" href="style.css?v=20260913-mobile4">
   <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes13">
   <link rel="stylesheet" href="chatbot.css?v=20260913-chat3">
+  <link rel="stylesheet" href="splash.css?v=20260913-splash1">
 </head>
 <body>
+  <section class="studio-splash" data-studio-splash data-no-ascii aria-label="Deushima studio introduction" aria-modal="true" role="dialog">
+    <div class="studio-splash__half studio-splash__half--identity" aria-hidden="true"></div>
+    <div class="studio-splash__half studio-splash__half--preview" aria-hidden="true"></div>
+
+    <div class="studio-splash__identity">
+      <article class="studio-splash__card">
+        <div class="studio-splash__art" aria-hidden="true">
+          <span class="studio-splash__art-beam studio-splash__art-beam--one"></span>
+          <span class="studio-splash__art-beam studio-splash__art-beam--two"></span>
+          <span class="studio-splash__art-noise"></span>
+        </div>
+
+        <div class="studio-splash__card-body">
+          <div class="studio-splash__badge" aria-hidden="true">
+            <img src="simbolo%20deushima.svg" alt="">
+          </div>
+
+          <span class="studio-splash__eyebrow">INDEPENDENT VISUAL STUDIO / BA</span>
+          <h1>Deushima</h1>
+          <p>Graphic designer, AI-driven creative and entrepreneur crafting brand campaigns, motion and immersive digital experiences.</p>
+
+          <div class="studio-splash__card-footer">
+            <span>deushima.com.ar</span>
+            <span>2026 / ARG</span>
+          </div>
+
+          <button class="studio-splash__enter" type="button" data-splash-enter>
+            <span>CLICK TO ENTER</span>
+            <span class="studio-splash__enter-arrow" aria-hidden="true">&#8594;</span>
+          </button>
+        </div>
+      </article>
+    </div>
+
+    <div class="studio-splash__loading" aria-hidden="true">
+      <div class="studio-splash__loader">
+        <span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <span class="studio-splash__loading-label">STUDIO / STANDBY</span>
+    </div>
+
+    <div class="studio-splash__split-line" aria-hidden="true"></div>
+  </section>
+
   <div class="preloader" data-preloader>
     <div class="preloader__shutter" aria-hidden="true">
       <span class="preloader__panel preloader__panel--top"></span>
@@ -482,6 +536,7 @@
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="none"></audio>
 
   <script src="script.js?v=20260913-mobileperf1"></script>
+  <script src="splash.js?v=20260913-splash1"></script>
   <script src="hero-nodes.js?v=20260913-nodes13" defer></script>
   <script src="chatbot.js?v=20260913-chat2" defer></script>
 </body>
