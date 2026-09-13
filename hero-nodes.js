@@ -3,6 +3,7 @@
   const svg = stage?.querySelector('[data-hero-node-mesh]');
   const nodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
   const resetButton = stage?.querySelector('[data-node-reset]');
+  const disconnectButton = stage?.querySelector('[data-node-disconnect]');
   if (!stage || !svg || nodes.length < 4) return;
 
   const ns = 'http://www.w3.org/2000/svg';
@@ -41,6 +42,8 @@
   let targetPointerY = 0;
   let dragState = null;
   let connectionState = null;
+  let hoveredEdge = null;
+  let disconnectHover = false;
   let suppressClickUntil = 0;
   let loadedMode = layoutMode();
 
@@ -132,13 +135,97 @@
     };
   }
 
-  function line(x1, y1, x2, y2, glintOffset = 0) {
+  function positionDisconnectButton(points, t = 0.5) {
+    if (!disconnectButton || !points) return;
+    const x = points.from.x + (points.to.x - points.from.x) * t;
+    const y = points.from.y + (points.to.y - points.from.y) * t;
+    disconnectButton.style.setProperty('--disconnect-x', `${x.toFixed(2)}px`);
+    disconnectButton.style.setProperty('--disconnect-y', `${y.toFixed(2)}px`);
+  }
+
+  function showDisconnect(edgeKey, t = 0.5) {
+    if (!disconnectButton || coarsePointer) return;
+    if (hoveredEdge?.key === edgeKey) t = hoveredEdge.t;
+    hoveredEdge = { key: edgeKey, t };
+    disconnectButton.dataset.edgeKey = edgeKey;
+    disconnectButton.classList.add('is-visible');
+    disconnectButton.setAttribute('aria-hidden', 'false');
+    disconnectButton.tabIndex = 0;
+  }
+
+  function hideDisconnect() {
+    if (!disconnectButton || disconnectHover) return;
+    hoveredEdge = null;
+    delete disconnectButton.dataset.edgeKey;
+    disconnectButton.classList.remove('is-visible');
+    disconnectButton.setAttribute('aria-hidden', 'true');
+    disconnectButton.tabIndex = -1;
+  }
+
+  function closestPointOnSegment(px, py, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const lengthSq = dx * dx + dy * dy;
+    if (!lengthSq) return { x: a.x, y: a.y, t: 0, distance: Math.hypot(px - a.x, py - a.y) };
+    const rawT = ((px - a.x) * dx + (py - a.y) * dy) / lengthSq;
+    const t = Math.max(0, Math.min(1, rawT));
+    const x = a.x + dx * t;
+    const y = a.y + dy * t;
+    return { x, y, t, distance: Math.hypot(px - x, py - y) };
+  }
+
+  function updateEdgeProximity(event) {
+    if (coarsePointer || connectionState || dragState?.moved || disconnectHover) return;
+    if (disconnectButton && event.target.closest?.('[data-node-disconnect]')) return;
+    const stageRect = stage.getBoundingClientRect();
+    const px = event.clientX - stageRect.left;
+    const py = event.clientY - stageRect.top;
+    let best = null;
+
+    edges.forEach(([from, to]) => {
+      const fromNode = nodeByName[from];
+      const toNode = nodeByName[to];
+      if (!fromNode || !toNode) return;
+      const points = connectionPoints(fromNode, toNode);
+      const nearest = closestPointOnSegment(px, py, points.from, points.to);
+      if (!best || nearest.distance < best.distance) {
+        best = { ...nearest, key: pairKey(from, to), points };
+      }
+    });
+
+    const threshold = best && hoveredEdge?.key === best.key ? 46 : 18;
+    if (best && best.distance <= threshold) {
+      showDisconnect(best.key, best.t);
+      positionDisconnectButton(best.points, hoveredEdge?.t ?? best.t);
+    } else {
+      hideDisconnect();
+    }
+  }
+
+  function updatePortProximity(event) {
+    if (coarsePointer) return;
+    const radius = 62;
+    nodes.forEach(node => {
+      node.querySelectorAll('[data-node-port]').forEach(port => {
+        const rect = port.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const distance = Math.hypot(event.clientX - cx, event.clientY - cy);
+        const proximity = Math.max(0, Math.min(1, 1 - distance / radius));
+        port.style.setProperty('--port-proximity', proximity.toFixed(3));
+        port.classList.toggle('is-near', proximity > 0.06);
+      });
+    });
+  }
+
+  function line(x1, y1, x2, y2, edgeKey, glintOffset = 0) {
+    const hot = hoveredEdge?.key === edgeKey;
     const el = document.createElementNS(ns, 'line');
     el.setAttribute('x1', x1.toFixed(2));
     el.setAttribute('y1', y1.toFixed(2));
     el.setAttribute('x2', x2.toFixed(2));
     el.setAttribute('y2', y2.toFixed(2));
-    el.setAttribute('class', 'hero-node-line');
+    el.setAttribute('class', `hero-node-line${hot ? ' is-hovered' : ''}`);
     svg.appendChild(el);
 
     const glint = document.createElementNS(ns, 'line');
@@ -146,7 +233,7 @@
     glint.setAttribute('y1', y1.toFixed(2));
     glint.setAttribute('x2', x2.toFixed(2));
     glint.setAttribute('y2', y2.toFixed(2));
-    glint.setAttribute('class', 'hero-node-line--glint');
+    glint.setAttribute('class', `hero-node-line--glint${hot ? ' is-hovered' : ''}`);
     glint.setAttribute('stroke-dashoffset', glintOffset.toFixed(2));
     svg.appendChild(glint);
   }
@@ -174,7 +261,9 @@
       const toNode = nodeByName[to];
       if (!fromNode || !toNode) return;
       const points = connectionPoints(fromNode, toNode);
-      line(points.from.x, points.from.y, points.to.x, points.to.y, -(elapsed * 34 + index * 19) % 108);
+      const edgeKey = pairKey(from, to);
+      line(points.from.x, points.from.y, points.to.x, points.to.y, edgeKey, -(elapsed * 34 + index * 19) % 108);
+      if (hoveredEdge?.key === edgeKey) positionDisconnectButton(points, hoveredEdge.t);
     });
 
     if (connectionState) {
@@ -193,6 +282,7 @@
   function beginNodeDrag(event, node) {
     if (event.button !== undefined && event.button !== 0) return;
     if (event.target.closest('[data-node-port]')) return;
+    hideDisconnect();
     const stageRect = stage.getBoundingClientRect();
     const nodeRect = node.getBoundingClientRect();
     dragState = {
@@ -246,6 +336,7 @@
   function beginConnection(event, port) {
     const node = port.closest('[data-hero-node]');
     if (!node) return;
+    hideDisconnect();
     event.preventDefault();
     event.stopPropagation();
     const stageRect = stage.getBoundingClientRect();
@@ -368,6 +459,8 @@
     }
     moveNodeDrag(event);
     moveConnection(event);
+    updatePortProximity(event);
+    updateEdgeProximity(event);
   }, { passive: false });
 
   window.addEventListener('pointerup', (event) => {
@@ -382,6 +475,12 @@
   window.addEventListener('blur', () => {
     targetPointerX = 0;
     targetPointerY = 0;
+    nodes.forEach(node => node.querySelectorAll('[data-node-port]').forEach(port => {
+      port.classList.remove('is-near');
+      port.style.setProperty('--port-proximity', '0');
+    }));
+    disconnectHover = false;
+    hideDisconnect();
   });
 
   nodes.forEach((node) => {
@@ -419,6 +518,33 @@
   });
 
   resetButton?.addEventListener('click', resetCanvas);
+
+  disconnectButton?.addEventListener('pointerenter', () => {
+    disconnectHover = true;
+  });
+
+  disconnectButton?.addEventListener('pointerleave', () => {
+    disconnectHover = false;
+    hideDisconnect();
+  });
+
+  disconnectButton?.addEventListener('pointerdown', (event) => {
+    event.stopPropagation();
+  });
+
+  disconnectButton?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const key = disconnectButton.dataset.edgeKey;
+    if (!key) return;
+    const index = edges.findIndex(([a, b]) => pairKey(a, b) === key);
+    if (index < 0) return;
+    edges.splice(index, 1);
+    disconnectHover = false;
+    hideDisconnect();
+    saveCanvas();
+    requestAnimationFrame(drawMesh);
+  });
 
   readSavedCanvas();
   scheduleDraw();

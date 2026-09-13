@@ -112,6 +112,14 @@
   transition: stroke 0.35s ease, opacity 0.35s ease;
 }
 
+.hero-node-stage__mesh .hero-node-line.is-hovered {
+  stroke: rgba(176, 132, 255, 0.96);
+  stroke-width: 2.35;
+  filter:
+    drop-shadow(0 0 0.2rem rgba(172, 126, 255, 0.48))
+    drop-shadow(0 0 0.75rem rgba(112, 84, 218, 0.24));
+}
+
 .hero-node-stage__mesh .hero-node-line--glint {
   fill: none;
   stroke: rgba(255, 255, 255, 0.9);
@@ -121,6 +129,15 @@
   vector-effect: non-scaling-stroke;
   filter: drop-shadow(0 0 0.24rem rgba(255, 255, 255, 0.32));
   opacity: 0.58;
+}
+
+.hero-node-stage__mesh .hero-node-line--glint.is-hovered {
+  stroke: rgba(231, 216, 255, 1);
+  stroke-width: 2.55;
+  opacity: 0.9;
+  filter:
+    drop-shadow(0 0 0.24rem rgba(222, 203, 255, 0.62))
+    drop-shadow(0 0 0.85rem rgba(145, 103, 255, 0.32));
 }
 
 .hero-node-stage__mesh .hero-node-line--preview {
@@ -251,6 +268,7 @@
 }
 
 .hero-node__port {
+  --port-proximity: 0;
   position: absolute;
   top: 50%;
   z-index: 4;
@@ -262,8 +280,8 @@
   box-shadow:
     0 0 0 2px rgba(5, 5, 6, 0.78),
     0 0 0.6rem rgba(255, 255, 255, 0.06);
-  opacity: 0.66;
-  transform: translateY(-50%) scale(0.94);
+  opacity: calc(0.66 + (var(--port-proximity) * 0.3));
+  transform: translateY(-50%) scale(calc(0.94 + (var(--port-proximity) * 0.2)));
   cursor: crosshair;
   pointer-events: auto;
   transition:
@@ -303,13 +321,115 @@
 }
 
 .hero-node__port:hover,
-.hero-node__port.is-active {
-  border-color: rgba(255, 255, 255, 0.96);
-  background: rgba(255, 255, 255, 0.12);
+.hero-node__port.is-active,
+.hero-node__port.is-near {
+  border-color: rgba(215, 194, 255, 0.98);
+  background: rgba(177, 132, 255, 0.18);
   box-shadow:
     0 0 0 2px rgba(5, 6, 10, 0.8),
-    0 0 0.9rem rgba(255, 255, 255, 0.24);
+    0 0 0.5rem rgba(211, 191, 255, 0.44),
+    0 0 1.05rem rgba(144, 103, 255, 0.38);
   transform: translateY(-50%) scale(1.14);
+}
+
+.hero-node-disconnect {
+  --disconnect-x: 50%;
+  --disconnect-y: 50%;
+  position: absolute;
+  left: var(--disconnect-x);
+  top: var(--disconnect-y);
+  z-index: 24;
+  display: grid;
+  justify-items: center;
+  gap: 0.28rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #f7f7fb;
+  font: inherit;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 0.55rem)) scale(0.94);
+  transition:
+    opacity 0.16s ease,
+    transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hero-node-disconnect.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, calc(-100% - 0.55rem)) scale(1);
+}
+
+.hero-node-disconnect__tooltip {
+  padding: 0.28rem 0.42rem;
+  border-radius: 0.28rem;
+  background: rgba(20, 20, 24, 0.96);
+  color: rgba(255,255,255,0.86);
+  box-shadow: 0 0.42rem 1.2rem rgba(0,0,0,0.28);
+  font-size: 0.58rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hero-node-disconnect__pill {
+  display: inline-grid;
+  grid-template-columns: 2.15rem 1px 1.7rem;
+  align-items: center;
+  height: 2.05rem;
+  overflow: hidden;
+  border: 1px solid rgba(180, 132, 255, 0.95);
+  border-radius: 0.78rem;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0)),
+    rgba(12, 12, 15, 0.97);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.05),
+    0 0 0 1px rgba(105, 78, 183, 0.18),
+    0 0.5rem 1.6rem rgba(0,0,0,0.36),
+    0 0 1rem rgba(141, 101, 255, 0.12);
+}
+
+.hero-node-disconnect__pill > svg:first-child {
+  width: 1.05rem;
+  height: 1.05rem;
+  justify-self: center;
+  fill: none;
+  stroke: rgba(245, 241, 255, 0.9);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+
+.hero-node-disconnect__pill > span {
+  width: 1px;
+  height: 100%;
+  background: rgba(255,255,255,0.1);
+}
+
+.hero-node-disconnect__chevron {
+  width: 0.68rem;
+  height: 0.45rem;
+  justify-self: center;
+  fill: none;
+  stroke: rgba(255,255,255,0.72);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.hero-node-disconnect:hover .hero-node-disconnect__pill,
+.hero-node-disconnect:focus-visible .hero-node-disconnect__pill {
+  border-color: rgba(203, 168, 255, 1);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.08),
+    0 0 0 1px rgba(129, 94, 219, 0.26),
+    0 0.55rem 1.8rem rgba(0,0,0,0.4),
+    0 0 1.2rem rgba(151, 107, 255, 0.22);
+}
+
+.hero-node-disconnect:focus-visible {
+  outline: none;
 }
 
 .hero-node:hover,
@@ -529,6 +649,10 @@
 }
 
 @media (pointer: coarse) {
+  .hero-node-disconnect {
+    display: none;
+  }
+
   .hero-node:hover,
   .hero-node:focus-visible {
     --node-scale: 1;
@@ -540,6 +664,12 @@
 
   .hero-node__port {
     opacity: 0.82;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero-node-disconnect {
+    display: none;
   }
 }
 

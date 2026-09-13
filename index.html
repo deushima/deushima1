@@ -21,7 +21,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
   <link rel="stylesheet" href="style.css?v=20260912-shutter1">
-  <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes4">
+  <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes5">
   <link rel="stylesheet" href="chatbot.css?v=20260912-chat1">
 </head>
 <body>
@@ -117,9 +117,25 @@
 
         <div class="hero-node-stage__hud" aria-label="Controles del node canvas">
           <span>NODE CANVAS</span>
-          <span>DRAG NODE / DRAG PORT TO CONNECT · REPEAT TO UNLINK</span>
+          <span>DRAG NODE / DRAG PORT TO CONNECT · HOVER LINK TO CUT</span>
           <button type="button" data-node-reset aria-label="Restaurar posiciones y conexiones">RESET</button>
         </div>
+
+        <button class="hero-node-disconnect" type="button" data-node-disconnect aria-hidden="true" tabindex="-1">
+          <span class="hero-node-disconnect__tooltip">Disconnect</span>
+          <span class="hero-node-disconnect__pill" aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <circle cx="6" cy="17" r="2.5"></circle>
+              <circle cx="6" cy="7" r="2.5"></circle>
+              <path d="m8 8.5 9 7.5"></path>
+              <path d="m8 15.5 9-7.5"></path>
+            </svg>
+            <span></span>
+            <svg class="hero-node-disconnect__chevron" viewBox="0 0 12 8" focusable="false">
+              <path d="m1.5 1.5 4.5 4 4.5-4"></path>
+            </svg>
+          </span>
+        </button>
 
         <button class="hero-node hero-node--works" type="button" data-hero-node="works" data-panel-open="works">
           <span class="hero-node__port hero-node__port--in" data-node-port="in" aria-hidden="true"></span>
@@ -459,7 +475,7 @@
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="auto"></audio>
 
   <script src="script.js?v=20260912-shutter1"></script>
-  <script src="hero-nodes.js?v=20260913-nodes4" defer></script>
+  <script src="hero-nodes.js?v=20260913-nodes5" defer></script>
   <script src="chatbot.js?v=20260913-chat2" defer></script>
 </body>
 </html>
