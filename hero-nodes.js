@@ -11,16 +11,18 @@
   const coarsePointer = window.matchMedia('(pointer: coarse)').matches;
   const mobilePerformance = window.matchMedia('(max-width: 760px)').matches;
   const nodeByName = Object.fromEntries(nodes.map(node => [node.dataset.heroNode, node]));
-  const depthByName = { works: 0.55, about: 0.82, launcher: 1, chat: 0.68 };
+  const depthByName = { works: 0.55, about: 0.82, launcher: 1, chat: 0.68, contact: 0.9 };
   const defaultEdges = [
     ['chat', 'launcher'],
     ['launcher', 'about'],
     ['about', 'chat'],
     ['works', 'launcher'],
-    ['works', 'about']
+    ['works', 'about'],
+    ['contact', 'launcher'],
+    ['contact', 'works']
   ];
   const layoutMode = () => window.matchMedia('(max-width: 640px)').matches ? 'mobile' : 'desktop';
-  const storageKey = () => `deushimaHeroCanvas:v3:${layoutMode()}`;
+  const storageKey = () => `deushimaHeroCanvas:v4:${layoutMode()}`;
   const pairKey = (a, b) => [a, b].sort().join('::');
   const normalizeEdges = edges => {
     const seen = new Set();
