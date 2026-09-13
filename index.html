@@ -2,388 +2,299 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Portfolio interactivo de Ivan Rodriguez.">
-  <title>Ivan Rodriguez - Interactive Portfolio</title>
-  <script>
-    (() => {
-      try {
-        const transitionKey = "deushimaShutterTransition";
-        if (sessionStorage.getItem(transitionKey) === "pending") {
-          sessionStorage.removeItem(transitionKey);
-          document.documentElement.classList.add("is-shutter-entering");
-        }
-      } catch {}
-    })();
-  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
+  <meta name="description" content="Deushima — portfolio de Iván Rodríguez. Dirección visual, diseño gráfico, 3D, inteligencia artificial y creative coding.">
+  <title>Deushima — Iván Rodríguez</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Inter+Tight:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260912-shutter1">
+  <link rel="stylesheet" href="rebrand-v2.css?v=20260912a">
 </head>
 <body>
-  <div class="preloader" data-preloader>
-    <div class="preloader__shutter" aria-hidden="true">
-      <span class="preloader__panel preloader__panel--top"></span>
-      <span class="preloader__panel preloader__panel--right"></span>
-      <span class="preloader__panel preloader__panel--bottom"></span>
-      <span class="preloader__panel preloader__panel--left"></span>
-    </div>
-    <img class="preloader__logo" src="deushima.svg.svg" alt="">
-  </div>
-
-  <canvas class="liquid-gradient-bg" data-liquid-gradient aria-hidden="true"></canvas>
-
-  <main id="app" class="site-shell" data-site>
-    <section class="hero" aria-label="Inicio">
-      <video class="hero__video" data-hero-video autoplay muted loop playsinline preload="auto">
-        <source src="Video%20Background/Video%201.mp4" type="video/mp4">
-      </video>
-      <canvas class="ascii-trail" data-ascii-trail aria-hidden="true"></canvas>
-      <div class="cursor-distortion" data-cursor-distortion aria-hidden="true">
-        <span class="cursor-distortion__wake"></span>
-        <span class="cursor-distortion__lens"></span>
-      </div>
-      <div class="hero__grain" aria-hidden="true"></div>
-      <div class="hero__vignette" aria-hidden="true"></div>
-
-      <header class="nav" aria-label="Navegacion principal">
-        <a class="brand-mark intro-fade" href="#" aria-label="Ivan Rodriguez" style="--intro-delay: 0.08s">
-          <img src="simbolo%20deushima.svg" alt="" aria-hidden="true">
-        </a>
-
-        <nav class="directory" aria-label="Directorio">
-          <div class="directory__group intro-fade" style="--intro-delay: 0.26s">
-            <span class="directory__title directory__title--triangle js-type-text">Contacto</span>
-            <a href="https://www.instagram.com/ivanhayunosolo/" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Instagram</a>
-            <a href="https://www.linkedin.com/in/iv%C3%A1n-lautaro-rodriguez-9b4827278/" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Linkedin</a>
-            <a href="mailto:deushima@gmail.com" class="js-wipe-link">Correo</a>
-          </div>
-          <div class="directory__group intro-fade" style="--intro-delay: 0.38s">
-            <span class="directory__title directory__title--dot js-type-text">Portfolio</span>
-            <a href="https://www.behance.net/deushima" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Behance</a>
-            <a href="https://www.instagram.com/deushima" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Instagram</a>
-          </div>
-          <div class="directory__group intro-fade" style="--intro-delay: 0.5s">
-            <span class="directory__title directory__title--square js-type-text">Programas</span>
-            <a href="/3deushima/" class="js-wipe-link" data-launcher-nav="true">Launcher 3D</a>
-            <a href="#works" class="js-wipe-link" data-panel-open="works">Second Developing...</a>
-          </div>
-        </nav>
-
-        <div class="status-panel intro-fade" aria-label="Estado" style="--intro-delay: 0.62s">
-          <time data-current-time>00:00:00</time>
-          <span>ART</span>
-          <span>ARG</span>
-        </div>
-
-        <button class="background-toggle intro-fade" type="button" data-background-toggle aria-pressed="false" style="--intro-delay: 0.68s">
-          <span class="background-toggle__track" aria-hidden="true">
-            <span class="background-toggle__knob"></span>
-          </span>
-          <span class="background-toggle__label">Wave</span>
-        </button>
-
-        <div class="audio-control intro-fade" data-audio-control style="--intro-delay: 0.71s">
-          <button class="audio-control__button" type="button" data-audio-toggle aria-pressed="false" aria-label="Activar sonido">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 9.25h3.5L13 5v14l-5.5-4.25H4z"></path>
-              <path d="M16 8.4c1.1.95 1.7 2.16 1.7 3.6s-.6 2.65-1.7 3.6"></path>
-              <path d="M18.7 6c1.75 1.58 2.65 3.58 2.65 6s-.9 4.42-2.65 6"></path>
-            </svg>
-          </button>
-          <label class="audio-control__volume">
-            <span>Vol</span>
-            <input type="range" min="0" max="1" step="0.01" value="0.22" data-audio-volume aria-label="Volumen">
-          </label>
-        </div>
-
-        <a class="discover-link intro-fade" href="#about" data-panel-open="about" style="--intro-delay: 0.74s">Discover</a>
-      </header>
-
-      <a class="floating-cta cta-reveal" href="/3deushima/" data-launcher-nav="true">
-        <span class="floating-cta__label">Get launch 3D</span>
-        <span class="cta-chevron cta-chevron--triangle" aria-hidden="true">
-          <svg class="cta-chevron__triangle" viewBox="0 0 9 10" focusable="false">
-            <path d="M1.5 1.5 L7 5 L1.5 8.5 Z"></path>
-          </svg>
-        </span>
-      </a>
-
-      <div class="hero__copy">
-        <span class="hero__pin hero__pin--left" aria-hidden="true"></span>
-        <span class="hero__pin hero__pin--right" aria-hidden="true"></span>
-        <h1 class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.2s">Iv&aacute;n Rodr&iacute;guez</span></h1>
-        <p class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.34s">Design, code & AI for interactive experiences.</span></p>
-        <strong class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
-      </div>
-
-      <div class="section-launchers" aria-label="Secciones principales">
-        <button class="section-launcher" type="button" data-panel-open="works" style="--launcher-delay: 0.52s">
-          <span>01 / Works</span>
-        </button>
-        <button class="section-launcher is-featured" type="button" data-panel-open="about" style="--launcher-delay: 0.62s">
-          <span>02 / About me</span>
-        </button>
-        <button class="section-launcher" type="button" data-panel-open="contact" style="--launcher-delay: 0.72s">
-          <span>03 / Contact</span>
-        </button>
-      </div>
-    </section>
-
-    <section class="logo-bridge" aria-label="Archivo de marcas visuales">
-      <div class="logo-bridge__rail" aria-hidden="true">
-        <div class="logo-bridge__track">
-          <div class="logo-bridge__set">
-            <span class="logo-bridge__item"><img src="logos/cropped/01.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/010.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/011.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/013.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/014.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/016.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/02.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/04.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/05.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/06.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/07.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/08.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/09.png" alt=""></span>
-          </div>
-          <div class="logo-bridge__set">
-            <span class="logo-bridge__item"><img src="logos/cropped/01.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/010.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/011.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/013.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/014.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/016.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/02.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/04.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/05.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/06.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/07.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/08.png" alt=""></span>
-            <span class="logo-bridge__item"><img src="logos/cropped/09.png" alt=""></span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="floating-section content-panel" id="about" data-panel="about" aria-label="About me" aria-hidden="true">
-      <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar about"></button>
-      <div class="content-panel__surface content-panel__surface--about">
-        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
-      <div class="floating-section__header">
-        <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">About / visual practice</span></p>
-        <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Art &amp; Visual Director &mdash; Multimedia Designer</span></h2>
-        <div class="floating-section__bio">
-          <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.18s">Desarrollo proyectos visuales y digitales con una mirada enfocada en identidad, detalle y direcci&oacute;n est&eacute;tica.</span></p>
-          <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.26s">Mi trabajo combina dise&ntilde;o, desarrollo web y exploraci&oacute;n creativa con inteligencia artificial, utilizando herramientas como Freepik AI, Higgsfield, entre otras.</span></p>
-          <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.34s">Actualmente trabajo de forma fija en SushiClub y, en paralelo, desarrollo Deushima, mi proyecto personal.</span></p>
-        </div>
-      </div>
-      <div class="floating-stage" data-floating-world aria-label="Lienzo interactivo con piezas flotantes"></div>
-      </div>
-    </section>
-
-    <section class="work-archive content-panel" id="works" data-panel="works" data-work-archive aria-label="Trabajos realizados" aria-hidden="true">
-      <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar works"></button>
-      <div class="content-panel__surface content-panel__surface--works">
-        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
-      <div class="work-archive__meta" aria-hidden="true">
-        <span>DEUSHIMA / 2021-2024</span>
-        <span>PACKAGING / SOCIAL / GARMENTS / 3D</span>
-        <span>NATIONAL &amp; INTERNATIONAL BRANDS</span>
-        <span>VISUAL DIRECTION / MARKETING</span>
-      </div>
-
-      <div class="work-archive__content">
-        <div class="work-archive__intro">
-          <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">Works / commercial practice</span></p>
-          <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Trabajos realizados entre moda, gr&aacute;fica y direcci&oacute;n visual.</span></h2>
-          <div class="work-archive__copy">
-            <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.18s">Trabaj&eacute; con Deushima, mi marca personal de ropa indie, desarrollando prendas, identidad visual y contenido de marca.</span></p>
-            <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.26s">Tambi&eacute;n colabor&eacute; con marcas nacionales e internacionales en packaging, redes sociales, prendas de dise&ntilde;o, modelado 3D y piezas orientadas a marketing.</span></p>
-          </div>
-        </div>
-
-        <div class="work-archive__filmstrip" aria-label="Film strip de trabajos">
-          <button class="work-archive__item is-active" type="button" data-work-trigger data-work-index="0">
-            <video class="work-archive__video is-active" data-work-video muted loop playsinline preload="metadata">
-              <source src="Trabajos/trabajos%20(1).mp4" type="video/mp4">
-            </video>
-            <span>01</span>
-            <strong>Deushima Clothing</strong>
-            <small>Marca personal, prendas, identidad y direcci&oacute;n visual.</small>
-          </button>
-          <button class="work-archive__item" type="button" data-work-trigger data-work-index="1">
-            <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
-              <source src="Trabajos/trabajos%20(2).mp4" type="video/mp4">
-            </video>
-            <span>02</span>
-            <strong>Packaging &amp; Brand Systems</strong>
-            <small>Dise&ntilde;o aplicado para marcas nacionales e internacionales.</small>
-          </button>
-          <button class="work-archive__item" type="button" data-work-trigger data-work-index="2">
-            <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
-              <source src="Trabajos/trabajos%20(3).mp4?v=social-content-3" type="video/mp4">
-            </video>
-            <span>03</span>
-            <strong>Social Content &amp; Marketing</strong>
-            <small>Contenido visual para redes, campa&ntilde;as y lanzamientos.</small>
-          </button>
-          <button class="work-archive__item" type="button" data-work-trigger data-work-index="3">
-            <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
-              <source src="Trabajos/trabajos%20(4).mp4?v=digital-exploration-4" type="video/mp4">
-            </video>
-            <span>04</span>
-            <strong>3D &amp; Digital Exploration</strong>
-            <small>Modelado 3D, assets digitales y exploraci&oacute;n multimedia.</small>
-          </button>
-        </div>
-
-      </div>
-      </div>
-    </section>
-
-    <section class="contact-strip content-panel" id="contact" data-panel="contact" aria-label="Contacto" aria-hidden="true">
-      <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar contacto"></button>
-      <div class="content-panel__surface content-panel__surface--contact">
-        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
-        <div class="contact-strip__intro contact-strip__intro--media">
-          <div class="contact-media">
-            <video class="contact-media__video" autoplay muted loop playsinline preload="metadata">
-              <source src="Video%20Background/Video%20footer.mp4" type="video/mp4">
-              <source src="Video%20Background/Video%20footer.mov" type="video/quicktime">
-            </video>
-            <div class="contact-media__veil" aria-hidden="true"></div>
-            <div class="contact-media__prompt">
-              <span>/PROMPT/</span>
-              <p data-footer-prompt data-full-text="Cinematic CGI hero landscape featuring the official Deushima logo as a massive optical glass sculpture emerging from dark volcanic basalt rocks, warm red-orange ambient atmosphere, glowing internal caustics, sharp luminous edges, dramatic orange backlight and base accent light, deep crimson-to-black gradient background, small volcanic flowers and lichen, ultra realistic Octane/Redshift render, luxury editorial aesthetic, physically accurate glass reflections/refractions, monumental composition, high-detail cinematic photography, 4:5 portrait."></p>
-            </div>
-          </div>
-          <small>deushima@gmail.com / Buenos Aires, ARG</small>
-        </div>
-
-        <form class="contact-form" data-contact-form>
-          <div class="contact-form__intro">
-            <span>Contactame</span>
-            <h2>Start a project / Contact Deushima</h2>
-            <p>Contame tu idea, marca o pieza visual. Respondo desde Buenos Aires, ARG.</p>
-          </div>
-          <label>
-            <span>Nombre</span>
-            <input type="text" name="name" autocomplete="name" placeholder="Tu nombre" required>
-          </label>
-          <label>
-            <span>Email</span>
-            <input type="email" name="email" autocomplete="email" placeholder="tu@email.com" required>
-          </label>
-          <label class="contact-form__message">
-            <span>Mensaje</span>
-            <textarea name="message" rows="5" placeholder="Hola Ivan, quiero desarrollar..." required></textarea>
-          </label>
-          <div class="contact-form__footer">
-            <button type="submit">Send message -&gt;</button>
-            <p data-contact-status aria-live="polite"></p>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <footer class="site-footer" aria-label="Footer">
-      <p>&copy; 2025 Deushima. Todos los derechos reservados.</p>
-      <nav class="site-footer__links" aria-label="Redes y contacto">
-        <a href="#contact" data-panel-open="contact" aria-label="Contacto">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M4 6.5h16v11H4z"></path>
-            <path d="m4.75 7.25 7.25 6 7.25-6"></path>
-          </svg>
-        </a>
-        <a href="https://wa.me/541121801731?text=Hola%20Deushima..." target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M5.2 19.2 6.1 16A7 7 0 1 1 9 18.2z"></path>
-            <path d="M9.2 8.6c.2-.5.4-.5.7-.5h.5c.2 0 .4.1.5.4l.6 1.4c.1.3.1.4-.1.6l-.4.5c-.1.1-.2.3-.1.5.3.7 1.2 1.7 2 2.1.2.1.4.1.5-.1l.6-.7c.2-.2.4-.2.6-.1l1.5.7c.3.1.4.3.4.5 0 .4-.2 1-.5 1.3-.4.4-1.3.6-2.6.2-2.2-.7-4.4-2.8-5.2-5-.4-1-.1-1.6.2-1.9z"></path>
-          </svg>
-        </a>
-        <a href="https://www.behance.net/deushima" target="_blank" rel="noopener noreferrer" aria-label="Behance">
-          <span aria-hidden="true">Be</span>
-        </a>
-        <a href="https://www.instagram.com/deushima" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="5" y="5" width="14" height="14" rx="4"></rect>
-            <circle cx="12" cy="12" r="3.25"></circle>
-            <path d="M16.25 7.8h.01"></path>
-          </svg>
-        </a>
-        <a href="https://www.linkedin.com/in/iv%C3%A1n-lautaro-rodriguez-9b4827278/" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn">
-          <span aria-hidden="true">in</span>
-        </a>
-      </nav>
-    </footer>
-  </main>
-
-  <div class="design-viewer" data-design-viewer aria-hidden="true">
-    <button class="design-viewer__backdrop" type="button" data-design-close aria-label="Cerrar visor" tabindex="-1"></button>
-    <section class="design-viewer__panel" role="dialog" aria-modal="true" aria-labelledby="design-viewer-title" tabindex="-1">
-      <header class="design-viewer__header">
-        <div>
-          <p>Visual detail</p>
-          <h2 id="design-viewer-title" data-design-title>Selected piece</h2>
-        </div>
-        <button class="design-viewer__close" type="button" data-design-close aria-label="Cerrar">&times;</button>
-      </header>
-      <div class="design-viewer__stage" data-design-stage>
-        <img class="design-viewer__image" data-design-image src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="">
-        <span class="design-viewer__corner design-viewer__corner--nw" aria-hidden="true"></span>
-        <span class="design-viewer__corner design-viewer__corner--ne" aria-hidden="true"></span>
-        <span class="design-viewer__corner design-viewer__corner--se" aria-hidden="true"></span>
-        <span class="design-viewer__corner design-viewer__corner--sw" aria-hidden="true"></span>
-      </div>
-      <footer class="design-viewer__footer">
-        <span>SVG / detail view</span>
-        <span data-design-zoom>100%</span>
-      </footer>
-    </section>
-  </div>
-
-  <div class="launcher-pop" data-launcher-pop aria-hidden="true">
-    <button class="launcher-pop__backdrop" type="button" data-launcher-pop-close aria-label="Cerrar aviso" tabindex="-1"></button>
-    <section class="launcher-pop__panel" role="dialog" aria-modal="true" aria-labelledby="launcher-pop-title" tabindex="-1">
-      <button class="launcher-pop__close" type="button" data-launcher-pop-close aria-label="Cerrar">&times;</button>
-      <p class="launcher-pop__kicker">Interactive tool</p>
-      <h2 id="launcher-pop-title">Explore the 3D Launcher.</h2>
-      <p class="launcher-pop__copy">
-        Un espacio experimental para recorrer materiales, escenas y sistemas visuales de Deushima en tiempo real.
-      </p>
-      <a class="launcher-pop__action" href="/3deushima/" data-launcher-nav="true">
-        Open Launcher 3D
-        <span class="cta-chevron cta-chevron--triangle" aria-hidden="true">
-          <svg class="cta-chevron__triangle" viewBox="0 0 9 10" focusable="false">
-            <path d="M1.5 1.5 L7 5 L1.5 8.5 Z"></path>
-          </svg>
-        </span>
-      </a>
-      <span class="launcher-pop__corner launcher-pop__corner--nw" aria-hidden="true"></span>
-      <span class="launcher-pop__corner launcher-pop__corner--ne" aria-hidden="true"></span>
-      <span class="launcher-pop__corner launcher-pop__corner--se" aria-hidden="true"></span>
-      <span class="launcher-pop__corner launcher-pop__corner--sw" aria-hidden="true"></span>
-    </section>
+  <div class="boot" data-boot aria-hidden="true">
+    <div class="boot__scan"></div>
+    <img src="deushima.svg.svg" alt="" class="boot__logo">
+    <span class="boot__meta">DEUSHIMA / VISUAL SYSTEM 02</span>
   </div>
 
   <div class="page-transition" data-page-transition aria-hidden="true">
-    <div class="page-transition__shutter" aria-hidden="true">
-      <span class="page-transition__panel page-transition__panel--top"></span>
-      <span class="page-transition__panel page-transition__panel--right"></span>
-      <span class="page-transition__panel page-transition__panel--bottom"></span>
-      <span class="page-transition__panel page-transition__panel--left"></span>
-    </div>
-    <img class="page-transition__logo" src="deushima.svg.svg" alt="">
+    <span class="page-transition__top"></span>
+    <span class="page-transition__bottom"></span>
+    <span class="page-transition__line"></span>
   </div>
 
-  <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="auto"></audio>
+  <div class="site-grid" aria-hidden="true"></div>
+  <div class="noise" aria-hidden="true"></div>
 
-  <script src="liquid-gradient.js?v=20260512-7"></script>
-  <script src="script.js?v=20260912-shutter1"></script>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Deushima home">
+      <img src="simbolo%20deushima.svg" alt="" aria-hidden="true">
+      <span>DEUSHIMA</span>
+    </a>
+
+    <nav class="topbar__nav" aria-label="Navegación principal">
+      <a href="#work">Work</a>
+      <a href="#about">About</a>
+      <a href="/3deushima/" data-transition-link>3D Lab</a>
+      <a href="#contact">Contact</a>
+    </nav>
+
+    <div class="topbar__status">
+      <span class="status-dot"></span>
+      <span>Available / Buenos Aires</span>
+      <time data-clock>00:00:00</time>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero__ambient hero__ambient--one" aria-hidden="true"></div>
+      <div class="hero__ambient hero__ambient--two" aria-hidden="true"></div>
+
+      <div class="hero__eyebrow mono reveal">
+        <span>Independent visual practice</span>
+        <span>ARG / 2026</span>
+      </div>
+
+      <div class="hero__headline" id="hero-title">
+        <span class="hero__word hero__word--a reveal">DEU</span>
+        <span class="hero__word hero__word--b reveal">SHIMA</span>
+      </div>
+
+      <div class="spatial-menu" data-spatial-menu>
+        <canvas class="spatial-menu__canvas" data-spatial-canvas aria-hidden="true"></canvas>
+        <div class="spatial-menu__core" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+
+        <a class="spatial-node" data-spatial-node="0" href="#work">
+          <span class="spatial-node__index">01</span>
+          <strong>Selected work</strong>
+          <small>Brand / campaigns / motion</small>
+        </a>
+        <a class="spatial-node" data-spatial-node="1" href="#about">
+          <span class="spatial-node__index">02</span>
+          <strong>About me</strong>
+          <small>Practice / profile / tools</small>
+        </a>
+        <a class="spatial-node" data-spatial-node="2" href="/3deushima/" data-transition-link>
+          <span class="spatial-node__index">03</span>
+          <strong>3D launcher</strong>
+          <small>Interactive material lab</small>
+        </a>
+        <button class="spatial-node" data-spatial-node="3" type="button" data-chat-open>
+          <span class="spatial-node__index">04</span>
+          <strong>Ask Deushima</strong>
+          <small>Portfolio assistant</small>
+        </button>
+      </div>
+
+      <div class="hero__lower reveal">
+        <p class="hero__statement">Art direction, graphic design, AI systems and creative code for visual experiences with a strong point of view.</p>
+        <a class="arrow-link" href="#work">View selected work <span>↘</span></a>
+      </div>
+
+      <div class="hero__rail mono" aria-hidden="true">
+        <span>DESIGN</span>
+        <span>ART DIRECTION</span>
+        <span>AI</span>
+        <span>3D</span>
+        <span>CREATIVE CODE</span>
+        <span>VISUAL SYSTEMS</span>
+      </div>
+    </section>
+
+    <section class="work section" id="work" aria-labelledby="work-title">
+      <div class="section__head reveal">
+        <span class="section__number mono">001</span>
+        <p class="section__kicker mono">Selected archive / 2021—2026</p>
+        <h2 id="work-title">Work built across image, brand and digital environments.</h2>
+        <p class="section__intro">Una selección de proyectos donde conviven dirección visual, piezas comerciales, identidad, motion y exploración digital.</p>
+      </div>
+
+      <div class="work-grid">
+        <article class="work-card work-card--wide reveal" data-tilt-card>
+          <div class="work-card__media">
+            <video muted loop playsinline autoplay preload="metadata" poster="Background%20base.png">
+              <source src="Trabajos/trabajos%20(1).mp4" type="video/mp4">
+            </video>
+            <span class="work-card__scan" aria-hidden="true"></span>
+          </div>
+          <div class="work-card__meta mono"><span>01 / DEUSHIMA</span><span>BRAND SYSTEM</span><span>2021—NOW</span></div>
+          <div class="work-card__title"><h3>Deushima Clothing</h3><p>Identidad, prendas, dirección visual y sistema gráfico para una marca independiente.</p></div>
+        </article>
+
+        <article class="work-card reveal" data-tilt-card>
+          <div class="work-card__media">
+            <video muted loop playsinline autoplay preload="metadata">
+              <source src="Trabajos/trabajos%20(2).mp4" type="video/mp4">
+            </video>
+            <span class="work-card__scan" aria-hidden="true"></span>
+          </div>
+          <div class="work-card__meta mono"><span>02 / SYSTEMS</span><span>PACKAGING</span></div>
+          <div class="work-card__title"><h3>Brand & Packaging</h3><p>Sistemas visuales aplicados a producto, retail y comunicación de marca.</p></div>
+        </article>
+
+        <article class="work-card reveal" data-tilt-card>
+          <div class="work-card__media">
+            <video muted loop playsinline autoplay preload="metadata">
+              <source src="Trabajos/trabajos%20(3).mp4" type="video/mp4">
+            </video>
+            <span class="work-card__scan" aria-hidden="true"></span>
+          </div>
+          <div class="work-card__meta mono"><span>03 / CAMPAIGNS</span><span>SOCIAL / MOTION</span></div>
+          <div class="work-card__title"><h3>Campaign Systems</h3><p>Contenido, lanzamientos y campañas con dirección estética consistente entre formatos.</p></div>
+        </article>
+
+        <article class="work-card work-card--wide reveal" data-tilt-card>
+          <div class="work-card__media">
+            <video muted loop playsinline autoplay preload="metadata">
+              <source src="Trabajos/trabajos%20(4).mp4" type="video/mp4">
+            </video>
+            <span class="work-card__scan" aria-hidden="true"></span>
+          </div>
+          <div class="work-card__meta mono"><span>04 / LAB</span><span>3D / GENERATIVE</span><span>ONGOING</span></div>
+          <div class="work-card__title"><h3>Digital Exploration</h3><p>3D, interfaces, IA generativa y experimentos de creative coding.</p></div>
+        </article>
+      </div>
+
+      <a class="oversized-link reveal" href="https://www.behance.net/deushima" target="_blank" rel="noopener noreferrer">
+        <span>FULL ARCHIVE</span><span>↗</span>
+      </a>
+    </section>
+
+    <section class="about section" id="about" aria-labelledby="about-title">
+      <div class="section__head section__head--about reveal">
+        <span class="section__number mono">002</span>
+        <p class="section__kicker mono">About / visual practice</p>
+        <h2 id="about-title">Design with image, systems and technology in the same language.</h2>
+      </div>
+
+      <div class="about-grid">
+        <div class="about-portrait reveal">
+          <div class="about-portrait__frame">
+            <img src="Ivan%20adelante.png" alt="Iván Rodríguez, diseñador gráfico y director visual">
+            <span class="about-portrait__mesh" aria-hidden="true"></span>
+          </div>
+          <div class="about-portrait__meta mono">
+            <span>IVÁN LAUTARO RODRÍGUEZ</span>
+            <span>BUENOS AIRES / ARG</span>
+          </div>
+        </div>
+
+        <div class="about-copy reveal">
+          <p class="about-copy__lead">Soy diseñador gráfico y director visual. Trabajo entre identidad, campañas, 3D, interfaces y herramientas de inteligencia artificial.</p>
+          <p>Me interesa construir imágenes y productos donde el diseño y la tecnología se sientan parte del mismo sistema. La búsqueda está en el detalle: composición, materialidad, ritmo, interacción y una dirección estética clara.</p>
+          <p>Actualmente formo parte del equipo de diseño de SushiClub Argentina y desarrollo Deushima como práctica independiente y laboratorio creativo.</p>
+
+          <div class="about-facts">
+            <div><span class="mono">ROLE</span><strong>Graphic Designer / Visual Director</strong></div>
+            <div><span class="mono">FOCUS</span><strong>Brand, AI, 3D, Creative Code</strong></div>
+            <div><span class="mono">BASE</span><strong>Buenos Aires, Argentina</strong></div>
+            <div><span class="mono">STATUS</span><strong>Open to selected collaborations</strong></div>
+          </div>
+        </div>
+
+        <div class="capability-orbit reveal" data-capability-orbit aria-label="Áreas de trabajo interactivas">
+          <div class="capability-orbit__sphere" aria-hidden="true"></div>
+          <button type="button" data-capability="Visual Direction">Visual Direction</button>
+          <button type="button" data-capability="Graphic Design">Graphic Design</button>
+          <button type="button" data-capability="AI Image Systems">AI Image Systems</button>
+          <button type="button" data-capability="3D & Motion">3D & Motion</button>
+          <button type="button" data-capability="Creative Coding">Creative Coding</button>
+          <button type="button" data-capability="Campaign Design">Campaign Design</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="lab section" id="lab" aria-labelledby="lab-title">
+      <div class="lab__panel reveal">
+        <div class="lab__visual" aria-hidden="true">
+          <div class="wire-cube">
+            <span class="wire-cube__face wire-cube__face--front"></span>
+            <span class="wire-cube__face wire-cube__face--back"></span>
+            <span class="wire-cube__edge wire-cube__edge--a"></span>
+            <span class="wire-cube__edge wire-cube__edge--b"></span>
+            <span class="wire-cube__edge wire-cube__edge--c"></span>
+            <span class="wire-cube__edge wire-cube__edge--d"></span>
+          </div>
+        </div>
+        <div class="lab__copy">
+          <span class="section__number mono">003</span>
+          <p class="section__kicker mono">Interactive laboratory</p>
+          <h2 id="lab-title">3Deushima</h2>
+          <p>Un entorno interactivo para deformar, materializar y explorar la marca en tiempo real. Forma parte del portfolio como experimento vivo, no como una demo aislada.</p>
+          <a class="pill-link" href="/3deushima/" data-transition-link>Launch 3D workspace <span>↗</span></a>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact section" id="contact" aria-labelledby="contact-title">
+      <div class="contact__top reveal">
+        <span class="section__number mono">004</span>
+        <p class="section__kicker mono">Contact / selected projects</p>
+      </div>
+      <h2 id="contact-title" class="contact__headline reveal">Have a project that needs a visual point of view?</h2>
+      <div class="contact__actions reveal">
+        <a href="mailto:deushima@gmail.com">deushima@gmail.com <span>↗</span></a>
+        <button type="button" data-chat-open>Ask the portfolio assistant <span>↗</span></button>
+      </div>
+      <footer class="footer mono">
+        <span>© 2026 DEUSHIMA</span>
+        <div>
+          <a href="https://www.behance.net/deushima" target="_blank" rel="noopener noreferrer">BEHANCE</a>
+          <a href="https://www.instagram.com/deushima" target="_blank" rel="noopener noreferrer">INSTAGRAM</a>
+          <a href="https://www.linkedin.com/in/iv%C3%A1n-lautaro-rodriguez-9b4827278/" target="_blank" rel="noopener noreferrer">LINKEDIN</a>
+        </div>
+        <span>BA / ARG</span>
+      </footer>
+    </section>
+  </main>
+
+  <button class="chat-launcher" type="button" data-chat-open aria-label="Abrir asistente de Deushima">
+    <span class="chat-launcher__pulse"></span>
+    <span>D/AI</span>
+  </button>
+
+  <aside class="chat" data-chat aria-hidden="true" aria-label="Asistente de Deushima">
+    <button class="chat__backdrop" type="button" data-chat-close aria-label="Cerrar chat"></button>
+    <section class="chat__panel" role="dialog" aria-modal="true" aria-labelledby="chat-title">
+      <header class="chat__header">
+        <div>
+          <span class="mono">DEUSHIMA / ASSISTANT</span>
+          <h2 id="chat-title">Ask the portfolio.</h2>
+        </div>
+        <button type="button" data-chat-close aria-label="Cerrar">×</button>
+      </header>
+
+      <div class="chat__feed" data-chat-feed aria-live="polite">
+        <article class="chat-message chat-message--bot">
+          <span class="mono">D/AI</span>
+          <p>Hola. Puedo contarte sobre el perfil de Iván, sus áreas de trabajo, proyectos y cómo contactarlo. ¿Qué querés saber?</p>
+        </article>
+      </div>
+
+      <div class="chat__suggestions" data-chat-suggestions>
+        <button type="button">¿Qué hace Deushima?</button>
+        <button type="button">¿En qué trabaja Iván?</button>
+        <button type="button">Mostrame el 3D Lab</button>
+      </div>
+
+      <form class="chat__form" data-chat-form>
+        <label>
+          <span class="sr-only">Escribí tu pregunta</span>
+          <textarea rows="1" name="message" placeholder="Ask about Deushima..." maxlength="600" required></textarea>
+        </label>
+        <button type="submit" aria-label="Enviar">↗</button>
+      </form>
+      <p class="chat__status mono" data-chat-status>PORTFOLIO KNOWLEDGE / ONLINE</p>
+    </section>
+  </aside>
+
+  <script src="rebrand-v2.js?v=20260912a" defer></script>
 </body>
 </html>
