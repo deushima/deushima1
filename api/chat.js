@@ -1,21 +1,33 @@
-const SYSTEM_PROMPT = `Sos el asistente del portfolio Deushima, la práctica independiente de Iván Lautaro Rodríguez, diseñador gráfico y director visual radicado en Buenos Aires, Argentina.
+const PROFILE_CONTEXT = require('./profile-context');
 
-Datos permitidos:
-- Iván trabaja entre dirección visual, diseño gráfico, campañas, identidad, packaging, social content, motion, 3D, IA generativa y creative coding.
-- Actualmente forma parte del equipo de diseño de SushiClub Argentina y desarrolla Deushima como práctica independiente.
+const SYSTEM_PROMPT = `Sos el asistente oficial del portfolio Deushima. Tu función es explicar con precisión quién es Iván Lautaro Rodríguez / Iván Deushima, cómo trabaja, qué puede aportar a un cliente y cómo integra diseño, IA, automatización y tecnología.
+
+Usá como fuente principal el siguiente expediente profesional. No reduzcas su perfil a una sola herramienta o disciplina y no inventes clientes, cargos, premios, fechas ni proyectos que no estén respaldados por este contexto.
+
+${PROFILE_CONTEXT}
+
+Información adicional del sitio:
 - 3Deushima es un workspace interactivo para explorar materiales, forma, extrusión y comportamiento visual de la marca en tiempo real.
 - Contacto: deushima@gmail.com. También hay enlaces de Behance, Instagram y LinkedIn en el sitio.
 
-Respondé en español rioplatense salvo que el usuario escriba en otro idioma. Sé concreto, profesional y visual. No inventes clientes, cargos, premios, fechas ni proyectos que no figuren arriba. Si te preguntan algo que no sabés, decilo y derivá al contacto.`;
+Estilo de respuesta:
+- Respondé en español rioplatense salvo que el usuario escriba en otro idioma.
+- Sé concreto, profesional y claro, pero podés ampliar cuando la pregunta requiera contexto.
+- Priorizá explicar el criterio y la forma de pensar de Iván por encima de enumerar software.
+- Si preguntan por servicios o colaboración, conectá la respuesta con problemas concretos que Iván puede resolver.
+- Si algo no está respaldado por el expediente o por la información del sitio, decilo en lugar de inventarlo.`;
 
 function localReply(message) {
   const text = String(message || '').toLowerCase();
   if (/3d|launcher|lab|three|webgl/.test(text)) return '3Deushima es un workspace interactivo para explorar materiales, forma, extrusión y comportamiento visual de la marca en tiempo real.';
-  if (/contact|mail|correo|contratar|colabor|proyecto/.test(text)) return 'Podés contactar a Iván en deushima@gmail.com. También tenés Behance, Instagram y LinkedIn desde el sitio.';
-  if (/sushi|trabaja|actualmente|empleo/.test(text)) return 'Actualmente Iván forma parte del equipo de diseño de SushiClub Argentina y desarrolla Deushima en paralelo como práctica independiente.';
-  if (/qué hace|que hace|servicio|especialidad|diseñ|ai|ia|motion|brand|packaging|campaña/.test(text)) return 'Deushima trabaja entre dirección visual, diseño gráfico, campañas, identidad, packaging, social content, motion, 3D, IA generativa y creative coding.';
-  if (/quién|quien|ivan|iván|about|perfil/.test(text)) return 'Iván Lautaro Rodríguez es diseñador gráfico y director visual radicado en Buenos Aires, Argentina. Deushima es su práctica independiente y laboratorio creativo.';
-  return 'Puedo contarte sobre el perfil de Iván, sus áreas de trabajo, 3Deushima, proyectos seleccionados y contacto.';
+  if (/sushi|trabaja|actualmente|empleo/.test(text)) return 'Actualmente Iván trabaja como Diseñador Gráfico en SushiClub Argentina, dentro del equipo creativo, desarrollando campañas, comunicación visual, contenido digital y trabajo de producto. En paralelo desarrolla Deushima como práctica y plataforma creativa propia.';
+  if (/quién|quien|ivan|iván|about|perfil/.test(text)) return 'Iván Deushima es un diseñador gráfico y creativo tecnológico argentino. Actualmente trabaja en SushiClub Argentina y, en paralelo, desarrolla Deushima, donde combina dirección visual, IA, automatización, desarrollo web y creación de herramientas digitales.';
+  if (/program|codigo|código|desarroll|automat|plugin|script/.test(text)) return 'Iván no se define como desarrollador tradicional full-time: usa código y programación asistida por IA para resolver problemas, construir webs, interfaces, plugins, automatizaciones, prototipos y herramientas creativas.';
+  if (/(^|[^a-záéíóúñ])(ia|ai)(?=$|[^a-záéíóúñ])|inteligencia artificial|generativ|kling|krea|magnific|higgsfield/.test(text)) return 'La IA forma parte de su workflow como una capa de producción y dirección, no como un generador automático. Iván combina distintos modelos con Photoshop, video, código y automatización, seleccionando la herramienta según fidelidad, control y resultado.';
+  if (/experiment|conectom|simulac|videojuego|agente|cient|neuronal/.test(text)) return 'Fuera del trabajo profesional, Iván explora IA, simulaciones, interfaces, agentes, videojuegos, visualización de datos y conceptos como conectomas o mapeo neuronal, buscando convertir ideas complejas en experiencias, herramientas o visualizaciones interactivas.';
+  if (/qué hace|que hace|servicio|especialidad|diseñ|motion|brand|packaging|campaña/.test(text)) return 'Iván trabaja en la intersección entre diseño gráfico, dirección visual, campañas, contenido digital, IA generativa, motion, automatización y desarrollo de experiencias. Su diferencial está en diseñar sistemas creativos y workflows, no solamente piezas aisladas.';
+  if (/contact|mail|correo|contratar|colabor|presupuesto/.test(text)) return 'Podés contactar a Iván en deushima@gmail.com. También tenés Behance, Instagram y LinkedIn desde el sitio.';
+  return 'Puedo contarte sobre el perfil de Iván, cómo trabaja, su uso de IA, SushiClub, automatización, desarrollo, 3Deushima, servicios y contacto.';
 }
 
 function extractReply(data) {
@@ -58,7 +70,7 @@ module.exports = async function handler(req, res) {
           { role: 'system', content: SYSTEM_PROMPT },
           { role: 'user', content: message }
         ],
-        max_tokens: 280,
+        max_tokens: 420,
         temperature: 0.55
       })
     });

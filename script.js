@@ -265,6 +265,11 @@ function initVideo() {
 function getHeroVideoSource() {
   if (!HERO_VIDEO_SOURCES.length) return "";
 
+  // Mobile always uses Video 2. Video 1 is intentionally desktop-only.
+  if (compactLayoutQuery.matches && HERO_VIDEO_SOURCES.length > 1) {
+    return HERO_VIDEO_SOURCES[1];
+  }
+
   try {
     const state = JSON.parse(sessionStorage.getItem("deushimaHeroVideoState") || "null");
     const loads = Number.isFinite(state?.loads) ? state.loads : 0;
@@ -1414,8 +1419,6 @@ function initAmbientAudio() {
   if (!ambientAudio || !audioToggle || !audioVolume) return;
 
   const defaultVolume = 0.22;
-  let userPaused = false;
-  let hasTriedAutoplay = false;
 
   const readSavedVolume = () => {
     try {
@@ -1446,6 +1449,7 @@ function initAmbientAudio() {
 
   ambientAudio.volume = readSavedVolume();
   audioVolume.value = String(ambientAudio.volume);
+  ambientAudio.pause();
   syncAudioUi();
 
   audioVolume.addEventListener("input", () => {
@@ -1459,10 +1463,8 @@ function initAmbientAudio() {
 
   audioToggle.addEventListener("click", async () => {
     if (ambientAudio.paused) {
-      userPaused = false;
       await playAudio();
     } else {
-      userPaused = true;
       ambientAudio.pause();
       syncAudioUi();
     }
@@ -1470,19 +1472,6 @@ function initAmbientAudio() {
 
   ambientAudio.addEventListener("play", syncAudioUi);
   ambientAudio.addEventListener("pause", syncAudioUi);
-
-  window.setTimeout(async () => {
-    hasTriedAutoplay = true;
-    await playAudio();
-  }, 720);
-
-  const unlockOnInteraction = async () => {
-    if (!hasTriedAutoplay || userPaused || !ambientAudio.paused) return;
-    await playAudio();
-  };
-
-  window.addEventListener("pointerdown", unlockOnInteraction, { passive: true });
-  window.addEventListener("keydown", unlockOnInteraction);
 }
 
 function releaseMatterScroll(mouse) {
