@@ -139,3 +139,216 @@
     window.setTimeout(() => enterButton.focus({ preventScroll: true }), 280);
   });
 })();
+
+(() => {
+  const mobileQuery = window.matchMedia('(max-width: 760px)');
+  if (!mobileQuery.matches) return;
+
+  const bridge = document.querySelector('.logo-bridge');
+  const rail = bridge?.querySelector('.logo-bridge__rail');
+  const track = bridge?.querySelector('.logo-bridge__track');
+  const firstSet = track?.querySelector('.logo-bridge__set');
+  if (!bridge || !rail || !track || !firstSet) return;
+
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const marqueeDuration = 38;
+  let loopWidth = 0;
+  let position = 0;
+  let baseVelocity = 0;
+  let throwVelocity = 0;
+  let lastFrameTime = performance.now();
+  let rafId = null;
+  let isDragging = false;
+  let activePointerId = null;
+  let dragStartX = 0;
+  let lastDragX = 0;
+  let lastDragTime = 0;
+  let gestureVelocity = 0;
+  let isNearViewport = false;
+
+  bridge.classList.remove('is-mobile-native-scroll');
+  bridge.classList.add('is-physics-ready', 'is-mobile-kinetic');
+
+  rail.scrollLeft = 0;
+  rail.style.overflowX = 'hidden';
+  rail.style.overflowY = 'hidden';
+  rail.style.touchAction = 'pan-y';
+  rail.style.overscrollBehaviorX = 'contain';
+  rail.style.cursor = 'grab';
+
+  track.style.setProperty('animation', 'none', 'important');
+  track.style.setProperty('will-change', 'transform', 'important');
+  track.style.touchAction = 'pan-y';
+  track.style.userSelect = 'none';
+  track.style.webkitUserSelect = 'none';
+
+  track.querySelectorAll('img').forEach((image) => {
+    image.draggable = false;
+    image.style.pointerEvents = 'none';
+    image.addEventListener('dragstart', (event) => event.preventDefault());
+  });
+
+  const wrapPosition = (value) => {
+    if (!loopWidth) return value;
+    let wrapped = value % loopWidth;
+    if (wrapped > 0) wrapped -= loopWidth;
+    return wrapped;
+  };
+
+  const applyPosition = () => {
+    track.style.setProperty(
+      'transform',
+      `translate3d(${wrapPosition(position).toFixed(2)}px, 0, 0)`,
+      'important'
+    );
+  };
+
+  const measure = () => {
+    loopWidth = firstSet.getBoundingClientRect().width;
+    baseVelocity = reducedMotionQuery.matches || !loopWidth ? 0 : -loopWidth / marqueeDuration;
+    position = wrapPosition(position);
+    applyPosition();
+  };
+
+  const shouldAnimate = () => (
+    isNearViewport &&
+    !document.hidden &&
+    !document.body.classList.contains('is-content-panel-open') &&
+    !document.documentElement.classList.contains('has-studio-splash')
+  );
+
+  const requestLoop = () => {
+    if (rafId !== null || !shouldAnimate()) return;
+    lastFrameTime = performance.now();
+    rafId = window.requestAnimationFrame(animate);
+  };
+
+  function animate(now) {
+    rafId = null;
+    if (!shouldAnimate()) return;
+
+    const dt = Math.min(0.05, Math.max(0, (now - lastFrameTime) / 1000));
+    lastFrameTime = now;
+
+    if (!isDragging) {
+      position += (baseVelocity + throwVelocity) * dt;
+      throwVelocity *= Math.pow(0.922, dt * 60);
+      if (Math.abs(throwVelocity) < 3) throwVelocity = 0;
+    }
+
+    position = wrapPosition(position);
+    applyPosition();
+    rafId = window.requestAnimationFrame(animate);
+  }
+
+  const syncLoop = () => {
+    if (shouldAnimate()) {
+      requestLoop();
+      return;
+    }
+
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  };
+
+  const onPointerDown = (event) => {
+    if (!loopWidth || (event.pointerType === 'mouse' && event.button !== 0)) return;
+
+    isDragging = true;
+    activePointerId = event.pointerId;
+    dragStartX = event.clientX;
+    lastDragX = event.clientX;
+    lastDragTime = performance.now();
+    gestureVelocity = 0;
+    throwVelocity = 0;
+    bridge.classList.add('is-dragging');
+    rail.style.cursor = 'grabbing';
+    rail.setPointerCapture?.(event.pointerId);
+    requestLoop();
+  };
+
+  const onPointerMove = (event) => {
+    if (!isDragging || event.pointerId !== activePointerId) return;
+
+    const now = performance.now();
+    const dx = event.clientX - lastDragX;
+    const dt = Math.max(8, now - lastDragTime);
+
+    position += dx;
+    gestureVelocity = gestureVelocity * 0.68 + (dx / dt) * 1000 * 0.32;
+    lastDragX = event.clientX;
+    lastDragTime = now;
+
+    if (Math.abs(event.clientX - dragStartX) > 4) {
+      bridge.dataset.userDragged = 'true';
+    }
+
+    applyPosition();
+  };
+
+  const endDrag = (event) => {
+    if (!isDragging || event.pointerId !== activePointerId) return;
+
+    isDragging = false;
+    activePointerId = null;
+    throwVelocity = Math.max(-2400, Math.min(2400, gestureVelocity));
+    bridge.classList.remove('is-dragging');
+    rail.style.cursor = 'grab';
+    rail.releasePointerCapture?.(event.pointerId);
+    requestLoop();
+  };
+
+  rail.addEventListener('pointerdown', onPointerDown);
+  rail.addEventListener('pointermove', onPointerMove);
+  rail.addEventListener('pointerup', endDrag);
+  rail.addEventListener('pointercancel', endDrag);
+  rail.addEventListener('lostpointercapture', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    activePointerId = null;
+    bridge.classList.remove('is-dragging');
+    rail.style.cursor = 'grab';
+    requestLoop();
+  });
+
+  const visibilityObserver = 'IntersectionObserver' in window
+    ? new IntersectionObserver((entries) => {
+      isNearViewport = Boolean(entries[0]?.isIntersecting);
+      syncLoop();
+    }, { rootMargin: '140px 0px 140px', threshold: 0 })
+    : null;
+
+  if (visibilityObserver) {
+    visibilityObserver.observe(bridge);
+  } else {
+    isNearViewport = true;
+  }
+
+  const classObserver = new MutationObserver(syncLoop);
+  classObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+  const resizeObserver = 'ResizeObserver' in window
+    ? new ResizeObserver(() => {
+      measure();
+      syncLoop();
+    })
+    : null;
+
+  resizeObserver?.observe(firstSet);
+  window.addEventListener('resize', () => {
+    measure();
+    syncLoop();
+  }, { passive: true });
+  document.addEventListener('visibilitychange', syncLoop, { passive: true });
+  reducedMotionQuery.addEventListener?.('change', () => {
+    measure();
+    syncLoop();
+  });
+
+  measure();
+  applyPosition();
+  syncLoop();
+})();
