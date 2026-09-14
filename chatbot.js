@@ -5,9 +5,11 @@
   const feed = chat.querySelector('[data-chat-feed]');
   const form = chat.querySelector('[data-chat-form]');
   const textarea = form?.elements?.message;
+  const submitButton = form?.querySelector('button[type="submit"]');
   const status = chat.querySelector('[data-chat-status]');
   const suggestionButtons = [...chat.querySelectorAll('[data-chat-suggestions] button')];
   let busy = false;
+  let pendingMessage = null;
 
   const presetPrompts = {
     what: '¿Qué hace Deushima?',
@@ -33,8 +35,13 @@
     return `Puedo orientarte sobre el perfil de Iván, sus áreas de trabajo, 3Deushima, proyectos seleccionados y contacto. ${context.work}`;
   };
 
-  const appendMessage = (role, text) => {
+  const scrollFeedToLatest = () => {
     if (!feed) return;
+    feed.scrollTop = feed.scrollHeight;
+  };
+
+  const appendMessage = (role, text) => {
+    if (!feed) return null;
     const article = document.createElement('article');
     article.className = `deu-chat-message deu-chat-message--${role === 'user' ? 'user' : 'bot'}`;
     const tag = document.createElement('span');
@@ -43,7 +50,59 @@
     paragraph.textContent = text;
     article.append(tag, paragraph);
     feed.appendChild(article);
-    feed.scrollTop = feed.scrollHeight;
+    scrollFeedToLatest();
+    return article;
+  };
+
+  const appendProcessingMessage = () => {
+    if (!feed) return null;
+
+    const article = document.createElement('article');
+    article.className = 'deu-chat-message deu-chat-message--bot deu-chat-message--processing';
+    article.setAttribute('role', 'status');
+    article.setAttribute('aria-label', 'D/AI procesando respuesta');
+
+    const tag = document.createElement('span');
+    tag.textContent = 'D/AI';
+
+    const processing = document.createElement('div');
+    processing.className = 'deu-chat-processing';
+
+    const label = document.createElement('span');
+    label.className = 'deu-chat-processing__label';
+    label.textContent = 'Procesando respuesta';
+
+    const dots = document.createElement('span');
+    dots.className = 'deu-chat-processing__dots';
+    dots.setAttribute('aria-hidden', 'true');
+    for (let index = 0; index < 3; index += 1) {
+      dots.appendChild(document.createElement('i'));
+    }
+
+    processing.append(label, dots);
+    article.append(tag, processing);
+    feed.appendChild(article);
+    scrollFeedToLatest();
+    return article;
+  };
+
+  const resolveProcessingMessage = (text) => {
+    if (!pendingMessage || !pendingMessage.isConnected) {
+      pendingMessage = null;
+      appendMessage('bot', text);
+      return;
+    }
+
+    const processing = pendingMessage.querySelector('.deu-chat-processing');
+    const paragraph = document.createElement('p');
+    paragraph.textContent = text;
+    processing?.replaceWith(paragraph);
+    pendingMessage.classList.remove('deu-chat-message--processing');
+    pendingMessage.classList.add('deu-chat-message--resolved');
+    pendingMessage.removeAttribute('role');
+    pendingMessage.removeAttribute('aria-label');
+    pendingMessage = null;
+    scrollFeedToLatest();
   };
 
   const openChat = () => {
@@ -80,10 +139,19 @@
 
   const setBusy = (nextBusy) => {
     busy = nextBusy;
+    chat.classList.toggle('is-busy', nextBusy);
+    chat.setAttribute('aria-busy', String(nextBusy));
+    form?.setAttribute('aria-busy', String(nextBusy));
+
     suggestionButtons.forEach((button) => {
       button.disabled = nextBusy;
       button.setAttribute('aria-disabled', String(nextBusy));
     });
+
+    if (submitButton) {
+      submitButton.disabled = nextBusy;
+      submitButton.setAttribute('aria-disabled', String(nextBusy));
+    }
   };
 
   const sendMessage = async (rawMessage) => {
@@ -97,12 +165,16 @@
       textarea.value = '';
       textarea.style.height = 'auto';
     }
-    if (status) status.textContent = 'D/AI / THINKING…';
+
+    pendingMessage = appendProcessingMessage();
+    if (status) status.textContent = 'D/AI / PROCESANDO…';
 
     try {
       const reply = await askAssistant(message);
-      appendMessage('bot', reply);
+      resolveProcessingMessage(reply);
     } finally {
+      if (pendingMessage?.isConnected) pendingMessage.remove();
+      pendingMessage = null;
       setBusy(false);
       textarea?.focus({ preventScroll: true });
     }
