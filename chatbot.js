@@ -35,6 +35,25 @@
     return `Puedo orientarte sobre el perfil de Iván, sus áreas de trabajo, 3Deushima, proyectos seleccionados y contacto. ${context.work}`;
   };
 
+  const internalMetadataLine = /^(?:user\s+safety|assistant\s+safety|safety(?:\s+(?:status|rating|classification))?|moderation(?:\s+(?:status|result))?)\s*:\s*(?:safe|unsafe|allowed|blocked|pass(?:ed)?|ok|none|low|medium|high|true|false)\s*\.?$/i;
+  const internalMetadataPrefix = /^(?:user\s+safety|assistant\s+safety|safety(?:\s+(?:status|rating|classification))?|moderation(?:\s+(?:status|result))?)\s*:/i;
+
+  const sanitizeRemoteReply = (value) => {
+    if (typeof value !== 'string') return '';
+
+    const cleaned = value
+      .replace(/\r\n?/g, '\n')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line && !internalMetadataLine.test(line))
+      .join('\n')
+      .trim();
+
+    if (!cleaned) return '';
+    if (cleaned.length <= 180 && internalMetadataPrefix.test(cleaned)) return '';
+    return cleaned;
+  };
+
   const scrollFeedToLatest = () => {
     if (!feed) return;
     feed.scrollTop = feed.scrollHeight;
@@ -128,11 +147,18 @@
       });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
-      if (typeof data.reply === 'string' && data.reply.trim()) {
+      const reply = sanitizeRemoteReply(data.reply);
+
+      if (reply) {
         if (status) status.textContent = data.mode === 'ai' ? 'PORTFOLIO KNOWLEDGE / AI ONLINE' : 'PORTFOLIO KNOWLEDGE / LOCAL';
-        return data.reply.trim();
+        return reply;
+      }
+
+      if (typeof data.reply === 'string' && data.reply.trim()) {
+        console.warn('D/AI ignored internal provider metadata instead of rendering it.');
       }
     } catch {}
+
     if (status) status.textContent = 'PORTFOLIO KNOWLEDGE / LOCAL MODE';
     return fallback;
   };
