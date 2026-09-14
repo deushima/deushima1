@@ -156,6 +156,75 @@
   white-space: pre-wrap;
 }
 
+.deu-chat-message--processing {
+  min-width: 168px;
+  border-color: rgba(255,255,255,.11);
+  background: rgba(255,255,255,.032);
+  animation: deuChatProcessingEnter .22s cubic-bezier(.2,.8,.2,1) both;
+}
+
+.deu-chat-processing {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 20px;
+}
+
+.deu-chat-processing__label {
+  color: rgba(255,255,255,.62);
+  font: 400 13px/1.5 "Inter", Arial, sans-serif;
+}
+
+.deu-chat-processing__dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 10px;
+}
+
+.deu-chat-processing__dots i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.78);
+  opacity: .22;
+  transform: translateY(0);
+  animation: deuChatProcessingDot 1.05s ease-in-out infinite;
+}
+
+.deu-chat-processing__dots i:nth-child(2) { animation-delay: .14s; }
+.deu-chat-processing__dots i:nth-child(3) { animation-delay: .28s; }
+
+.deu-chat-message--resolved {
+  animation: deuChatResponseResolve .2s ease-out both;
+}
+
+.deu-chat.is-busy .deu-chat__form > button,
+.deu-chat__form > button:disabled {
+  opacity: .42;
+  cursor: progress;
+}
+
+.deu-chat__suggestions button:disabled {
+  opacity: .32;
+  cursor: progress;
+}
+
+@keyframes deuChatProcessingEnter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes deuChatProcessingDot {
+  0%, 60%, 100% { opacity: .2; transform: translateY(0); }
+  30% { opacity: .95; transform: translateY(-2px); }
+}
+
+@keyframes deuChatResponseResolve {
+  from { opacity: .58; }
+  to { opacity: 1; }
+}
+
 .deu-chat__suggestions {
   display: flex;
   flex-wrap: wrap;
@@ -206,6 +275,7 @@
   color: #080808;
   font-size: 20px;
   cursor: pointer;
+  transition: opacity .18s ease;
 }
 
 .deu-chat__status {
@@ -325,7 +395,14 @@ body.deu-chat-open { overflow: hidden !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .deu-chat-launcher__pulse { animation: none; }
+  .deu-chat-launcher__pulse,
+  .deu-chat-processing__dots i,
+  .deu-chat-message--processing,
+  .deu-chat-message--resolved {
+    animation: none;
+  }
+
+  .deu-chat-processing__dots i { opacity: .62; }
   .deu-chat,
   .deu-chat__panel { transition-duration: .001ms; }
 }
