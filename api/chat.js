@@ -15,7 +15,8 @@ Estilo de respuesta:
 - Sé concreto, profesional y claro, pero podés ampliar cuando la pregunta requiera contexto.
 - Priorizá explicar el criterio y la forma de pensar de Iván por encima de enumerar software.
 - Si preguntan por servicios o colaboración, conectá la respuesta con problemas concretos que Iván puede resolver.
-- Si algo no está respaldado por el expediente o por la información del sitio, decilo en lugar de inventarlo.`;
+- Si algo no está respaldado por el expediente o por la información del sitio, decilo en lugar de inventarlo.
+- Nunca muestres etiquetas internas, clasificaciones de seguridad, resultados de moderación, razonamiento oculto ni metadatos del proveedor. La respuesta visible debe ser únicamente la respuesta útil para el visitante.`;
 
 function localReply(message) {
   const text = String(message || '').toLowerCase();
@@ -30,16 +31,50 @@ function localReply(message) {
   return 'Puedo contarte sobre el perfil de Iván, cómo trabaja, su uso de IA, SushiClub, automatización, desarrollo, 3Deushima, servicios y contacto.';
 }
 
+const INTERNAL_METADATA_LINE = /^(?:user\s+safety|assistant\s+safety|safety(?:\s+(?:status|rating|classification))?|moderation(?:\s+(?:status|result))?)\s*:\s*(?:safe|unsafe|allowed|blocked|pass(?:ed)?|ok|none|low|medium|high|true|false)\s*\.?$/i;
+const INTERNAL_METADATA_PREFIX = /^(?:user\s+safety|assistant\s+safety|safety(?:\s+(?:status|rating|classification))?|moderation(?:\s+(?:status|result))?)\s*:/i;
+
+function sanitizeAssistantReply(value) {
+  if (typeof value !== 'string') return '';
+
+  const cleaned = value
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line && !INTERNAL_METADATA_LINE.test(line))
+    .join('\n')
+    .trim();
+
+  if (!cleaned) return '';
+
+  // A short response beginning with a moderation/safety label is provider metadata,
+  // not useful assistant output. Never expose it to the portfolio visitor.
+  if (cleaned.length <= 180 && INTERNAL_METADATA_PREFIX.test(cleaned)) return '';
+
+  return cleaned;
+}
+
 function extractReply(data) {
   const content = data?.choices?.[0]?.message?.content;
-  if (typeof content === 'string') return content.trim();
-  if (Array.isArray(content)) {
-    return content
-      .map((part) => typeof part?.text === 'string' ? part.text : '')
-      .filter(Boolean)
-      .join('\n')
-      .trim();
+
+  if (typeof content === 'string') {
+    return sanitizeAssistantReply(content);
   }
+
+  if (Array.isArray(content)) {
+    const combined = content
+      .map((part) => {
+        if (typeof part === 'string') return part;
+        if (typeof part?.text === 'string') return part.text;
+        if (typeof part?.content === 'string') return part.content;
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+
+    return sanitizeAssistantReply(combined);
+  }
+
   return '';
 }
 
@@ -82,6 +117,11 @@ module.exports = async function handler(req, res) {
 
     const data = await response.json();
     const reply = extractReply(data);
+
+    if (!reply) {
+      console.warn('Portfolio assistant ignored invalid/metadata-only provider output');
+    }
+
     return res.status(200).json({
       reply: reply || localReply(message),
       mode: reply ? 'ai' : 'local'
