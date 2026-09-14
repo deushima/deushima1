@@ -1,0 +1,53 @@
+name: Build contact mobile video
+
+on:
+  push:
+    paths:
+      - '.github/workflows/build-contact-mobile-video.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  transcode:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build lightweight mobile contact video
+        shell: bash
+        run: |
+          set -euo pipefail
+          INPUT='Video Background/Video footer.mp4'
+          OUTPUT='Video Background/Video footer mobile.mp4'
+          ffmpeg -y -i "$INPUT" \
+            -an \
+            -vf "scale='min(640,iw)':-2,fps=24" \
+            -c:v libx264 \
+            -preset slow \
+            -crf 29 \
+            -profile:v main \
+            -level 3.1 \
+            -pix_fmt yuv420p \
+            -movflags +faststart \
+            "$OUTPUT"
+          ls -lh "$INPUT" "$OUTPUT"
+
+      - name: Commit generated asset
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add 'Video Background/Video footer mobile.mp4'
+          if git diff --cached --quiet; then
+            echo 'Generated asset is already current.'
+            exit 0
+          fi
+          git commit -m 'Add lightweight mobile contact video'
+          git push
