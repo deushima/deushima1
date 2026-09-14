@@ -352,3 +352,29 @@
   applyPosition();
   syncLoop();
 })();
+
+(() => {
+  const style = document.createElement('style');
+  style.textContent = `
+    @media (max-width: 760px) {
+      .hero__pin {
+        display: block !important;
+        width: 0.62rem;
+        height: 0.62rem;
+        color: rgba(255, 255, 255, 0.9);
+        filter: drop-shadow(0 0 0.42rem rgba(255, 255, 255, 0.16));
+      }
+
+      .hero__pin--left {
+        left: -1.05rem;
+        top: 0.52rem;
+      }
+
+      .hero__pin--right {
+        right: -1.05rem;
+        top: 0.52rem;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+})();
