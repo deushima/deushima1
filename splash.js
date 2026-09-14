@@ -378,3 +378,239 @@
   `;
   document.head.appendChild(style);
 })();
+
+(() => {
+  const desktopQuery = window.matchMedia('(min-width: 761px)');
+  if (!desktopQuery.matches) return;
+
+  const bridge = document.querySelector('.logo-bridge');
+  const rail = bridge?.querySelector('.logo-bridge__rail');
+  const legacyTrack = bridge?.querySelector('.logo-bridge__track');
+  if (!bridge || !rail || !legacyTrack) return;
+
+  const track = legacyTrack.cloneNode(true);
+  legacyTrack.replaceWith(track);
+  const firstSet = track.querySelector('.logo-bridge__set');
+  if (!firstSet) return;
+
+  // Stop the legacy desktop carousel loop after detaching its track. This shim
+  // is deliberately short-lived and only filters the old named callback.
+  const nativeRaf = window.requestAnimationFrame.bind(window);
+  let suppressLegacyRaf = true;
+  window.requestAnimationFrame = (callback) => {
+    if (suppressLegacyRaf && callback?.name === 'animateLogoBridge') return 0;
+    return nativeRaf(callback);
+  };
+  window.setTimeout(() => {
+    suppressLegacyRaf = false;
+    window.requestAnimationFrame = nativeRaf;
+  }, 160);
+
+  const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  const marqueeDuration = 38;
+  let loopWidth = 0;
+  let position = 0;
+  let baseVelocity = 0;
+  let throwVelocity = 0;
+  let lastFrameTime = performance.now();
+  let rafId = null;
+  let isDragging = false;
+  let activePointerId = null;
+  let dragStartX = 0;
+  let lastDragX = 0;
+  let lastDragTime = 0;
+  let gestureVelocity = 0;
+  let wasDragged = false;
+  let isNearViewport = false;
+
+  bridge.classList.add('is-physics-ready', 'is-desktop-kinetic');
+  rail.style.overflow = 'hidden';
+  rail.style.touchAction = 'pan-y';
+  rail.style.cursor = 'grab';
+  rail.style.contain = 'paint';
+
+  track.style.setProperty('animation', 'none', 'important');
+  track.style.setProperty('will-change', 'transform', 'important');
+  track.style.setProperty('transform', 'translate3d(0, 0, 0)', 'important');
+  track.style.backfaceVisibility = 'hidden';
+  track.style.webkitBackfaceVisibility = 'hidden';
+  track.style.transformStyle = 'preserve-3d';
+  track.style.touchAction = 'pan-y';
+  track.style.userSelect = 'none';
+  track.style.webkitUserSelect = 'none';
+
+  track.querySelectorAll('img').forEach((image) => {
+    image.draggable = false;
+    image.style.pointerEvents = 'none';
+    image.addEventListener('dragstart', (event) => event.preventDefault());
+  });
+
+  const wrapPosition = (value) => {
+    if (!loopWidth) return value;
+    let wrapped = value % loopWidth;
+    if (wrapped > 0) wrapped -= loopWidth;
+    return wrapped;
+  };
+
+  const applyPosition = () => {
+    track.style.setProperty(
+      'transform',
+      `translate3d(${wrapPosition(position).toFixed(3)}px, 0, 0)`,
+      'important'
+    );
+  };
+
+  const measure = () => {
+    loopWidth = firstSet.getBoundingClientRect().width;
+    baseVelocity = reducedMotionQuery.matches || !loopWidth ? 0 : -loopWidth / marqueeDuration;
+    position = wrapPosition(position);
+    applyPosition();
+  };
+
+  const shouldAnimate = () => (
+    isNearViewport &&
+    !document.hidden &&
+    !document.body.classList.contains('is-content-panel-open') &&
+    !document.documentElement.classList.contains('has-studio-splash')
+  );
+
+  const requestLoop = () => {
+    if (rafId !== null || !shouldAnimate()) return;
+    lastFrameTime = performance.now();
+    rafId = nativeRaf(animateDesktopRail);
+  };
+
+  function animateDesktopRail(now) {
+    rafId = null;
+    if (!shouldAnimate()) return;
+
+    const dt = Math.min(0.033, Math.max(0, (now - lastFrameTime) / 1000));
+    lastFrameTime = now;
+
+    if (!isDragging) {
+      position += (baseVelocity + throwVelocity) * dt;
+      throwVelocity *= Math.pow(0.922, dt * 60);
+      if (Math.abs(throwVelocity) < 3) throwVelocity = 0;
+    }
+
+    position = wrapPosition(position);
+    applyPosition();
+    rafId = nativeRaf(animateDesktopRail);
+  }
+
+  const syncLoop = () => {
+    if (shouldAnimate()) {
+      requestLoop();
+      return;
+    }
+
+    if (rafId !== null) {
+      window.cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  };
+
+  const onPointerDown = (event) => {
+    if (!loopWidth || (event.pointerType === 'mouse' && event.button !== 0)) return;
+
+    isDragging = true;
+    activePointerId = event.pointerId;
+    dragStartX = event.clientX;
+    lastDragX = event.clientX;
+    lastDragTime = performance.now();
+    gestureVelocity = 0;
+    throwVelocity = 0;
+    wasDragged = false;
+    bridge.classList.add('is-dragging');
+    rail.style.cursor = 'grabbing';
+    rail.setPointerCapture?.(event.pointerId);
+  };
+
+  const onPointerMove = (event) => {
+    if (!isDragging || event.pointerId !== activePointerId) return;
+
+    const now = performance.now();
+    const dx = event.clientX - lastDragX;
+    const dt = Math.max(8, now - lastDragTime);
+
+    position += dx;
+    gestureVelocity = gestureVelocity * 0.68 + (dx / dt) * 1000 * 0.32;
+    lastDragX = event.clientX;
+    lastDragTime = now;
+
+    if (Math.abs(event.clientX - dragStartX) > 4) wasDragged = true;
+    applyPosition();
+  };
+
+  const endDrag = (event) => {
+    if (!isDragging || event.pointerId !== activePointerId) return;
+
+    isDragging = false;
+    activePointerId = null;
+    throwVelocity = Math.max(-2400, Math.min(2400, gestureVelocity));
+    bridge.classList.remove('is-dragging');
+    rail.style.cursor = 'grab';
+    rail.releasePointerCapture?.(event.pointerId);
+    requestLoop();
+  };
+
+  const preventClickAfterDrag = (event) => {
+    if (!wasDragged) return;
+    event.preventDefault();
+    event.stopPropagation();
+    wasDragged = false;
+  };
+
+  rail.addEventListener('pointerdown', onPointerDown);
+  rail.addEventListener('pointermove', onPointerMove);
+  rail.addEventListener('pointerup', endDrag);
+  rail.addEventListener('pointercancel', endDrag);
+  rail.addEventListener('lostpointercapture', () => {
+    if (!isDragging) return;
+    isDragging = false;
+    activePointerId = null;
+    bridge.classList.remove('is-dragging');
+    rail.style.cursor = 'grab';
+    requestLoop();
+  });
+  rail.addEventListener('click', preventClickAfterDrag, true);
+
+  const visibilityObserver = 'IntersectionObserver' in window
+    ? new IntersectionObserver((entries) => {
+      isNearViewport = Boolean(entries[0]?.isIntersecting);
+      syncLoop();
+    }, { rootMargin: '160px 0px 160px', threshold: 0 })
+    : null;
+
+  if (visibilityObserver) {
+    visibilityObserver.observe(bridge);
+  } else {
+    isNearViewport = true;
+  }
+
+  const classObserver = new MutationObserver(syncLoop);
+  classObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  classObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+  const resizeObserver = 'ResizeObserver' in window
+    ? new ResizeObserver(() => {
+      measure();
+      syncLoop();
+    })
+    : null;
+
+  resizeObserver?.observe(firstSet);
+  window.addEventListener('resize', () => {
+    measure();
+    syncLoop();
+  }, { passive: true });
+  document.addEventListener('visibilitychange', syncLoop, { passive: true });
+  reducedMotionQuery.addEventListener?.('change', () => {
+    measure();
+    syncLoop();
+  });
+
+  measure();
+  applyPosition();
+  syncLoop();
+})();
