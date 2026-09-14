@@ -134,3 +134,83 @@
     if (event.key === 'Escape' && chat.classList.contains('is-open')) closeChat();
   });
 })();
+
+(() => {
+  const compactQuery = window.matchMedia('(max-width: 760px)');
+  const panel = document.querySelector('[data-panel="contact"]');
+  const video = panel?.querySelector('.contact-media__video');
+  if (!panel || !video) return;
+
+  const mobileSource = 'Video%20Background/Video%20footer%20mobile.mp4';
+  let mobileSourceApplied = false;
+
+  const isOpen = () => panel.classList.contains('is-panel-open') || panel.getAttribute('aria-hidden') === 'false';
+
+  const applyMobileSource = () => {
+    if (!compactQuery.matches) return;
+
+    if (!mobileSourceApplied || video.getAttribute('src') !== mobileSource) {
+      video.src = mobileSource;
+      video.dataset.mobileContactSource = 'true';
+      video.load();
+      mobileSourceApplied = true;
+    }
+
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    const playPromise = video.play();
+    if (playPromise?.catch) playPromise.catch(() => {});
+  };
+
+  const pauseMobileVideo = () => {
+    if (!compactQuery.matches) return;
+    video.pause();
+    video.preload = 'none';
+  };
+
+  const restoreDesktopSource = () => {
+    if (compactQuery.matches || video.dataset.mobileContactSource !== 'true') return;
+    video.pause();
+    video.removeAttribute('src');
+    delete video.dataset.mobileContactSource;
+    mobileSourceApplied = false;
+    video.load();
+    if (isOpen()) {
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      const playPromise = video.play();
+      if (playPromise?.catch) playPromise.catch(() => {});
+    }
+  };
+
+  const sync = () => {
+    if (compactQuery.matches) {
+      if (isOpen()) {
+        requestAnimationFrame(() => {
+          applyMobileSource();
+          window.setTimeout(applyMobileSource, 80);
+        });
+      } else {
+        pauseMobileVideo();
+      }
+      return;
+    }
+
+    restoreDesktopSource();
+  };
+
+  const observer = new MutationObserver(sync);
+  observer.observe(panel, { attributes: true, attributeFilter: ['class', 'aria-hidden'] });
+  compactQuery.addEventListener?.('change', sync);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      video.pause();
+      return;
+    }
+    sync();
+  }, { passive: true });
+
+  sync();
+})();
