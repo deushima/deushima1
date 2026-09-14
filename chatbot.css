@@ -394,6 +394,33 @@ body.deu-chat-open { overflow: hidden !important; }
   }
 }
 
+@media (min-width: 901px) {
+  .hero-node--chat {
+    --node-x: 14%;
+    --node-y: 8%;
+  }
+
+  .hero-node--works {
+    --node-x: 5%;
+    --node-y: 58%;
+  }
+
+  .hero-node--launcher {
+    --node-x: 50%;
+    --node-y: 84%;
+  }
+
+  .hero-node--contact {
+    --node-x: 87%;
+    --node-y: 8%;
+  }
+
+  .hero-node--about {
+    --node-x: 97%;
+    --node-y: 59%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .deu-chat-launcher__pulse,
   .deu-chat-processing__dots i,
