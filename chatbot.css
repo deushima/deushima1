@@ -4,6 +4,11 @@
   box-sizing: border-box;
 }
 
+/* Hero CTA kept in markup for easy future reactivation. */
+.floating-cta {
+  display: none !important;
+}
+
 .deu-chat-launcher {
   position: fixed;
   right: 22px;
