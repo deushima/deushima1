@@ -1,0 +1,38 @@
+@import url("https://use.typekit.net/dzv5uxo.css");
+
+:root {
+  --deu-ui-font: "gazzetta-variable", "Inter", Arial, sans-serif;
+}
+
+html,
+body,
+button,
+input,
+textarea,
+select {
+  font-family: var(--deu-ui-font) !important;
+}
+
+.nav,
+.nav *,
+.hero__copy,
+.hero__copy *,
+.hero-node-stage,
+.hero-node-stage *,
+.content-panel,
+.content-panel *,
+.logo-bridge,
+.logo-bridge *,
+.deu-chat,
+.deu-chat *,
+.studio-splash,
+.studio-splash *,
+.site-footer,
+.site-footer * {
+  font-family: var(--deu-ui-font) !important;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
