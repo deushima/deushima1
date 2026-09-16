@@ -38,3 +38,22 @@ body {
   -webkit-font-smoothing: antialiased;
   text-rendering: geometricPrecision;
 }
+
+/* Temporarily disable the 3D launcher promotional popup without deleting its markup or JS. */
+.launcher-pop,
+.launcher-pop.is-open {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+body.is-launcher-pop-open {
+  overflow: auto !important;
+  overflow-x: hidden !important;
+}
+
+body.is-launcher-pop-open .site-shell {
+  filter: none !important;
+  transform: none !important;
+}
