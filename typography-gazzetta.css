@@ -1,7 +1,7 @@
-@import url("https://use.typekit.net/dzv5uxo.css");
+@import url("https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,100..900;1,100..900&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap");
 
 :root {
-  --deu-ui-font: "navigo", "Inter", Arial, sans-serif;
+  --deu-ui-font: "Inter", Arial, sans-serif;
 }
 
 html,
@@ -11,6 +11,7 @@ input,
 textarea,
 select {
   font-family: var(--deu-ui-font) !important;
+  font-optical-sizing: auto;
 }
 
 .nav,
@@ -30,6 +31,7 @@ select {
 .site-footer,
 .site-footer * {
   font-family: var(--deu-ui-font) !important;
+  font-optical-sizing: auto;
 }
 
 body {
