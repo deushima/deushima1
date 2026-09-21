@@ -171,7 +171,7 @@
     const noiseSec = timbre.noiseMs / 1000;
     const detuneCents = (random() * 2 - 1) * CONFIG.scale.maxDetuneCents;
     const settledFrequency = frequency * centsRatio(detuneCents);
-    const startFrequency = settledFrequency * centsRatio(6);
+    const startFrequency = settledFrequency * centsRatio(4);
     let phase = 0;
     let previousNoise = 0;
 
