@@ -235,6 +235,7 @@
     zCounter = Math.min(9999, zCounter + 1);
     model.z = zCounter;
     model.el.style.zIndex = String(20 + model.z);
+    if (models.has(model.id)) saveState();
   }
 
   function nodeBoundsFor(model) {
@@ -310,6 +311,33 @@
     const node = document.createTextNode(clean);
     range.insertNode(node);
     range.setStartAfter(node);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+  }
+
+  function insertLineBreak(editor) {
+    const range = selectionInside(editor);
+    if (!range) {
+      editor.appendChild(document.createTextNode('\n'));
+      const tail = document.createTextNode('');
+      editor.appendChild(tail);
+      const selection = window.getSelection();
+      const nextRange = document.createRange();
+      nextRange.setStart(tail, 0);
+      nextRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(nextRange);
+      return;
+    }
+
+    range.deleteContents();
+    const lineBreak = document.createTextNode('\n');
+    const tail = document.createTextNode('');
+    range.insertNode(lineBreak);
+    lineBreak.parentNode.insertBefore(tail, lineBreak.nextSibling);
+    range.setStart(tail, 0);
     range.collapse(true);
     const selection = window.getSelection();
     selection.removeAllRanges();
@@ -503,7 +531,7 @@
       if (event.key === 'Enter') {
         event.preventDefault();
         const remaining = MAX_TEXT_LENGTH - model.editor.textContent.length + selectedLength(editor);
-        if (remaining > 0) insertPlainText(editor, '\n');
+        if (remaining > 0) insertLineBreak(editor);
         editor.dispatchEvent(new Event('input', { bubbles: true }));
       }
     }, { capture: true });
