@@ -512,3 +512,102 @@ body.has-site-cursor .studio-splash__enter {
     transition-duration: 0.16s !important;
   }
 }
+
+
+/* Shared logo transition: intro symbol -> header wordmark */
+html.has-studio-splash .brand-mark {
+  opacity: 0 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+html.is-shared-logo-landed .brand-mark {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.shared-logo-flight {
+  position: fixed;
+  inset: 0;
+  z-index: 30010;
+  overflow: visible;
+  pointer-events: none;
+  contain: layout style;
+}
+
+.shared-logo-flight__image {
+  display: block;
+  object-fit: contain;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
+.shared-logo-flight__image--source {
+  filter: brightness(0) invert(1);
+}
+
+.shared-logo-flight__image--target {
+  filter: invert(1);
+}
+
+html.is-shared-logo-active .studio-splash.is-entering .studio-splash__card {
+  opacity: 0;
+  transform: none;
+  transition:
+    opacity 0.52s ease,
+    transform 0s linear;
+}
+
+html.is-shared-logo-active .studio-splash.is-entering .studio-splash__half--identity,
+html.is-shared-logo-active .studio-splash.is-entering .studio-splash__half--preview {
+  opacity: 0;
+  transform: none;
+  transition:
+    opacity 0.9s ease,
+    transform 0s linear,
+    -webkit-backdrop-filter 0.9s ease,
+    backdrop-filter 0.9s ease;
+}
+
+html.is-shared-logo-active .studio-splash.is-entering .studio-splash__loading {
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition:
+    opacity 0.42s ease,
+    transform 0s linear;
+}
+
+html.is-shared-logo-active .studio-splash.is-entering .studio-splash__split-line {
+  opacity: 0;
+  transform: none;
+  transition:
+    opacity 0.42s ease,
+    transform 0s linear;
+}
+
+@media (max-width: 760px) {
+  html.is-shared-logo-active .studio-splash.is-entering .studio-splash__loading {
+    transform: translateX(-50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shared-logo-flight {
+    display: none !important;
+  }
+
+  html.is-shared-logo-reduced .studio-splash.is-entering .studio-splash__card,
+  html.is-shared-logo-reduced .studio-splash.is-entering .studio-splash__half--identity,
+  html.is-shared-logo-reduced .studio-splash.is-entering .studio-splash__half--preview,
+  html.is-shared-logo-reduced .studio-splash.is-entering .studio-splash__loading,
+  html.is-shared-logo-reduced .studio-splash.is-entering .studio-splash__split-line {
+    opacity: 0;
+    transform: none !important;
+    transition:
+      opacity 0.16s ease !important,
+      transform 0s linear !important;
+  }
+}
