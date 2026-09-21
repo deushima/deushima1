@@ -154,14 +154,14 @@
         <strong class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
       </div>
 
-      <div class="hero-node-stage" data-hero-node-stage aria-label="Accesos principales">
+      <div class="hero-node-stage" data-hero-node-stage data-sfx-scope="nodes" aria-label="Accesos principales">
         <svg class="hero-node-stage__mesh" data-hero-node-mesh aria-hidden="true"></svg>
 
         <div class="hero-node-stage__hud" aria-label="Controles del node canvas">
-          <button type="button" data-node-reset aria-label="Restaurar posiciones y conexiones">RESET</button>
+          <button type="button" data-node-reset data-sfx="reset" aria-label="Restaurar posiciones y conexiones">RESET</button>
         </div>
 
-        <button class="hero-node-disconnect" type="button" data-node-disconnect aria-hidden="true" tabindex="-1">
+        <button class="hero-node-disconnect" type="button" data-node-disconnect data-sfx="disconnect" aria-hidden="true" tabindex="-1">
           <span class="hero-node-disconnect__tooltip">Disconnect</span>
           <span class="hero-node-disconnect__pill" aria-hidden="true">
             <svg viewBox="0 0 24 24" focusable="false">
@@ -173,9 +173,9 @@
           </span>
         </button>
 
-        <button class="hero-node hero-node--works" type="button" data-hero-node="works" data-panel-open="works">
-          <span class="hero-node__port hero-node__port--in" data-node-port="in" aria-hidden="true"></span>
-          <span class="hero-node__port hero-node__port--out" data-node-port="out" aria-hidden="true"></span>
+        <button class="hero-node hero-node--works" type="button" data-hero-node="works" data-sfx="node" data-sfx-order="1" data-panel-open="works">
+          <span class="hero-node__port hero-node__port--in" data-node-port="in" data-sfx="port" aria-hidden="true"></span>
+          <span class="hero-node__port hero-node__port--out" data-node-port="out" data-sfx="port" aria-hidden="true"></span>
           <span class="hero-node__index">01</span>
           <span class="hero-node__copy">
             <strong>Selected work</strong>
@@ -183,9 +183,9 @@
           </span>
         </button>
 
-        <button class="hero-node hero-node--about" type="button" data-hero-node="about" data-panel-open="about">
-          <span class="hero-node__port hero-node__port--in" data-node-port="in" aria-hidden="true"></span>
-          <span class="hero-node__port hero-node__port--out" data-node-port="out" aria-hidden="true"></span>
+        <button class="hero-node hero-node--about" type="button" data-hero-node="about" data-sfx="node" data-sfx-order="2" data-panel-open="about">
+          <span class="hero-node__port hero-node__port--in" data-node-port="in" data-sfx="port" aria-hidden="true"></span>
+          <span class="hero-node__port hero-node__port--out" data-node-port="out" data-sfx="port" aria-hidden="true"></span>
           <span class="hero-node__index">02</span>
           <span class="hero-node__copy">
             <strong>About me</strong>
@@ -193,9 +193,9 @@
           </span>
         </button>
 
-        <a class="hero-node hero-node--launcher" href="/3deushima/" data-hero-node="launcher" data-launcher-nav="true" draggable="false">
-          <span class="hero-node__port hero-node__port--in" data-node-port="in" aria-hidden="true"></span>
-          <span class="hero-node__port hero-node__port--out" data-node-port="out" aria-hidden="true"></span>
+        <a class="hero-node hero-node--launcher" href="/3deushima/" data-hero-node="launcher" data-sfx="node" data-sfx-order="3" data-launcher-nav="true" draggable="false">
+          <span class="hero-node__port hero-node__port--in" data-node-port="in" data-sfx="port" aria-hidden="true"></span>
+          <span class="hero-node__port hero-node__port--out" data-node-port="out" data-sfx="port" aria-hidden="true"></span>
           <span class="hero-node__index">03</span>
           <span class="hero-node__copy">
             <strong>3D launcher</strong>
@@ -203,9 +203,9 @@
           </span>
         </a>
 
-        <button class="hero-node hero-node--chat" type="button" data-hero-node="chat" data-chat-open>
-          <span class="hero-node__port hero-node__port--in" data-node-port="in" aria-hidden="true"></span>
-          <span class="hero-node__port hero-node__port--out" data-node-port="out" aria-hidden="true"></span>
+        <button class="hero-node hero-node--chat" type="button" data-hero-node="chat" data-sfx="node" data-sfx-order="4" data-chat-open>
+          <span class="hero-node__port hero-node__port--in" data-node-port="in" data-sfx="port" aria-hidden="true"></span>
+          <span class="hero-node__port hero-node__port--out" data-node-port="out" data-sfx="port" aria-hidden="true"></span>
           <span class="hero-node__index">04</span>
           <span class="hero-node__copy">
             <strong>Ask Deushima</strong>
@@ -213,9 +213,9 @@
           </span>
         </button>
 
-        <button class="hero-node hero-node--contact hero-node--featured" type="button" data-hero-node="contact" data-panel-open="contact">
-          <span class="hero-node__port hero-node__port--in" data-node-port="in" aria-hidden="true"></span>
-          <span class="hero-node__port hero-node__port--out" data-node-port="out" aria-hidden="true"></span>
+        <button class="hero-node hero-node--contact hero-node--featured" type="button" data-hero-node="contact" data-sfx="node" data-sfx-order="5" data-panel-open="contact">
+          <span class="hero-node__port hero-node__port--in" data-node-port="in" data-sfx="port" aria-hidden="true"></span>
+          <span class="hero-node__port hero-node__port--out" data-node-port="out" data-sfx="port" aria-hidden="true"></span>
           <span class="hero-node__index">05</span>
           <span class="hero-node__copy">
             <span class="hero-node__status"><span aria-hidden="true"></span>Available</span>
@@ -537,6 +537,7 @@
 
   <script src="script.js?v=20260920-preloader-logo1"></script>
   <script src="splash.js?v=20260920-shared-logo1"></script>
+  <script src="node-sfx.js?v=20260920-sfx1" defer></script>
   <script src="hero-nodes.js?v=20260913-nodes13" defer></script>
   <script src="chatbot.js?v=20260913-chat2" defer></script>
 </body>
