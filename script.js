@@ -2522,6 +2522,18 @@ function closeContentPanel() {
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const aboutCloseDelay = isAboutPanel ? (reducedMotion ? 190 : 430) : 0;
 
+  if (isAboutPanel) {
+    activePanel.classList.remove("is-about-bar-visible");
+    if (activePanel._aboutBarRafA) window.cancelAnimationFrame(activePanel._aboutBarRafA);
+    if (activePanel._aboutBarRafB) window.cancelAnimationFrame(activePanel._aboutBarRafB);
+    if (activePanel._aboutWorldTimer) {
+      window.clearTimeout(activePanel._aboutWorldTimer);
+      activePanel._aboutWorldTimer = 0;
+    }
+    activePanel._aboutBarRafA = 0;
+    activePanel._aboutBarRafB = 0;
+  }
+
   activePanel.classList.remove("is-panel-open");
 
   if (aboutCloseDelay > 0) {
@@ -2570,9 +2582,26 @@ function openContentPanel(panelName) {
   syncPanelMedia(panel, true);
 
   if (panel.dataset.panel === "about") {
-    // Defer the heavier canvas/physics bootstrap until the bottom info bar
-    // has completed its compositor-only entrance.
-    window.setTimeout(ensureFloatingWorld, 460);
+    panel.classList.remove("is-about-bar-visible");
+
+    if (panel._aboutBarRafA) window.cancelAnimationFrame(panel._aboutBarRafA);
+    if (panel._aboutBarRafB) window.cancelAnimationFrame(panel._aboutBarRafB);
+    if (panel._aboutWorldTimer) window.clearTimeout(panel._aboutWorldTimer);
+
+    panel._aboutBarRafA = window.requestAnimationFrame(() => {
+      panel._aboutBarRafB = window.requestAnimationFrame(() => {
+        panel.classList.add("is-about-bar-visible");
+        panel._aboutBarRafA = 0;
+        panel._aboutBarRafB = 0;
+      });
+    });
+
+    // Start the heavier canvas/physics bootstrap only after the bar has
+    // completed its compositor-only entrance.
+    panel._aboutWorldTimer = window.setTimeout(() => {
+      ensureFloatingWorld();
+      panel._aboutWorldTimer = 0;
+    }, 560);
   }
 
   if (panel.dataset.panel === "contact" && typeof window.startFooterPromptTyping === "function") {
