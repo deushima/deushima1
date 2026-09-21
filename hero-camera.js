@@ -616,10 +616,12 @@
 
   document.addEventListener('keydown', event => {
     if (event.code === 'Space' && !event.repeat && !isTextInput(event.target)) {
-      spaceDown = true;
-      hero.classList.add('is-camera-space');
-      if (pointInsideHero(window.innerWidth * 0.5, window.innerHeight * 0.5)) {
-        // Visual cursor state only.
+      const canvasFocused = document.activeElement === stage;
+      const canvasHovered = hero.matches(':hover');
+      if (canvasFocused || canvasHovered) {
+        event.preventDefault();
+        spaceDown = true;
+        hero.classList.add('is-camera-space');
       }
     }
 
