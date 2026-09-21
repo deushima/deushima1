@@ -1970,9 +1970,6 @@
   });
 
   hero.addEventListener('deushima:camera-change', () => {
-    models.forEach(renderModel);
-    drawConnections();
-
     if (dragState?.moved) {
       const model = models.get(dragState.id);
       if (model) {
