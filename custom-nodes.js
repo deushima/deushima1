@@ -1639,6 +1639,11 @@
       ? event.target
       : document.elementFromPoint(event.clientX, event.clientY);
 
+    if (target && isExcludedCanvasTarget(target) && !target.closest('[data-custom-node]')) {
+      closeMenu(false);
+      return;
+    }
+
     const customNodeEl = target?.closest?.('[data-custom-node]');
     if (customNodeEl) {
       const model = models.get(customNodeEl.dataset.customNode);
