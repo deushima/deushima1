@@ -1807,6 +1807,32 @@ function initFloatingMobile(stage) {
     applyCard(card);
   }
 
+  function reflowCards() {
+    const rect = stage.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
+    const edgePadding = Math.min(20, rect.width * 0.05);
+    const minY = Math.min(132, rect.height * 0.16);
+
+    for (const card of cards) {
+      if (card.dragging) continue;
+
+      card.x = clamp(
+        rect.width * card.anchorX - card.width / 2,
+        edgePadding,
+        Math.max(edgePadding, rect.width - card.width - edgePadding)
+      );
+      card.y = clamp(
+        rect.height * card.anchorY - card.height / 2,
+        minY,
+        Math.max(minY, rect.height - card.height - edgePadding)
+      );
+
+      clampCard(card, rect);
+      applyCard(card);
+    }
+  }
+
   function createCard(asset, index) {
     const rect = stage.getBoundingClientRect();
     const baseWidth = asset.mobileWidth || 170;
@@ -1871,7 +1897,13 @@ function initFloatingMobile(stage) {
   window.addEventListener("pointerup", releaseActiveCard);
   window.addEventListener("pointercancel", releaseActiveCard);
 
+  const resizeObserver = typeof ResizeObserver === "function"
+    ? new ResizeObserver(() => reflowCards())
+    : null;
+  resizeObserver?.observe(stage);
+
   return () => {
+    resizeObserver?.disconnect();
     window.removeEventListener("pointermove", moveActiveCard);
     window.removeEventListener("pointerup", releaseActiveCard);
     window.removeEventListener("pointercancel", releaseActiveCard);
@@ -2322,7 +2354,17 @@ function initFloatingWorld() {
     stage.classList.remove("is-grabbing");
   });
 
-  window.addEventListener("resize", resetBounds);
+  function refreshStageBounds() {
+    resetBounds();
+    updateCards();
+  }
+
+  window.addEventListener("resize", refreshStageBounds);
+  const resizeObserver = typeof ResizeObserver === "function"
+    ? new ResizeObserver(() => refreshStageBounds())
+    : null;
+  resizeObserver?.observe(stage);
+
   function animateMatter(now = performance.now()) {
     const delta = clamp(now - lastTick, 1000 / 90, 1000 / 60);
     lastTick = now;
@@ -2336,7 +2378,8 @@ function initFloatingWorld() {
   return () => {
     window.cancelAnimationFrame(frameId);
     Runner.stop(runner);
-    window.removeEventListener("resize", resetBounds);
+    resizeObserver?.disconnect();
+    window.removeEventListener("resize", refreshStageBounds);
     Composite.clear(engine.world);
     Engine.clear(engine);
   };
