@@ -53,6 +53,11 @@
   let touchState = null;
   let spaceDown = false;
   let zoomTimer = 0;
+  let lastPointer = {
+    x: window.innerWidth * 0.5,
+    y: window.innerHeight * 0.5,
+    target: hero
+  };
   let autoPan = {
     active: false,
     clientX: 0,
@@ -476,6 +481,12 @@
     settleBounds();
   }
 
+  document.addEventListener('pointermove', event => {
+    lastPointer.x = event.clientX;
+    lastPointer.y = event.clientY;
+    lastPointer.target = event.target;
+  }, { passive: true, capture: true });
+
   hero.addEventListener('pointerdown', event => {
     if (event.button === 1) {
       startPointerPan(event, 'middle');
@@ -617,8 +628,11 @@
   document.addEventListener('keydown', event => {
     if (event.code === 'Space' && !event.repeat && !isTextInput(event.target)) {
       const canvasFocused = document.activeElement === stage;
-      const canvasHovered = hero.matches(':hover');
-      if (canvasFocused || canvasHovered) {
+      const pointerInCanvas = (
+        pointInsideHero(lastPointer.x, lastPointer.y)
+        && !isFixedUiTarget(lastPointer.target)
+      );
+      if (!isBlocked() && (canvasFocused || pointerInCanvas)) {
         event.preventDefault();
         spaceDown = true;
         hero.classList.add('is-camera-space');
