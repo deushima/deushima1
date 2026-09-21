@@ -5151,7 +5151,7 @@ html.has-hero-copy-reveal
   will-change: transform, opacity;
 }
 
-.content-panel.is-panel-open .about-info-bar {
+.content-panel.is-about-bar-visible .about-info-bar {
   opacity: 1;
   transform: translate3d(0, 0, 0);
 }
