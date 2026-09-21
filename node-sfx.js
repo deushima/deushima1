@@ -1261,12 +1261,17 @@
       return;
     }
 
-    if (event.key.length === 1 || event.key === 'Unidentified') {
+    if (event.key === 'Unidentified') {
+      // En teclados virtuales dejamos que InputEvent sea la fuente de verdad.
+      lastPhysicalKeyAt = 0;
+      lastPhysicalInputKind = '';
+      return;
+    }
+
+    if (event.key.length === 1) {
       lastPhysicalInputKind = 'normal';
-      if (event.key !== 'Unidentified') {
-        unlock();
-        playChatType('normal');
-      }
+      unlock();
+      playChatType('normal');
     }
   }
 
