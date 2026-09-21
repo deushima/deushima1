@@ -158,15 +158,33 @@
 
   function resize() {
     const rect = hero.getBoundingClientRect();
-    width = Math.max(1, Math.round(rect.width));
-    height = Math.max(1, Math.round(rect.height));
-    canvasRectLeft = rect.left;
-    canvasRectTop = rect.top;
-
-    dpr = Math.min(
+    const nextWidth = Math.max(1, Math.round(rect.width));
+    const nextHeight = Math.max(1, Math.round(rect.height));
+    const nextSpacing = isMobile() ? GRID_CONFIG.spacingMobile : GRID_CONFIG.spacingDesktop;
+    const nextDpr = Math.min(
       window.devicePixelRatio || 1,
       isMobile() ? GRID_CONFIG.mobileDprMax : GRID_CONFIG.desktopDprMax
     );
+
+    canvasRectLeft = rect.left;
+    canvasRectTop = rect.top;
+
+    const geometryChanged = (
+      width !== nextWidth
+      || height !== nextHeight
+      || spacing !== nextSpacing
+      || dpr !== nextDpr
+    );
+
+    if (!geometryChanged) {
+      updateNodeRects();
+      return;
+    }
+
+    width = nextWidth;
+    height = nextHeight;
+    spacing = nextSpacing;
+    dpr = nextDpr;
 
     const pixelWidth = Math.max(1, Math.round(width * dpr));
     const pixelHeight = Math.max(1, Math.round(height * dpr));
@@ -496,6 +514,7 @@
 
     if (isReducedMotion()) {
       stage.classList.add('is-grid-nodes-visible');
+      stage.classList.remove('is-grid-intro-active');
     } else {
       nodeRevealTimer = window.setTimeout(() => {
         stage.classList.add('is-grid-nodes-visible');
@@ -564,14 +583,13 @@
 
   const resizeObserver = new ResizeObserver(() => resize());
   resizeObserver.observe(hero);
-  resizeObserver.observe(stage);
-  nodes.forEach((node) => resizeObserver.observe(node));
 
   reducedMotionQuery.addEventListener?.('change', () => {
     window.clearTimeout(nodeRevealTimer);
     if (isReducedMotion()) {
       introComplete = true;
       stage.classList.add('is-grid-nodes-visible');
+      stage.classList.remove('is-grid-intro-active');
       stage.style.setProperty('--line-draw-progress', '1');
     }
     resize();
