@@ -5405,3 +5405,262 @@ html.has-hero-copy-reveal
     background: #030303;
   }
 }
+
+
+/* Node workspace header harmonization — 2026-09-21 */
+.hero--node-canvas .nav {
+  font-family: "Inter", sans-serif;
+}
+
+.hero--node-canvas .directory__group {
+  gap: 0.12rem;
+  font-size: 0.84375rem;
+  font-weight: 400;
+  line-height: 1.12;
+}
+
+.hero--node-canvas .directory__title {
+  gap: 0.32rem;
+  margin-bottom: 0.08rem;
+  color: rgba(255, 255, 255, 0.96);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+
+.hero--node-canvas .directory__title::before {
+  width: 0.42rem;
+  height: 0.42rem;
+  align-self: center;
+  transform: translateY(0.01rem);
+}
+
+.hero--node-canvas .directory a,
+.hero--node-canvas .discover-link {
+  padding-bottom: 0;
+  color: #b5b5ba;
+  font-size: 0.84375rem;
+  font-weight: 400;
+  line-height: 1.16;
+  letter-spacing: 0.01em;
+  text-decoration-line: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(255, 255, 255, 0.35);
+  text-underline-offset: 3px;
+  text-shadow: none;
+  transition:
+    color 0.2s ease,
+    text-decoration-color 0.2s ease;
+}
+
+.hero--node-canvas .directory a::after,
+.hero--node-canvas .discover-link::after {
+  display: none;
+  content: none;
+}
+
+.hero--node-canvas .directory a:hover,
+.hero--node-canvas .directory a:focus-visible,
+.hero--node-canvas .discover-link:hover,
+.hero--node-canvas .discover-link:focus-visible {
+  color: #fff;
+  text-decoration-color: rgba(255, 255, 255, 0.78);
+}
+
+.hero--node-canvas .status-panel {
+  gap: 0.18rem;
+  min-width: 3.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: "Inter", sans-serif;
+  font-size: 0.68rem;
+  font-weight: 500;
+  line-height: 1.03;
+  letter-spacing: 0.01em;
+}
+
+.hero--node-canvas .status-panel time {
+  padding: 0.16rem 0.26rem;
+  border-color: rgba(255, 255, 255, 0.66);
+  border-radius: 0;
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.hero--node-canvas .discover-link {
+  align-self: start;
+  justify-self: end;
+  font-size: 0.84375rem;
+  font-weight: 500;
+}
+
+.hero--node-canvas .hero__copy {
+  width: min(26rem, calc(100vw - 2rem));
+}
+
+.hero--node-canvas .hero__copy p {
+  max-width: 24.75rem;
+  text-wrap: balance;
+}
+
+.hero--node-canvas .hero__pin--left,
+.hero--node-canvas .hero__pin--right {
+  top: 50%;
+  translate: 0 -50%;
+}
+
+@media (max-width: 1023px) {
+  .hero--node-canvas .directory {
+    align-items: start;
+  }
+
+  .hero--node-canvas .directory__group {
+    font-size: 0.8125rem;
+  }
+
+  .hero--node-canvas .directory__title {
+    font-size: 0.84375rem;
+  }
+
+  .hero--node-canvas .directory a,
+  .hero--node-canvas .discover-link {
+    font-size: 0.8125rem;
+  }
+}
+
+@media (max-width: 900px) {
+  .hero--node-canvas .nav {
+    grid-template-columns: 1fr auto;
+    gap: 0.9rem 1rem;
+    padding:
+      max(0.9rem, env(safe-area-inset-top))
+      clamp(1rem, 4vw, 1.5rem)
+      0;
+  }
+
+  .hero--node-canvas .brand-mark {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: start;
+  }
+
+  .hero--node-canvas .directory {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(0.8rem, 3vw, 1.35rem);
+    justify-self: center;
+    align-items: start;
+    margin-inline: auto;
+  }
+
+  .hero--node-canvas .directory__group {
+    justify-items: center;
+    overflow: visible;
+    text-align: center;
+    font-size: 0.8rem;
+    line-height: 1.16;
+  }
+
+  .hero--node-canvas .directory__title {
+    justify-content: center;
+    gap: 0.28rem;
+    font-size: 0.8125rem;
+  }
+
+  .hero--node-canvas .directory__title::before {
+    width: 0.38rem;
+    height: 0.38rem;
+  }
+
+  .hero--node-canvas .directory a {
+    width: fit-content;
+    max-width: 100%;
+    overflow: visible;
+    font-size: 0.8rem;
+    line-height: 1.18;
+    white-space: nowrap;
+    text-overflow: clip;
+  }
+
+  .hero--node-canvas .status-panel {
+    display: none;
+  }
+
+  .hero--node-canvas .discover-link {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero--node-canvas .nav {
+    grid-template-columns: 1fr;
+    gap: 0.78rem;
+    padding:
+      max(0.85rem, env(safe-area-inset-top))
+      0.9rem
+      0;
+  }
+
+  .hero--node-canvas .brand-mark {
+    grid-column: 1;
+    grid-row: 1;
+    justify-self: center;
+    width: clamp(5.15rem, 23vw, 6.15rem);
+    margin-inline: auto;
+  }
+
+  .hero--node-canvas .directory {
+    grid-column: 1;
+    grid-row: 2;
+    width: min(100%, 23rem);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.58rem;
+    justify-self: center;
+    margin-inline: auto;
+  }
+
+  .hero--node-canvas .directory__group {
+    gap: 0.12rem;
+    min-width: 0;
+    justify-items: center;
+    overflow: visible;
+    font-size: 0.75rem;
+    line-height: 1.16;
+    text-align: center;
+  }
+
+  .hero--node-canvas .directory__title {
+    gap: 0.24rem;
+    margin-bottom: 0.04rem;
+    font-size: 0.775rem;
+    line-height: 1.08;
+  }
+
+  .hero--node-canvas .directory__title::before {
+    width: 0.34rem;
+    height: 0.34rem;
+  }
+
+  .hero--node-canvas .directory a {
+    display: inline;
+    width: fit-content;
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1.18;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .hero--node-canvas .hero__copy {
+    width: min(21rem, calc(100vw - 1.5rem));
+  }
+
+  .hero--node-canvas .hero__copy p {
+    max-width: 20rem;
+    text-wrap: balance;
+  }
+}
