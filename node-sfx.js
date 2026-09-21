@@ -9,7 +9,6 @@
   if (!stage && !chat) return;
 
   const nodes = stage ? [...stage.querySelectorAll('[data-sfx="node"][data-hero-node]')] : [];
-  const resetButton = stage?.querySelector('[data-sfx="reset"]');
   const disconnectButton = stage?.querySelector('[data-sfx="disconnect"]');
   const chatFeed = chat?.querySelector('[data-chat-feed]');
   const chatForm = chat?.querySelector('[data-chat-form]');
@@ -56,11 +55,8 @@
     'is-page-leaving'
   ];
 
-  const initialAudioState = window.DeushimaAudioState || {};
-  let sfxEnabled = initialAudioState.enabled === true;
-  let sfxScale = Number.isFinite(initialAudioState.sfxScale)
-    ? clamp(initialAudioState.sfxScale, 0, 1)
-    : 0;
+  const sfxEnabled = true;
+  const sfxScale = 1;
 
   let dryBus;
   let reverbSend;
@@ -401,7 +397,7 @@
     reverbSend.gain.value = CONFIG.mix.reverb.wet;
     convolver.buffer = makeReverbImpulse();
     reverbWet.gain.value = 1;
-    masterGain.gain.value = sfxEnabled ? CONFIG.masterVolume * sfxScale : 0;
+    masterGain.gain.value = CONFIG.masterVolume;
 
     lowShelf.type = 'lowshelf';
     lowShelf.frequency.value = CONFIG.mix.eq.lowShelfHz;
@@ -603,29 +599,11 @@
     connectionPointer = null;
   }
 
-  function applySfxState(nextState = {}) {
-    const nextEnabled = nextState.enabled === true;
-    const nextScale = Number.isFinite(nextState.sfxScale)
-      ? clamp(nextState.sfxScale, 0, 1)
-      : sfxScale;
-
-    sfxEnabled = nextEnabled;
-    sfxScale = nextScale;
-
-    if (masterGain) {
-      const target = sfxEnabled ? CONFIG.masterVolume * sfxScale : 0;
-      const now = context.currentTime;
-      masterGain.gain.cancelScheduledValues(now);
-      masterGain.gain.setTargetAtTime(target, now, 0.012);
-    }
-
-    if (!sfxEnabled) {
-      stopAllVoices();
-      return;
-    }
-
-    resumeContext();
-    maybePlayAppearance();
+  function applySfxState() {
+    if (!masterGain) return;
+    const now = context.currentTime;
+    masterGain.gain.cancelScheduledValues(now);
+    masterGain.gain.setValueAtTime(CONFIG.masterVolume, now);
   }
 
   function refreshVoiceSlots(nowMs = performance.now()) {
@@ -714,7 +692,7 @@
     bypassMenuGate = false
   } = {}) {
     const sound = CONFIG.sounds[soundName];
-    if (!sound || !sfxEnabled) return false;
+    if (!sound) return false;
 
     if (!bypassMenuGate && MENU_SOUND_NAMES.has(soundName) && isMenuSfxBlocked()) return false;
 
@@ -840,7 +818,7 @@
   }
 
   function runAppearance() {
-    if (!stage || appearancePlayed || appearanceQueued || !stageVisible || !sfxEnabled) return;
+    if (!stage || appearancePlayed || appearanceQueued || !stageVisible) return;
     if (context.state !== 'running') return;
     if (!document.body.classList.contains('is-site-ready')) return;
     if (document.body.classList.contains('is-content-panel-open')) return;
@@ -866,7 +844,7 @@
   }
 
   function maybePlayAppearance() {
-    if (sfxEnabled && context.state === 'running') runAppearance();
+    if (context.state === 'running') runAppearance();
   }
 
   function nodeFromTarget(target) {
@@ -894,15 +872,6 @@
   }
 
   function onNodePointerDown(event) {
-    const reset = event.target.closest?.('[data-sfx="reset"]');
-    if (reset) {
-      playSound('reset', {
-        element: reset,
-        eventTimestamp: event.timeStamp
-      });
-      return;
-    }
-
     const disconnect = event.target.closest?.('[data-sfx="disconnect"]');
     if (disconnect) {
       playSound('disconnect', {
@@ -1519,7 +1488,6 @@
 
   buildSynthLibrary();
   buildAudioGraph();
-  applySfxState(initialAudioState);
   preloadExternalFiles();
   setupNodeSounds();
   setupChatSounds();
@@ -1548,10 +1516,6 @@
     passive: true
   });
 
-  window.addEventListener('deushima:audio-state', (event) => {
-    applySfxState(event.detail || {});
-  });
-
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (context.state === 'running') {
@@ -1576,11 +1540,11 @@
       ...options,
       bypassMenuGate: true
     }),
-    setEnabled: (enabled) => applySfxState({ enabled, sfxScale }),
+    setEnabled: () => true,
     degreeToFrequency,
     degreeToLabel,
-    getEnabled: () => sfxEnabled,
-    getScale: () => sfxScale,
+    getEnabled: () => true,
+    getScale: () => 1,
     getContextState: () => context.state,
     getVoiceCount: () => {
       refreshVoiceSlots();
