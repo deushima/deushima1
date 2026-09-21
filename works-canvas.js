@@ -129,6 +129,12 @@
     targetDy: new Float32Array(0),
     intensity: new Float32Array(0),
     reveal: new Float32Array(0),
+    screenX: new Float32Array(0),
+    screenY: new Float32Array(0),
+    nodeRects: new Float32Array(36),
+    nodeRectCount: 0,
+    dotColor: 'rgba(255,255,255,.22)',
+    lineColor: 'rgba(255,255,255,.045)',
     raf: 0,
     activeUntil: 0,
     introStart: 0,
@@ -898,35 +904,56 @@
     return Math.hypot(ox, oy) + Math.min(Math.max(qx, qy), 0) - radius;
   }
 
-  function gridNodeRects() {
+  function fillGridNodeRects() {
+    let count = 0;
+
+    const writeRect = (cx, cy, halfW, halfH, radius) => {
+      const offset = count * 5;
+      if (offset + 4 >= grid.nodeRects.length) return;
+      grid.nodeRects[offset] = cx;
+      grid.nodeRects[offset + 1] = cy;
+      grid.nodeRects[offset + 2] = halfW;
+      grid.nodeRects[offset + 3] = halfH;
+      grid.nodeRects[offset + 4] = radius;
+      count += 1;
+    };
+
     if (isMobile()) {
       const canvasRect = gridCanvas.getBoundingClientRect();
       const elements = [rootEl, ...categories];
       if (childModel) elements.push(childModel.el);
-      return elements.map((el) => {
+
+      for (const el of elements) {
         const rect = el.getBoundingClientRect();
-        return {
-          cx: rect.left - canvasRect.left + rect.width * 0.5,
-          cy: rect.top - canvasRect.top + rect.height * 0.5,
-          halfW: rect.width * 0.5,
-          halfH: rect.height * 0.5,
-          radius: Math.min(parseFloat(getComputedStyle(el).borderRadius) || 20, rect.width * .5, rect.height * .5)
-        };
-      }).filter((rect) => rect.cy + rect.halfH >= 0 && rect.cy - rect.halfH <= grid.height);
+        const cy = rect.top - canvasRect.top + rect.height * .5;
+        const halfH = rect.height * .5;
+        if (cy + halfH < 0 || cy - halfH > grid.height) continue;
+        writeRect(
+          rect.left - canvasRect.left + rect.width * .5,
+          cy,
+          rect.width * .5,
+          halfH,
+          Math.min(parseFloat(getComputedStyle(el).borderRadius) || 20, rect.width * .5, halfH)
+        );
+      }
+    } else {
+      const all = [rootModel, ...models];
+      if (childModel) all.push(childModel);
+
+      for (const model of all) {
+        const size = getNodeSize(model);
+        writeRect(
+          model.x,
+          model.y,
+          size.width * .5,
+          size.height * .5,
+          Math.min(parseFloat(getComputedStyle(model.el).borderRadius) || 24, size.width * .5, size.height * .5)
+        );
+      }
     }
 
-    const all = [rootModel, ...models];
-    if (childModel) all.push(childModel);
-    return all.map((model) => {
-      const size = getNodeSize(model);
-      return {
-        cx: model.x,
-        cy: model.y,
-        halfW: size.width * .5,
-        halfH: size.height * .5,
-        radius: Math.min(parseFloat(getComputedStyle(model.el).borderRadius) || 24, size.width * .5, size.height * .5)
-      };
-    });
+    grid.nodeRectCount = count;
+    return count;
   }
 
   function buildGrid() {
@@ -979,6 +1006,12 @@
     grid.targetDy = new Float32Array(grid.count);
     grid.intensity = new Float32Array(grid.count);
     grid.reveal = new Float32Array(grid.count);
+    grid.screenX = new Float32Array(grid.count);
+    grid.screenY = new Float32Array(grid.count);
+
+    const computed = getComputedStyle(canvasRoot);
+    grid.dotColor = computed.getPropertyValue('--work-grid-dot').trim() || 'rgba(255,255,255,.22)';
+    grid.lineColor = computed.getPropertyValue('--work-grid-line').trim() || 'rgba(255,255,255,.045)';
 
     points.forEach((point, index) => {
       grid.baseX[index] = point[0];
@@ -1005,7 +1038,7 @@
     }
 
     const ctx = grid.ctx;
-    const rects = gridNodeRects();
+    const rectCount = fillGridNodeRects();
     const mobile = isMobile();
     const cursorEnabled = !tabletLayout.matches && !coarsePointer.matches && grid.pointerInside;
     const introProgress = grid.introComplete ? 1 : clamp((now - grid.introStart) / CONFIG.revealDuration, 0, 1);
@@ -1016,8 +1049,8 @@
 
     ctx.clearRect(0, 0, grid.width, grid.height);
 
-    const screenX = new Float32Array(grid.count);
-    const screenY = new Float32Array(grid.count);
+    const screenX = grid.screenX;
+    const screenY = grid.screenY;
 
     for (let i = 0; i < grid.count; i += 1) {
       const bx = grid.baseX[i];
@@ -1037,15 +1070,16 @@
       let pushX = 0;
       let pushY = 0;
 
-      for (const nodeRect of rects) {
+      for (let rectIndex = 0; rectIndex < rectCount; rectIndex += 1) {
+        const offset = rectIndex * 5;
         const distance = signedDistanceToRoundedRect(
           sampleX,
           sampleY,
-          nodeRect.cx,
-          nodeRect.cy,
-          nodeRect.halfW,
-          nodeRect.halfH,
-          nodeRect.radius
+          grid.nodeRects[offset],
+          grid.nodeRects[offset + 1],
+          grid.nodeRects[offset + 2],
+          grid.nodeRects[offset + 3],
+          grid.nodeRects[offset + 4]
         );
 
         if (distance >= CONFIG.nodeFalloff) continue;
@@ -1127,8 +1161,8 @@
     if (!grid.introComplete && (introProgress >= 1 || reducedMotion.matches)) grid.introComplete = true;
 
     ctx.lineWidth = 1;
-    ctx.strokeStyle = getComputedStyle(canvasRoot).getPropertyValue('--work-grid-line').trim() || 'rgba(255,255,255,.045)';
-    ctx.fillStyle = getComputedStyle(canvasRoot).getPropertyValue('--work-grid-dot').trim() || 'rgba(255,255,255,.22)';
+    ctx.strokeStyle = grid.lineColor;
+    ctx.fillStyle = grid.dotColor;
     ctx.lineCap = 'round';
 
     const spacingScreen = mobile ? grid.spacing : grid.spacing * camera.scale;
