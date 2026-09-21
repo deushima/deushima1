@@ -2,7 +2,6 @@
   const stage = document.querySelector('[data-hero-node-stage]');
   const svg = stage?.querySelector('[data-hero-node-mesh]');
   const nodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
-  const resetButton = stage?.querySelector('[data-node-reset]');
   const disconnectButton = stage?.querySelector('[data-node-disconnect]');
   if (!stage || !svg || nodes.length < 4) return;
 
@@ -58,8 +57,20 @@
     return left.size === right.size && [...left].every(key => right.has(key));
   }
 
+  function isDefaultCanvas() {
+    return edgeSetsMatch(edges, defaultEdges)
+      && nodes.every(node => (
+        !node.style.getPropertyValue('--node-x')
+        && !node.style.getPropertyValue('--node-y')
+      ));
+  }
+
   function setCustomizedState() {
-    stage.classList.toggle('is-customized', !edgeSetsMatch(edges, defaultEdges) || nodes.some(node => node.style.getPropertyValue('--node-x')));
+    const isDefault = isDefaultCanvas();
+    stage.classList.toggle('is-customized', !isDefault);
+    stage.dispatchEvent(new CustomEvent('deushima:hero-layout-change', {
+      detail: { isDefault }
+    }));
   }
 
   function readSavedCanvas() {
@@ -632,7 +643,6 @@
     });
   });
 
-  resetButton?.addEventListener('click', resetCanvas);
 
   disconnectButton?.addEventListener('pointerenter', () => {
     disconnectHover = true;
@@ -659,6 +669,13 @@
     hideDisconnect();
     saveCanvas();
     queueDraw();
+  });
+
+  window.DeushimaHeroNodes = Object.freeze({
+    resetOriginals: resetCanvas,
+    isDefaultLayout: isDefaultCanvas,
+    requestDraw: queueDraw,
+    getOriginalNodes: () => [...nodes]
   });
 
   readSavedCanvas();
