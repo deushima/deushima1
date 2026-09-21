@@ -4,7 +4,7 @@
   const SFX_MASTER_VOLUME = 0.46;
 
   window.DeushimaSFXConfig = Object.freeze({
-    version: '3.0.1',
+    version: '3.0.2',
     sampleRate: 48000,
     masterVolume: SFX_MASTER_VOLUME,
 
@@ -110,12 +110,13 @@
         variants: 2
       }),
       nodeSelect: Object.freeze({
-        role: 'tonal',
-        interaction: 'Pointerdown / selección de nodo',
-        durationMs: 210,
-        gain: 0.96,
+        role: 'percussive',
+        interaction: 'Click de nodo — thock grave fijo',
+        durationMs: 52,
+        gain: 0.84,
+        degree: -6,
         file: null,
-        fileBaseDegree: 0,
+        fileBaseDegree: -6,
         variants: 2
       }),
       nodeOpen: Object.freeze({
