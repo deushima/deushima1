@@ -29,9 +29,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260920-copy-reveal1">
+  <link rel="stylesheet" href="style.css?v=20260921-modal-close1">
   <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes13">
-  <link rel="stylesheet" href="chatbot.css?v=20260913-chat3">
+  <link rel="stylesheet" href="chatbot.css?v=20260921-modal-close1">
   <link rel="stylesheet" href="splash.css?v=20260920-shared-logo1">
 </head>
 <body>
@@ -276,7 +276,7 @@
     <section class="floating-section content-panel" id="about" data-panel="about" aria-label="About me" aria-hidden="true">
       <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar about"></button>
       <div class="content-panel__surface content-panel__surface--about">
-        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
+        <button class="content-panel__close modal-close modal-close--edge" type="button" data-panel-close aria-label="Cerrar"></button>
       <div class="floating-section__header">
         <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">About / visual practice</span></p>
         <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Art &amp; Visual Director &mdash; Multimedia Designer</span></h2>
@@ -293,7 +293,7 @@
     <section class="work-archive content-panel" id="works" data-panel="works" data-work-archive aria-label="Trabajos realizados" aria-hidden="true">
       <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar works"></button>
       <div class="content-panel__surface content-panel__surface--works">
-        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
+        <button class="content-panel__close modal-close modal-close--edge" type="button" data-panel-close aria-label="Cerrar"></button>
       <div class="work-archive__meta" aria-hidden="true">
         <span>DEUSHIMA / 2021-2024</span>
         <span>PACKAGING / SOCIAL / GARMENTS / 3D</span>
@@ -357,7 +357,7 @@
     <section class="contact-strip content-panel" id="contact" data-panel="contact" aria-label="Contacto" aria-hidden="true">
       <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar contacto"></button>
       <div class="content-panel__surface content-panel__surface--contact">
-        <button class="content-panel__close" type="button" data-panel-close aria-label="Cerrar">&times;</button>
+        <button class="content-panel__close modal-close modal-close--edge" type="button" data-panel-close aria-label="Cerrar"></button>
         <div class="contact-strip__intro contact-strip__intro--media">
           <div class="contact-media">
             <video class="contact-media__video" muted loop playsinline preload="none">
@@ -453,7 +453,7 @@
           <p>Visual detail</p>
           <h2 id="design-viewer-title" data-design-title>Selected piece</h2>
         </div>
-        <button class="design-viewer__close" type="button" data-design-close aria-label="Cerrar">&times;</button>
+        <button class="design-viewer__close modal-close modal-close--header" type="button" data-design-close aria-label="Cerrar"></button>
       </header>
       <div class="design-viewer__stage" data-design-stage>
         <img class="design-viewer__image" data-design-image src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="">
@@ -472,7 +472,7 @@
   <div class="launcher-pop" data-launcher-pop aria-hidden="true">
     <button class="launcher-pop__backdrop" type="button" data-launcher-pop-close aria-label="Cerrar aviso" tabindex="-1"></button>
     <section class="launcher-pop__panel" role="dialog" aria-modal="true" aria-labelledby="launcher-pop-title" tabindex="-1">
-      <button class="launcher-pop__close" type="button" data-launcher-pop-close aria-label="Cerrar">&times;</button>
+      <button class="launcher-pop__close modal-close modal-close--edge" type="button" data-launcher-pop-close aria-label="Cerrar"></button>
       <p class="launcher-pop__kicker">Interactive tool</p>
       <h2 id="launcher-pop-title">Explore the 3D Launcher.</h2>
       <p class="launcher-pop__copy">
@@ -516,7 +516,7 @@
           <span class="deu-chat__kicker">DEUSHIMA / ASSISTANT</span>
           <h2 id="deu-chat-title">Ask the portfolio.</h2>
         </div>
-        <button class="deu-chat__close" type="button" data-chat-close aria-label="Cerrar">&times;</button>
+        <button class="deu-chat__close modal-close modal-close--header" type="button" data-chat-close aria-label="Cerrar"></button>
       </header>
 
       <div class="deu-chat__feed" data-chat-feed aria-live="polite">
