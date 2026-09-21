@@ -2,8 +2,12 @@
   const root = document.documentElement;
   const splash = document.querySelector('[data-studio-splash]');
   const enterButton = document.querySelector('[data-splash-enter]');
+  const sharedLogoSource = splash?.querySelector('[data-shared-logo-source]');
+  const sharedLogoTarget = document.querySelector('[data-shared-logo-target]');
   const SPLASH_KEY = 'deushimaStudioSplashV1';
   const FORCE_SPLASH = new URLSearchParams(window.location.search).get('intro') === '1';
+  const SHARED_LOGO_DURATION = 1240;
+  const SHARED_LOGO_EASING = 'cubic-bezier(0.76, 0, 0.24, 1)';
 
   if (!splash || !enterButton || !root.classList.contains('has-studio-splash')) {
     splash?.setAttribute('aria-hidden', 'true');
@@ -12,6 +16,7 @@
 
   let enterRequested = false;
   let entering = false;
+  let flightLayer = null;
 
   splash.setAttribute('aria-hidden', 'false');
 
@@ -86,15 +91,34 @@
 
   const isSiteReady = () => document.body.classList.contains('is-site-ready');
 
+  const cleanupFlight = () => {
+    sharedLogoSource?.style.removeProperty('visibility');
+
+    if (!flightLayer) return;
+    const layer = flightLayer;
+    flightLayer = null;
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => layer.remove());
+    });
+  };
+
   const finish = () => {
     splashVideo?.pause();
     splashVideo?.remove();
     mobileQuery.removeEventListener?.('change', syncLoaderMotion);
     reducedMotionQuery.removeEventListener?.('change', syncLoaderMotion);
 
+    root.classList.add('is-shared-logo-landed');
     splash.classList.add('is-hidden');
     splash.setAttribute('aria-hidden', 'true');
-    root.classList.remove('has-studio-splash', 'is-splash-entering');
+    root.classList.remove(
+      'has-studio-splash',
+      'is-splash-entering',
+      'is-shared-logo-active',
+      'is-shared-logo-reduced'
+    );
+    cleanupFlight();
 
     if (!FORCE_SPLASH) {
       try {
@@ -103,15 +127,162 @@
     }
   };
 
+  const createFlightImage = (image, rect, className) => {
+    const clone = image.cloneNode(false);
+    clone.removeAttribute('data-shared-logo-source');
+    clone.removeAttribute('data-shared-logo-target');
+    clone.removeAttribute('aria-hidden');
+    clone.setAttribute('alt', '');
+    clone.className = className;
+
+    Object.assign(clone.style, {
+      position: 'fixed',
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+      margin: '0',
+      transformOrigin: '50% 50%',
+      pointerEvents: 'none',
+      userSelect: 'none'
+    });
+
+    return clone;
+  };
+
+  const animateSharedLogo = () => {
+    if (
+      !sharedLogoSource ||
+      !sharedLogoTarget ||
+      typeof sharedLogoSource.animate !== 'function' ||
+      reducedMotionQuery.matches
+    ) {
+      return null;
+    }
+
+    const sourceRect = sharedLogoSource.getBoundingClientRect();
+    const targetRect = sharedLogoTarget.getBoundingClientRect();
+
+    if (
+      sourceRect.width <= 0 ||
+      sourceRect.height <= 0 ||
+      targetRect.width <= 0 ||
+      targetRect.height <= 0
+    ) {
+      return null;
+    }
+
+    const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+    const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+    const targetCenterX = targetRect.left + targetRect.width / 2;
+    const targetCenterY = targetRect.top + targetRect.height / 2;
+
+    const deltaX = targetCenterX - sourceCenterX;
+    const deltaY = targetCenterY - sourceCenterY;
+    const scaleX = targetRect.width / sourceRect.width;
+    const scaleY = targetRect.height / sourceRect.height;
+
+    flightLayer = document.createElement('div');
+    flightLayer.className = 'shared-logo-flight';
+    flightLayer.setAttribute('aria-hidden', 'true');
+
+    const sourceFlight = createFlightImage(
+      sharedLogoSource,
+      sourceRect,
+      'shared-logo-flight__image shared-logo-flight__image--source'
+    );
+    const targetFlight = createFlightImage(
+      sharedLogoTarget,
+      targetRect,
+      'shared-logo-flight__image shared-logo-flight__image--target'
+    );
+
+    flightLayer.append(sourceFlight, targetFlight);
+    document.body.appendChild(flightLayer);
+    sharedLogoSource.style.visibility = 'hidden';
+
+    const options = {
+      duration: SHARED_LOGO_DURATION,
+      easing: SHARED_LOGO_EASING,
+      fill: 'forwards'
+    };
+
+    const sourceAnimation = sourceFlight.animate([
+      {
+        offset: 0,
+        opacity: 1,
+        transform: 'translate3d(0, 0, 0) scale(1, 1)'
+      },
+      {
+        offset: 0.44,
+        opacity: 1
+      },
+      {
+        offset: 0.72,
+        opacity: 0
+      },
+      {
+        offset: 1,
+        opacity: 0,
+        transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${scaleX}, ${scaleY})`
+      }
+    ], options);
+
+    const targetAnimation = targetFlight.animate([
+      {
+        offset: 0,
+        opacity: 0,
+        transform: `translate3d(${-deltaX}px, ${-deltaY}px, 0) scale(${1 / scaleX}, ${1 / scaleY})`
+      },
+      {
+        offset: 0.36,
+        opacity: 0
+      },
+      {
+        offset: 0.7,
+        opacity: 1
+      },
+      {
+        offset: 1,
+        opacity: 1,
+        transform: 'translate3d(0, 0, 0) scale(1, 1)'
+      }
+    ], options);
+
+    return Promise.all([
+      sourceAnimation.finished.catch(() => {}),
+      targetAnimation.finished.catch(() => {})
+    ]);
+  };
+
   const reveal = () => {
     if (entering) return;
     entering = true;
-    splash.classList.add('is-entering');
-    root.classList.add('is-splash-entering');
     enterButton.disabled = true;
     enterButton.setAttribute('aria-disabled', 'true');
 
-    window.setTimeout(finish, mobileQuery.matches ? 760 : 1120);
+    root.classList.add('is-splash-entering');
+
+    if (reducedMotionQuery.matches) {
+      root.classList.add('is-shared-logo-reduced');
+      splash.classList.add('is-entering');
+      window.setTimeout(finish, 220);
+      return;
+    }
+
+    root.classList.add('is-shared-logo-active');
+    const flightPromise = animateSharedLogo();
+    splash.classList.add('is-entering');
+
+    if (!flightPromise) {
+      window.setTimeout(finish, SHARED_LOGO_DURATION);
+      return;
+    }
+
+    Promise.race([
+      flightPromise,
+      new Promise((resolve) => window.setTimeout(resolve, SHARED_LOGO_DURATION + 180))
+    ]).then(finish);
   };
 
   const requestEnter = () => {
