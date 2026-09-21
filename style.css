@@ -5068,3 +5068,34 @@ html.has-hero-copy-reveal
     transition-duration: 0.01ms;
   }
 }
+
+
+/* About close integrated into visual header — 2026-09-21 */
+.content-panel__surface--about .floating-section__header {
+  padding-right: calc(clamp(0.98rem, 1.55vw, 1.45rem) + 3.25rem);
+}
+
+.content-panel__surface--about .modal-close--about {
+  --modal-close-size: 3.25rem;
+  --modal-close-line: rgba(244, 244, 241, 0.13);
+  top: 0;
+  right: 0;
+  width: 3.25rem;
+  height: 3.25rem;
+  pointer-events: auto;
+  border-radius: 0 3px 0 0;
+}
+
+@media (max-width: 760px) {
+  .content-panel__surface--about .floating-section__header {
+    padding-right: calc(1rem + 3rem);
+  }
+
+  .content-panel__surface--about .modal-close--about {
+    --modal-close-size: 3rem;
+    top: 0;
+    right: 0;
+    width: 3rem;
+    height: 3rem;
+  }
+}
