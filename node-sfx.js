@@ -69,6 +69,7 @@
   const resolvedMessages = new WeakSet();
 
   let lastLatency = {
+    eventToStartMs: 0,
     jsMs: 0,
     baseMs: 0,
     outputMs: 0,
@@ -507,19 +508,21 @@
     return timestamp;
   }
 
-  function updateLatency(eventTimestamp, startCallAt, sourceName) {
+  function updateLatency(eventTimestamp, handlerStartedAt, startCallAt, sourceName) {
     const eventTime = eventTimestampToPerformance(eventTimestamp);
     if (eventTime == null) return;
 
-    const jsMs = Math.max(0, startCallAt - eventTime);
+    const eventToStartMs = Math.max(0, startCallAt - eventTime);
+    const jsMs = Math.max(0, startCallAt - (handlerStartedAt ?? startCallAt));
     const baseMs = Number.isFinite(context.baseLatency) ? context.baseLatency * 1000 : 0;
     const outputMs = Number.isFinite(context.outputLatency) ? context.outputLatency * 1000 : 0;
 
     lastLatency = {
+      eventToStartMs,
       jsMs,
       baseMs,
       outputMs,
-      estimatedMs: jsMs + baseMs + outputMs,
+      estimatedMs: eventToStartMs + baseMs + outputMs,
       source: sourceName
     };
 
@@ -616,6 +619,7 @@
     variantIndex = null,
     pan = null,
     eventTimestamp = null,
+    handlerStartedAt = null,
     gainScale = 1,
     when = null
   } = {}) {
@@ -675,7 +679,7 @@
 
     const startCallAt = performance.now();
     source.start(startAt);
-    updateLatency(eventTimestamp, startCallAt, soundName);
+    updateLatency(eventTimestamp, handlerStartedAt, startCallAt, soundName);
     recordStat(soundName);
     return true;
   }
@@ -722,7 +726,7 @@
     });
   }
 
-  function playTyping(kind, eventTimestamp) {
+  function playTyping(kind, eventTimestamp, handlerStartedAt = null) {
     const now = performance.now();
     if (now - lastTypingSoundAt < CONFIG.performance.typingMinIntervalMs) return false;
     lastTypingSoundAt = now;
@@ -731,7 +735,8 @@
       return playSound('chatSpace', {
         element: chatTextarea,
         pan: 0.32,
-        eventTimestamp
+        eventTimestamp,
+        handlerStartedAt
       });
     }
 
@@ -739,7 +744,8 @@
       return playSound('chatDelete', {
         element: chatTextarea,
         pan: 0.32,
-        eventTimestamp
+        eventTimestamp,
+        handlerStartedAt
       });
     }
 
@@ -750,7 +756,8 @@
       element: chatTextarea,
       variantIndex: index,
       pan: 0.32,
-      eventTimestamp
+      eventTimestamp,
+      handlerStartedAt
     });
   }
 
@@ -958,6 +965,7 @@
   }
 
   function onChatKeyDown(event) {
+    const handlerStartedAt = performance.now();
     if (!chatTextarea || event.target !== chatTextarea || event.isComposing) return;
     if (isIgnoredTypingKey(event)) return;
 
@@ -967,7 +975,8 @@
       playSound('chatSend', {
         element: chatForm,
         pan: 0.32,
-        eventTimestamp: event.timeStamp
+        eventTimestamp: event.timeStamp,
+        handlerStartedAt
       });
       lastSendAt = now;
       lastPhysicalKeyAt = now;
@@ -978,14 +987,14 @@
     if (event.repeat && now - lastTypingSoundAt < CONFIG.performance.typingMinIntervalMs) return;
 
     if (event.key === 'Backspace' || event.key === 'Delete') {
-      playTyping('delete', event.timeStamp);
+      playTyping('delete', event.timeStamp, handlerStartedAt);
       lastPhysicalKeyAt = now;
       lastPhysicalInputKind = 'delete';
       return;
     }
 
     if (event.key === ' ') {
-      playTyping('space', event.timeStamp);
+      playTyping('space', event.timeStamp, handlerStartedAt);
       lastPhysicalKeyAt = now;
       lastPhysicalInputKind = 'space';
       return;
@@ -998,7 +1007,7 @@
     }
 
     if (event.key.length === 1) {
-      playTyping('normal', event.timeStamp);
+      playTyping('normal', event.timeStamp, handlerStartedAt);
       lastPhysicalKeyAt = now;
       lastPhysicalInputKind = 'normal';
     }
@@ -1411,7 +1420,8 @@
 
     debugLatencyEl.textContent =
       `last: ${lastLatency.source}\n`
-      + `JS event → source.start(): ${lastLatency.jsMs.toFixed(2)} ms\n`
+      + `event.timeStamp → source.start(): ${lastLatency.eventToStartMs.toFixed(2)} ms\n`
+      + `handler → source.start() (JS): ${lastLatency.jsMs.toFixed(2)} ms\n`
       + `ctx.baseLatency: ${lastLatency.baseMs.toFixed(2)} ms\n`
       + `ctx.outputLatency: ${lastLatency.outputMs.toFixed(2)} ms\n`
       + `estimated total: ${lastLatency.estimatedMs.toFixed(2)} ms`;
