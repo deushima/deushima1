@@ -5367,3 +5367,41 @@ html.has-hero-copy-reveal
     transition: none;
   }
 }
+
+
+/* Contact close integrated into form frame — 2026-09-21 */
+@media (min-width: 901px) {
+  .content-panel__surface--contact {
+    --contact-surface-pad: clamp(1rem, 1.7vw, 1.6rem);
+  }
+
+  .content-panel__surface--contact .modal-close--contact {
+    --modal-close-size: 3.25rem;
+    --modal-close-line: rgba(244, 244, 241, 0.2);
+    top: var(--contact-surface-pad);
+    right: var(--contact-surface-pad);
+    z-index: 4;
+    width: 3.25rem;
+    height: 3.25rem;
+    min-width: 3.25rem;
+    min-height: 3.25rem;
+    border: 1px solid var(--modal-close-line);
+    border-radius: 0 4px 0 0;
+    background: #0d0d0d;
+  }
+
+  .content-panel__surface--contact .modal-close--contact:hover {
+    border-color: #f3f3f1;
+    background: #f3f3f1;
+  }
+
+  .content-panel__surface--contact .contact-form__intro {
+    padding-right: calc(3.25rem + 0.65rem);
+  }
+}
+
+@media (max-width: 900px) {
+  .content-panel__surface--contact .modal-close--contact {
+    background: #030303;
+  }
+}
