@@ -119,6 +119,8 @@
     dpr: 1,
     spacing: CONFIG.gridSpacingDesktop,
     count: 0,
+    cols: 0,
+    rows: 0,
     baseX: new Float32Array(0),
     baseY: new Float32Array(0),
     dx: new Float32Array(0),
@@ -373,6 +375,21 @@
     svg.innerHTML = '';
     linkRecords.length = 0;
     models.forEach((model, index) => createLink(rootModel, model, `root-${index}`, 260 + index * 85));
+  }
+
+  function animateBaseLinks() {
+    if (reducedMotion.matches) return;
+    linkRecords.filter((record) => record.key.startsWith('root-')).forEach((record, index) => {
+      record.base.animate(
+        [{ strokeDasharray: '1', strokeDashoffset: '1' }, { strokeDasharray: '1', strokeDashoffset: '0' }],
+        {
+          duration: 620,
+          delay: 260 + index * 85,
+          easing: 'cubic-bezier(.22,1,.36,1)',
+          fill: 'both'
+        }
+      );
+    });
   }
 
   function clearEntryTimers() {
@@ -930,12 +947,12 @@
     let points = [];
 
     if (isMobile()) {
-      const cols = Math.ceil(grid.width / grid.spacing) + 3;
-      const rows = Math.ceil(grid.height / grid.spacing) + 3;
-      const startX = (grid.width - (cols - 1) * grid.spacing) * .5;
-      const startY = (grid.height - (rows - 1) * grid.spacing) * .5;
-      for (let row = 0; row < rows; row += 1) {
-        for (let col = 0; col < cols; col += 1) {
+      grid.cols = Math.ceil(grid.width / grid.spacing) + 3;
+      grid.rows = Math.ceil(grid.height / grid.spacing) + 3;
+      const startX = (grid.width - (grid.cols - 1) * grid.spacing) * .5;
+      const startY = (grid.height - (grid.rows - 1) * grid.spacing) * .5;
+      for (let row = 0; row < grid.rows; row += 1) {
+        for (let col = 0; col < grid.cols; col += 1) {
           points.push([startX + col * grid.spacing, startY + row * grid.spacing]);
         }
       }
@@ -944,6 +961,8 @@
       const maxX = 3000;
       const minY = -800;
       const maxY = 2000;
+      grid.cols = Math.floor((maxX - minX) / grid.spacing) + 1;
+      grid.rows = Math.floor((maxY - minY) / grid.spacing) + 1;
       for (let y = minY; y <= maxY; y += grid.spacing) {
         for (let x = minX; x <= maxX; x += grid.spacing) {
           points.push([x, y]);
@@ -1055,18 +1074,20 @@
         pushY *= CONFIG.nodeMaxShift / pushLength;
       }
 
-      if (mobile) {
-        if (cursorEnabled) {
-          const dx = bx - grid.pointerX;
-          const dy = by - grid.pointerY;
-          const distance = Math.hypot(dx, dy);
-          if (distance > .001 && distance < CONFIG.cursorRadius) {
-            const inf = 1 - distance / CONFIG.cursorRadius;
-            const smoothInf = inf * inf * (3 - 2 * inf);
-            pushX += dx / distance * CONFIG.cursorForce * smoothInf;
-            pushY += dy / distance * CONFIG.cursorForce * smoothInf;
-            proximity = Math.max(proximity, smoothInf);
-          }
+      if (cursorEnabled) {
+        const cursorWorldX = mobile ? grid.pointerX : (grid.pointerX - camera.x) / camera.scale;
+        const cursorWorldY = mobile ? grid.pointerY : (grid.pointerY - camera.y) / camera.scale;
+        const cursorRadius = mobile ? CONFIG.cursorRadius : CONFIG.cursorRadius / camera.scale;
+        const cursorForce = mobile ? CONFIG.cursorForce : CONFIG.cursorForce / camera.scale;
+        const dx = bx - cursorWorldX;
+        const dy = by - cursorWorldY;
+        const distance = Math.hypot(dx, dy);
+        if (distance > .001 && distance < cursorRadius) {
+          const inf = 1 - distance / cursorRadius;
+          const smoothInf = inf * inf * (3 - 2 * inf);
+          pushX += dx / distance * cursorForce * smoothInf;
+          pushY += dy / distance * cursorForce * smoothInf;
+          proximity = Math.max(proximity, smoothInf);
         }
       }
 
@@ -1111,9 +1132,7 @@
     ctx.lineCap = 'round';
 
     const spacingScreen = mobile ? grid.spacing : grid.spacing * camera.scale;
-    const colsApprox = mobile
-      ? Math.ceil(grid.width / grid.spacing) + 3
-      : Math.round((3000 - (-1024)) / grid.spacing) + 1;
+    const colsApprox = grid.cols;
 
     for (let i = 0; i < grid.count; i += 1) {
       const x = screenX[i];
@@ -1206,7 +1225,8 @@
     canvasRoot.classList.add('is-grid-visible');
 
     renderAllModels();
-    setupBaseLinks();
+    updateLinks();
+    animateBaseLinks();
     setupCategoryEventsOnce();
 
     if (!isMobile()) {
