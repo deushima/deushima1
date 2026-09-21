@@ -960,8 +960,8 @@
     if (!grid.ctx) return;
 
     const rect = surface.getBoundingClientRect();
-    grid.width = Math.max(1, Math.round(rect.width));
-    grid.height = Math.max(1, Math.round(rect.height));
+    grid.width = Math.max(1, Math.round(surface.clientWidth || rect.width));
+    grid.height = Math.max(1, Math.round(surface.clientHeight || rect.height));
     grid.dpr = Math.min(window.devicePixelRatio || 1, isTablet() ? CONFIG.dprTablet : CONFIG.dprDesktop);
     grid.spacing = isTablet() ? CONFIG.gridSpacingMobile : CONFIG.gridSpacingDesktop;
 
@@ -1238,8 +1238,8 @@
   function resizeGrid(force = false) {
     if (!grid.ctx) return;
     const rect = surface.getBoundingClientRect();
-    const nextWidth = Math.max(1, Math.round(rect.width));
-    const nextHeight = Math.max(1, Math.round(rect.height));
+    const nextWidth = Math.max(1, Math.round(surface.clientWidth || rect.width));
+    const nextHeight = Math.max(1, Math.round(surface.clientHeight || rect.height));
     const nextDpr = Math.min(window.devicePixelRatio || 1, isTablet() ? CONFIG.dprTablet : CONFIG.dprDesktop);
     const nextSpacing = isTablet() ? CONFIG.gridSpacingMobile : CONFIG.gridSpacingDesktop;
 
