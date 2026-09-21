@@ -2542,7 +2542,9 @@ function openContentPanel(panelName) {
   syncPanelMedia(panel, true);
 
   if (panel.dataset.panel === "about") {
-    window.setTimeout(ensureFloatingWorld, 120);
+    // Defer the heavier canvas/physics bootstrap until the bottom info bar
+    // has completed its compositor-only entrance.
+    window.setTimeout(ensureFloatingWorld, 460);
   }
 
   if (panel.dataset.panel === "contact" && typeof window.startFooterPromptTyping === "function") {
