@@ -398,11 +398,33 @@
     }
   }
 
-  function freeNodePosition(clientX, clientY, grabOffsetX, grabOffsetY) {
-    const point = screenToStageLocal(clientX, clientY);
+  function clampOriginalNodeToWorld(x, y, node) {
+    const camera = window.DeushimaHeroCamera;
+    const bounds = camera?.getWorldBounds?.();
+    const origin = camera?.getStageOrigin?.();
+    if (!bounds || !origin || !node) return { x, y };
+
+    const halfW = Math.max(1, node.offsetWidth) * 0.5;
+    const halfH = Math.max(1, node.offsetHeight) * 0.5;
+    const worldX = origin.x + x;
+    const worldY = origin.y + y;
+
     return {
+      x: Math.max(bounds.minX + halfW, Math.min(bounds.maxX - halfW, worldX)) - origin.x,
+      y: Math.max(bounds.minY + halfH, Math.min(bounds.maxY - halfH, worldY)) - origin.y
+    };
+  }
+
+  function freeNodePosition(clientX, clientY, grabOffsetX, grabOffsetY, node = null) {
+    const point = screenToStageLocal(clientX, clientY);
+    const raw = {
       x: point.x - grabOffsetX,
-      y: point.y - grabOffsetY,
+      y: point.y - grabOffsetY
+    };
+    const clamped = clampOriginalNodeToWorld(raw.x, raw.y, node);
+    return {
+      x: clamped.x,
+      y: clamped.y,
       width: point.width,
       height: point.height
     };
@@ -444,7 +466,7 @@
     event.preventDefault();
     dragState.lastClientX = event.clientX;
     dragState.lastClientY = event.clientY;
-    const pos = freeNodePosition(event.clientX, event.clientY, dragState.grabOffsetX, dragState.grabOffsetY);
+    const pos = freeNodePosition(event.clientX, event.clientY, dragState.grabOffsetX, dragState.grabOffsetY, dragState.node);
     dragState.node.style.setProperty('--node-x', `${(pos.x / Math.max(1, pos.width) * 100).toFixed(4)}%`);
     dragState.node.style.setProperty('--node-y', `${(pos.y / Math.max(1, pos.height) * 100).toFixed(4)}%`);
     window.DeushimaHeroCamera?.setAutoPanPointer?.(event.clientX, event.clientY, true);
@@ -575,7 +597,8 @@
       dragState.lastClientX,
       dragState.lastClientY,
       dragState.grabOffsetX,
-      dragState.grabOffsetY
+      dragState.grabOffsetY,
+      dragState.node
     );
     dragState.node.style.setProperty('--node-x', `${(pos.x / Math.max(1, pos.width) * 100).toFixed(4)}%`);
     dragState.node.style.setProperty('--node-y', `${(pos.y / Math.max(1, pos.height) * 100).toFixed(4)}%`);
