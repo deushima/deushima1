@@ -878,7 +878,10 @@
       persist: false
     }));
 
-    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {}
     window.setTimeout(() => {
       announce('Nodes cleared');
       window.DeushimaGrid?.refreshDynamicNodes?.();
