@@ -56,6 +56,12 @@
     'is-page-leaving'
   ];
 
+  const initialAudioState = window.DeushimaAudioState || {};
+  let sfxEnabled = initialAudioState.enabled === true;
+  let sfxScale = Number.isFinite(initialAudioState.sfxScale)
+    ? clamp(initialAudioState.sfxScale, 0, 1)
+    : 0;
+
   let dryBus;
   let reverbSend;
   let convolver;
@@ -395,7 +401,7 @@
     reverbSend.gain.value = CONFIG.mix.reverb.wet;
     convolver.buffer = makeReverbImpulse();
     reverbWet.gain.value = 1;
-    masterGain.gain.value = CONFIG.masterVolume;
+    masterGain.gain.value = sfxEnabled ? CONFIG.masterVolume * sfxScale : 0;
 
     lowShelf.type = 'lowshelf';
     lowShelf.frequency.value = CONFIG.mix.eq.lowShelfHz;
@@ -584,6 +590,44 @@
     connectionPointer = null;
   }
 
+  function stopAllVoices() {
+    voiceSlots.forEach((slot) => {
+      if (!slot.source) return;
+      try { slot.source.stop(); } catch {}
+      slot.source = null;
+      slot.soundName = null;
+      slot.sustained = false;
+      slot.busyUntil = 0;
+    });
+    pointerState = null;
+    connectionPointer = null;
+  }
+
+  function applySfxState(nextState = {}) {
+    const nextEnabled = nextState.enabled === true;
+    const nextScale = Number.isFinite(nextState.sfxScale)
+      ? clamp(nextState.sfxScale, 0, 1)
+      : sfxScale;
+
+    sfxEnabled = nextEnabled;
+    sfxScale = nextScale;
+
+    if (masterGain) {
+      const target = sfxEnabled ? CONFIG.masterVolume * sfxScale : 0;
+      const now = context.currentTime;
+      masterGain.gain.cancelScheduledValues(now);
+      masterGain.gain.setTargetAtTime(target, now, 0.012);
+    }
+
+    if (!sfxEnabled) {
+      stopAllVoices();
+      return;
+    }
+
+    resumeContext();
+    maybePlayAppearance();
+  }
+
   function refreshVoiceSlots(nowMs = performance.now()) {
     voiceSlots.forEach((slot) => {
       if (!slot.sustained && slot.busyUntil <= nowMs) {
@@ -666,12 +710,13 @@
     eventTimestamp = null,
     handlerStartedAt = null,
     gainScale = 1,
-    when = null
+    when = null,
+    bypassMenuGate = false
   } = {}) {
     const sound = CONFIG.sounds[soundName];
-    if (!sound) return false;
+    if (!sound || !sfxEnabled) return false;
 
-    if (MENU_SOUND_NAMES.has(soundName) && isMenuSfxBlocked()) return false;
+    if (!bypassMenuGate && MENU_SOUND_NAMES.has(soundName) && isMenuSfxBlocked()) return false;
 
     if (context.state !== 'running') resumeContext();
 
@@ -795,7 +840,7 @@
   }
 
   function runAppearance() {
-    if (!stage || appearancePlayed || appearanceQueued || !stageVisible) return;
+    if (!stage || appearancePlayed || appearanceQueued || !stageVisible || !sfxEnabled) return;
     if (context.state !== 'running') return;
     if (!document.body.classList.contains('is-site-ready')) return;
     if (document.body.classList.contains('is-content-panel-open')) return;
@@ -821,7 +866,7 @@
   }
 
   function maybePlayAppearance() {
-    if (context.state === 'running') runAppearance();
+    if (sfxEnabled && context.state === 'running') runAppearance();
   }
 
   function nodeFromTarget(target) {
@@ -1474,6 +1519,7 @@
 
   buildSynthLibrary();
   buildAudioGraph();
+  applySfxState(initialAudioState);
   preloadExternalFiles();
   setupNodeSounds();
   setupChatSounds();
@@ -1502,6 +1548,10 @@
     passive: true
   });
 
+  window.addEventListener('deushima:audio-state', (event) => {
+    applySfxState(event.detail || {});
+  });
+
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       if (context.state === 'running') {
@@ -1522,8 +1572,15 @@
     masterVolume: CONFIG.masterVolume,
     unlock: resumeContext,
     playDebugSound,
+    playScoped: (soundName, options = {}) => playSound(soundName, {
+      ...options,
+      bypassMenuGate: true
+    }),
+    setEnabled: (enabled) => applySfxState({ enabled, sfxScale }),
     degreeToFrequency,
     degreeToLabel,
+    getEnabled: () => sfxEnabled,
+    getScale: () => sfxScale,
     getContextState: () => context.state,
     getVoiceCount: () => {
       refreshVoiceSlots();
