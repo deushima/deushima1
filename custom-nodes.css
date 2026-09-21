@@ -1,5 +1,18 @@
 /* Visitor-created nodes + canvas context menu — 2026-09-21 */
 
+.hero--node-canvas,
+.hero-node-camera,
+.hero-node-stage,
+.hero-custom-node-layer {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.hero-node-stage,
+.hero-custom-node-layer {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 .hero-custom-node-mesh {
   position: absolute;
   inset: 0;
@@ -72,8 +85,13 @@
   transform-origin: center;
   pointer-events: auto;
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
   touch-action: none;
+  resize: none;
   outline: none;
+  -webkit-appearance: none;
+  appearance: none;
   transition:
     transform .22s cubic-bezier(.22,1,.36,1),
     opacity .18s ease,
@@ -94,23 +112,38 @@
 }
 
 .hero-custom-node:hover,
-.hero-custom-node.is-selected,
 .hero-custom-node.is-connect-target {
   border-color: var(--node-border-hover);
   background: var(--node-bg-hover);
   box-shadow: var(--node-inner-light), var(--node-shadow-hover);
 }
 
+.hero-custom-node.is-selected,
 .hero-custom-node.is-dragging {
-  --custom-node-scale: 1.012;
-  border-color: rgba(255,255,255,.18);
-  box-shadow: var(--node-inner-light), 0 28px 60px -16px rgba(0,0,0,.78);
+  background: var(--node-bg);
+  border-color: rgba(255,255,255,.22);
+  box-shadow: var(--node-inner-light), 0 24px 48px -14px rgba(0,0,0,.72);
+}
+
+.hero-custom-node.is-dragging {
+  --custom-node-scale: 1.008;
   cursor: grabbing;
+}
+
+.hero-custom-node:focus,
+.hero-custom-node:focus-within {
+  outline: none;
 }
 
 .hero-custom-node:focus-visible {
   outline: 2px solid rgba(255,255,255,.88);
   outline-offset: 3px;
+}
+
+.hero-custom-node::before,
+.hero-custom-node::after {
+  display: none !important;
+  content: none !important;
 }
 
 .hero-custom-node__meta {
@@ -187,14 +220,33 @@
   overflow-wrap: anywhere;
   caret-color: #fff;
   user-select: none;
+  -webkit-user-select: none;
   cursor: default;
   outline: none;
-  scrollbar-width: thin;
+  border: 0;
+  box-shadow: none;
+  resize: none;
+  scrollbar-width: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.hero-custom-node__editor::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.hero-custom-node__editor::selection {
+  background: rgba(255,255,255,.24);
+  color: #fff;
 }
 
 .hero-custom-node.is-editing .hero-custom-node__editor {
   user-select: text;
+  -webkit-user-select: text;
   cursor: text;
+  touch-action: auto;
 }
 
 .hero-custom-node__editor:empty::before {
