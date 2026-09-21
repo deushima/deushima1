@@ -33,6 +33,29 @@
   const counters = new Map();
   const stats = Object.create(null);
 
+  const MENU_SOUND_NAMES = new Set([
+    'nodeAppearance',
+    'nodeHover',
+    'nodeSelect',
+    'nodeOpen',
+    'port',
+    'pickup',
+    'drag',
+    'drop',
+    'reset',
+    'lineShimmer',
+    'link',
+    'disconnect'
+  ]);
+
+  const MENU_BLOCKING_BODY_CLASSES = [
+    'is-content-panel-open',
+    'is-design-viewer-open',
+    'is-launcher-pop-open',
+    'deu-chat-open',
+    'is-page-leaving'
+  ];
+
   let dryBus;
   let reverbSend;
   let convolver;
@@ -430,6 +453,7 @@
         gain,
         panner,
         source: null,
+        soundName: null,
         busyUntil: 0,
         sustained: false,
         startedAt: 0
@@ -541,10 +565,32 @@
     );
   }
 
+  function isMenuSfxBlocked() {
+    return MENU_BLOCKING_BODY_CLASSES.some((className) => (
+      document.body.classList.contains(className)
+    ));
+  }
+
+  function stopMenuVoices() {
+    voiceSlots.forEach((slot) => {
+      if (!slot.source || !MENU_SOUND_NAMES.has(slot.soundName)) return;
+
+      try { slot.source.stop(); } catch {}
+      slot.source = null;
+      slot.soundName = null;
+      slot.sustained = false;
+      slot.busyUntil = 0;
+    });
+
+    pointerState = null;
+    connectionPointer = null;
+  }
+
   function refreshVoiceSlots(nowMs = performance.now()) {
     voiceSlots.forEach((slot) => {
       if (!slot.sustained && slot.busyUntil <= nowMs) {
         slot.source = null;
+        slot.soundName = null;
       }
     });
   }
@@ -563,6 +609,7 @@
     if (slot?.source) {
       try { slot.source.stop(); } catch {}
       slot.source = null;
+      slot.soundName = null;
       slot.sustained = false;
     }
 
@@ -626,6 +673,8 @@
     const sound = CONFIG.sounds[soundName];
     if (!sound) return false;
 
+    if (MENU_SOUND_NAMES.has(soundName) && isMenuSfxBlocked()) return false;
+
     if (context.state !== 'running') resumeContext();
 
     const nowPerf = performance.now();
@@ -673,6 +722,7 @@
 
     source.connect(slot.gain);
     slot.source = source;
+    slot.soundName = soundName;
     slot.sustained = false;
     slot.startedAt = nowPerf;
     slot.busyUntil = nowPerf + startDelayMs + durationMs;
@@ -1451,6 +1501,14 @@
   setupNodeSounds();
   setupChatSounds();
   createDebugPanel();
+
+  const menuSfxGateObserver = new MutationObserver(() => {
+    if (isMenuSfxBlocked()) stopMenuVoices();
+  });
+  menuSfxGateObserver.observe(document.body, {
+    attributes: true,
+    attributeFilter: ['class']
+  });
 
   document.addEventListener('pointerdown', (event) => {
     resumeContext();
