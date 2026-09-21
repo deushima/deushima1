@@ -386,27 +386,29 @@
     selection.addRange(range);
   }
 
-  function insertLineBreak(editor, model) {
-    const current = safeText(editor.textContent);
-    const offsets = selectionOffsets(editor);
-    const start = clamp(offsets.start, 0, current.length);
-    const end = clamp(offsets.end, start, current.length);
-
-    if (current.length - (end - start) >= MAX_TEXT_LENGTH) return false;
-
-    const next = safeText(
-      current.slice(0, start)
-      + '\n'
-      + current.slice(end)
-    );
-
+  function commitEditorText(editor, model, text, caretOffset = null) {
+    const next = safeText(text);
     editor.textContent = next;
     model.text = next;
     updateCounter(model);
-    setCaretOffset(editor, start + 1);
+    if (Number.isFinite(caretOffset)) setCaretOffset(editor, caretOffset);
     saveState();
     drawConnections();
     window.DeushimaGrid?.wake?.(280);
+  }
+
+  function insertLineBreak(editor, model) {
+    const current = safeText(editor.textContent);
+    const offsets = selectionOffsets(editor);
+    const hasLogicalCaret = Number.isFinite(model.logicalCaretOffset);
+    const start = clamp(hasLogicalCaret ? model.logicalCaretOffset : offsets.start, 0, current.length);
+    const end = clamp(hasLogicalCaret ? start : offsets.end, start, current.length);
+
+    if (current.length - (end - start) >= MAX_TEXT_LENGTH) return false;
+
+    const next = current.slice(0, start) + '\n' + current.slice(end);
+    model.logicalCaretOffset = start + 1;
+    commitEditorText(editor, model, next, model.logicalCaretOffset);
     return true;
   }
 
@@ -417,6 +419,7 @@
     }
 
     model.editing = editing;
+    if (!editing) model.logicalCaretOffset = null;
     model.el.classList.toggle('is-editing', editing);
     model.editor.setAttribute('contenteditable', editing ? 'true' : 'false');
     editingNodeId = editing ? model.id : (editingNodeId === model.id ? null : editingNodeId);
@@ -578,6 +581,10 @@
         return;
       }
 
+      if (['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','PageUp','PageDown'].includes(event.key)) {
+        model.logicalCaretOffset = null;
+      }
+
       if (!ignored && now - lastTypingAt >= 35) {
         if (event.key === 'Backspace' || event.key === 'Delete') {
           playSfx('chatDelete', { element: editor, eventTimestamp: event.timeStamp });
@@ -603,6 +610,43 @@
     editor.addEventListener('beforeinput', event => {
       if (!model.editing) return;
       const inputType = String(event.inputType || '');
+
+      if (Number.isFinite(model.logicalCaretOffset)) {
+        const current = safeText(editor.textContent);
+        let position = clamp(model.logicalCaretOffset, 0, current.length);
+
+        if (inputType === 'insertText' || inputType === 'insertCompositionText') {
+          event.preventDefault();
+          const incoming = safeText(event.data || '');
+          const allowed = Math.max(0, MAX_TEXT_LENGTH - current.length);
+          const chunk = incoming.slice(0, allowed);
+          const next = current.slice(0, position) + chunk + current.slice(position);
+          position += chunk.length;
+          model.logicalCaretOffset = null;
+          commitEditorText(editor, model, next, position);
+          return;
+        }
+
+        if (inputType === 'deleteContentBackward') {
+          event.preventDefault();
+          const next = position > 0
+            ? current.slice(0, position - 1) + current.slice(position)
+            : current;
+          position = Math.max(0, position - 1);
+          model.logicalCaretOffset = null;
+          commitEditorText(editor, model, next, position);
+          return;
+        }
+
+        if (inputType === 'deleteContentForward') {
+          event.preventDefault();
+          const next = current.slice(0, position) + current.slice(position + 1);
+          model.logicalCaretOffset = null;
+          commitEditorText(editor, model, next, position);
+          return;
+        }
+      }
+
       if (!inputType.startsWith('insert') || inputType === 'insertLineBreak' || inputType === 'insertParagraph') return;
       const incoming = String(event.data || '');
       const current = editor.textContent.length;
@@ -612,10 +656,24 @@
       }
     });
 
+    editor.addEventListener('pointerdown', () => {
+      model.logicalCaretOffset = null;
+    }, { passive: true });
+
     editor.addEventListener('paste', event => {
       if (!model.editing) return;
       event.preventDefault();
       const raw = event.clipboardData?.getData('text/plain') || '';
+      if (Number.isFinite(model.logicalCaretOffset)) {
+        const current = safeText(editor.textContent);
+        const position = clamp(model.logicalCaretOffset, 0, current.length);
+        const remaining = Math.max(0, MAX_TEXT_LENGTH - current.length);
+        const chunk = safeText(raw).slice(0, remaining);
+        const next = current.slice(0, position) + chunk + current.slice(position);
+        model.logicalCaretOffset = null;
+        commitEditorText(editor, model, next, position + chunk.length);
+        return;
+      }
       const current = editor.textContent.length;
       const replacement = selectedLength(editor);
       const remaining = Math.max(0, MAX_TEXT_LENGTH - (current - replacement));
@@ -624,6 +682,7 @@
     });
 
     editor.addEventListener('input', () => {
+      model.logicalCaretOffset = null;
       let text = safeText(editor.textContent);
       if (editor.textContent !== text) {
         editor.textContent = text;
@@ -678,6 +737,7 @@
       text: safeText(text),
       z: clamp(Math.trunc(z) || 1, 1, 9999),
       editing: false,
+      logicalCaretOffset: null,
       el: null,
       editor: null,
       counter: null,
@@ -1591,29 +1651,62 @@
     openCanvasMenu(event.clientX, event.clientY, stage);
   });
 
-  hero.addEventListener('pointerdown', event => {
-    if (event.pointerType !== 'touch' || isModalOpen()) return;
-    if (!canOpenCanvasMenuAt(event.target, event.clientX, event.clientY)) return;
+  function startLongPress(target, clientX, clientY, pointerId, source) {
+    if (isModalOpen()) return;
+    if (!canOpenCanvasMenuAt(target, clientX, clientY)) return;
+    if (longPressState) clearLongPress();
 
-    clearLongPress();
     longPressState = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      clientX: event.clientX,
-      clientY: event.clientY,
+      pointerId,
+      source,
+      startX: clientX,
+      startY: clientY,
+      clientX,
+      clientY,
       timer: window.setTimeout(() => {
         if (!longPressState) return;
+        const point = { x: longPressState.clientX, y: longPressState.clientY };
         longPressOpenedUntil = performance.now() + 900;
         try { navigator.vibrate?.(8); } catch {}
-        openCanvasMenu(longPressState.clientX, longPressState.clientY, stage);
+        openCanvasMenu(point.x, point.y, stage);
         longPressState = null;
       }, LONG_PRESS_MS)
     };
+  }
+
+  hero.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'touch') return;
+    startLongPress(event.target, event.clientX, event.clientY, event.pointerId, 'pointer');
+  }, { passive: true });
+
+  hero.addEventListener('touchstart', event => {
+    if (longPressState || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    startLongPress(event.target, touch.clientX, touch.clientY, touch.identifier, 'touch');
+  }, { passive: true });
+
+  hero.addEventListener('touchmove', event => {
+    if (!longPressState || longPressState.source !== 'touch' || event.touches.length !== 1) return;
+    const touch = event.touches[0];
+    const distance = Math.hypot(touch.clientX - longPressState.startX, touch.clientY - longPressState.startY);
+    if (distance > LONG_PRESS_TOLERANCE) {
+      clearLongPress();
+      return;
+    }
+    longPressState.clientX = touch.clientX;
+    longPressState.clientY = touch.clientY;
+  }, { passive: true });
+
+  hero.addEventListener('touchend', () => {
+    if (longPressState?.source === 'touch') clearLongPress();
+  }, { passive: true });
+
+  hero.addEventListener('touchcancel', () => {
+    if (longPressState?.source === 'touch') clearLongPress();
   }, { passive: true });
 
   function moveLongPress(event) {
-    if (!longPressState || event.pointerId !== longPressState.pointerId) return;
+    if (!longPressState || longPressState.source !== 'pointer' || event.pointerId !== longPressState.pointerId) return;
     const distance = Math.hypot(event.clientX - longPressState.startX, event.clientY - longPressState.startY);
     if (distance > LONG_PRESS_TOLERANCE) {
       clearLongPress();
@@ -1624,7 +1717,12 @@
   }
 
   function clearLongPress(event = null) {
-    if (event && longPressState && event.pointerId !== longPressState.pointerId) return;
+    if (
+      event
+      && longPressState
+      && longPressState.source === 'pointer'
+      && event.pointerId !== longPressState.pointerId
+    ) return;
     if (longPressState?.timer) window.clearTimeout(longPressState.timer);
     longPressState = null;
   }
