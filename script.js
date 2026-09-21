@@ -2518,14 +2518,35 @@ function closeContentPanel() {
   const activePanel = contentPanels.find((panel) => panel.classList.contains("is-panel-open"));
   if (!activePanel) return;
 
+  const isAboutPanel = activePanel.dataset.panel === "about";
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const aboutCloseDelay = isAboutPanel ? (reducedMotion ? 190 : 430) : 0;
+
   activePanel.classList.remove("is-panel-open");
-  activePanel.setAttribute("aria-hidden", "true");
+
+  if (aboutCloseDelay > 0) {
+    activePanel.classList.add("is-panel-closing");
+    if (activePanel._aboutCloseTimer) {
+      window.clearTimeout(activePanel._aboutCloseTimer);
+    }
+    activePanel._aboutCloseTimer = window.setTimeout(() => {
+      activePanel.setAttribute("aria-hidden", "true");
+      activePanel.classList.remove("is-panel-closing");
+      activePanel._aboutCloseTimer = 0;
+    }, aboutCloseDelay);
+  } else {
+    activePanel.setAttribute("aria-hidden", "true");
+  }
+
   document.body.classList.remove("is-content-panel-open");
   syncPanelMedia(activePanel, false);
   syncHeroVideoPlayback();
 
   if (lastFocusedElement?.focus) {
-    window.setTimeout(() => lastFocusedElement.focus({ preventScroll: true }), 80);
+    window.setTimeout(
+      () => lastFocusedElement.focus({ preventScroll: true }),
+      isAboutPanel ? aboutCloseDelay + 20 : 80
+    );
   }
 }
 
@@ -2534,6 +2555,13 @@ function openContentPanel(panelName) {
   if (!panel) return;
 
   closeContentPanel();
+
+  if (panel._aboutCloseTimer) {
+    window.clearTimeout(panel._aboutCloseTimer);
+    panel._aboutCloseTimer = 0;
+  }
+  panel.classList.remove("is-panel-closing");
+
   lastFocusedElement = document.activeElement;
   panel.classList.add("is-panel-open");
   panel.setAttribute("aria-hidden", "false");
