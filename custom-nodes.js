@@ -6,6 +6,8 @@
   const originalMesh = stage?.querySelector('[data-hero-node-mesh]');
   const originalNodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
   if (!hero || !stage || !originalMesh || !originalNodes.length) return;
+  if (stage.dataset.customNodesReady === 'true') return;
+  stage.dataset.customNodesReady = 'true';
 
   const STORAGE_KEY = 'deushima:nodes:v1';
   const HINT_KEY = 'deushima:nodes:menu-hint:v1';
@@ -569,7 +571,8 @@
     animate = true,
     focusEditor = true,
     persist = true,
-    sound = true
+    sound = true,
+    select = true
   } = {}) {
     if (models.size >= MAX_NODES) return null;
     if (models.has(id)) return null;
@@ -595,7 +598,7 @@
     models.set(id, model);
     createNodeElement(model, { animate });
     renderModel(model);
-    selectNode(model);
+    if (select) selectNode(model);
 
     if (persist) saveState();
     window.DeushimaGrid?.refreshDynamicNodes?.();
@@ -1193,7 +1196,8 @@
         animate: false,
         focusEditor: false,
         persist: false,
-        sound: false
+        sound: false,
+        select: false
       });
     });
 
@@ -1511,7 +1515,6 @@
         longPressOpenedUntil = performance.now() + 900;
         try { navigator.vibrate?.(8); } catch {}
         openCanvasMenu(longPressState.clientX, longPressState.clientY, stage);
-        markHintUsed();
         longPressState = null;
       }, LONG_PRESS_MS)
     };
