@@ -2525,16 +2525,63 @@ function syncPanelMedia(panel, shouldPlay) {
   });
 }
 
+const ABOUT_BAR_DURATION = 420;
+const ABOUT_BAR_REDUCED_DURATION = 180;
+const ABOUT_BAR_EASING = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+function animateAboutInfoBar(panel, opening) {
+  const bar = panel?.querySelector("[data-about-info-bar]");
+  if (!bar || typeof bar.animate !== "function") return null;
+
+  if (bar._aboutBarAnimation) {
+    try { bar._aboutBarAnimation.cancel(); } catch {}
+    bar._aboutBarAnimation = null;
+  }
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const duration = reducedMotion ? ABOUT_BAR_REDUCED_DURATION : ABOUT_BAR_DURATION;
+  const distance = Math.max(1, bar.getBoundingClientRect().height + 1);
+
+  const hiddenFrame = reducedMotion
+    ? { opacity: 0, transform: "none" }
+    : { opacity: 0, transform: `translate3d(0, ${distance}px, 0)` };
+  const visibleFrame = { opacity: 1, transform: reducedMotion ? "none" : "translate3d(0, 0, 0)" };
+
+  const animation = bar.animate(
+    opening ? [hiddenFrame, visibleFrame] : [visibleFrame, hiddenFrame],
+    {
+      duration,
+      easing: reducedMotion ? "linear" : ABOUT_BAR_EASING,
+      fill: "both"
+    }
+  );
+
+  bar._aboutBarAnimation = animation;
+  animation.finished
+    .catch(() => {})
+    .then(() => {
+      if (bar._aboutBarAnimation !== animation) return;
+      bar._aboutBarAnimation = null;
+      try { animation.cancel(); } catch {}
+    });
+
+  return animation;
+}
+
 function closeContentPanel() {
   const activePanel = contentPanels.find((panel) => panel.classList.contains("is-panel-open"));
   if (!activePanel) return;
 
   const isAboutPanel = activePanel.dataset.panel === "about";
   const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const aboutCloseDelay = isAboutPanel ? (reducedMotion ? 190 : 430) : 0;
+  const aboutCloseDelay = isAboutPanel
+    ? (reducedMotion ? ABOUT_BAR_REDUCED_DURATION + 10 : ABOUT_BAR_DURATION + 10)
+    : 0;
 
   if (isAboutPanel) {
+    animateAboutInfoBar(activePanel, false);
     activePanel.classList.remove("is-about-bar-visible");
+
     if (activePanel._aboutWorldTimer) {
       window.clearTimeout(activePanel._aboutWorldTimer);
       activePanel._aboutWorldTimer = 0;
@@ -2593,18 +2640,20 @@ function openContentPanel(panelName) {
 
     if (panel._aboutWorldTimer) window.clearTimeout(panel._aboutWorldTimer);
 
-    // Force one layout read with the bar in its initial off-canvas state.
-    // This guarantees that the following transform/opacity change is
-    // recognized as a real transition even when the canvas is busy.
-    panel.querySelector("[data-about-info-bar]")?.getBoundingClientRect();
     panel.classList.add("is-about-bar-visible");
+    animateAboutInfoBar(panel, true);
 
-    // Start the heavier canvas/physics bootstrap only after the bar has
-    // completed its compositor-only entrance.
+    // Start the heavier canvas/physics bootstrap after the editorial bar
+    // has finished its compositor-only entrance.
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const worldDelay = reducedMotion
+      ? ABOUT_BAR_REDUCED_DURATION + 60
+      : ABOUT_BAR_DURATION + 80;
+
     panel._aboutWorldTimer = window.setTimeout(() => {
       ensureFloatingWorld();
       panel._aboutWorldTimer = 0;
-    }, 560);
+    }, worldDelay);
   }
 
   if (panel.dataset.panel === "contact" && typeof window.startFooterPromptTyping === "function") {
