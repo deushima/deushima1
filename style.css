@@ -4801,3 +4801,40 @@ html.is-shutter-entering .page-transition__logo {
     width: 4.8rem;
   }
 }
+
+
+/* Shared refresh preloader logo -> header */
+html.is-preloader-logo-flight .brand-mark {
+  opacity: 0 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+html.is-preloader-logo-landed .brand-mark {
+  opacity: 1 !important;
+  transform: none !important;
+  animation: none !important;
+}
+
+.preloader.has-shared-logo-flight .preloader__logo {
+  opacity: 0 !important;
+  animation: none !important;
+}
+
+.preloader-logo-flight {
+  z-index: 140;
+  display: block;
+  object-fit: contain;
+  opacity: 0.9;
+  filter: invert(1) drop-shadow(0 0 1.1rem rgba(255, 255, 255, 0.06));
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .preloader-logo-flight {
+    display: none !important;
+  }
+}
