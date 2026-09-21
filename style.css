@@ -612,7 +612,7 @@ a {
   position: relative;
   z-index: 8;
   display: grid;
-  grid-template-columns: minmax(9rem, 21vw) minmax(31rem, 1fr) auto auto minmax(5rem, auto);
+  grid-template-columns: minmax(9rem, 21vw) minmax(31rem, 1fr) auto minmax(5rem, auto);
   gap: clamp(1rem, 3vw, 4.75rem);
   align-items: start;
   padding: clamp(0.95rem, 1.35vw, 2.1rem) clamp(1.25rem, 2.75vw, 3.45rem);
@@ -4546,5 +4546,255 @@ html.is-shutter-entering .page-transition__logo {
   .launcher-pop[aria-hidden="true"],
   .deu-chat[aria-hidden="true"] {
     content-visibility: hidden;
+  }
+}
+
+
+/* Deushima identity + retractable footer audio — 2026-09-20 */
+.brand-mark {
+  display: inline-block;
+  width: clamp(7.4rem, 9.4vw, 10.6rem);
+  height: auto;
+  padding: 0.14rem 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  line-height: 0;
+}
+
+.brand-mark img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  opacity: 0.94;
+  filter: invert(1);
+  transform-origin: left center;
+  transition:
+    opacity 0.28s ease,
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.28s ease;
+}
+
+.brand-mark:hover img,
+.brand-mark:focus-visible img {
+  opacity: 1;
+  filter: invert(1) drop-shadow(0 0 0.7rem rgba(126, 183, 255, 0.12));
+  transform: translate3d(0.12rem, 0, 0);
+}
+
+.brand-mark:focus-visible {
+  outline: none;
+}
+
+.site-footer {
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
+}
+
+.site-footer .audio-control {
+  position: absolute;
+  left: auto;
+  right: 0;
+  top: 50%;
+  z-index: 6;
+  display: grid;
+  width: 12.4rem;
+  height: 2.72rem;
+  grid-template-columns: 2.72rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0 0.8rem 0 0;
+  overflow: hidden;
+  border: 1px solid rgba(244, 244, 241, 0.16);
+  border-right: 0;
+  background:
+    linear-gradient(100deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008) 46%, rgba(36,119,255,0.065)),
+    rgba(4, 5, 7, 0.97);
+  color: rgba(244, 244, 241, 0.76);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.045),
+    -0.8rem 0 2.4rem rgba(0,0,0,0.28);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transform: translate3d(calc(100% - 2.72rem), -50%, 0);
+  transition:
+    transform 0.58s cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+.site-footer .audio-control::after {
+  display: none;
+}
+
+.site-footer .audio-control::before {
+  content: "";
+  position: absolute;
+  left: 2.71rem;
+  top: 0.52rem;
+  bottom: 0.52rem;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(126,183,255,0.52), transparent);
+  opacity: 0.42;
+  pointer-events: none;
+}
+
+.site-footer .audio-control:hover,
+.site-footer .audio-control:focus-within {
+  border-color: rgba(244, 244, 241, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    -1.2rem 0 3.2rem rgba(0,0,0,0.38),
+    -0.3rem 0 1.4rem rgba(36,119,255,0.08);
+  transform: translate3d(0, -50%, 0);
+}
+
+.site-footer .audio-control__button {
+  width: 2.72rem;
+  height: 2.72rem;
+  place-self: center;
+  border: 0;
+  border-right: 1px solid rgba(244, 244, 241, 0.1);
+  background: transparent;
+  color: rgba(244, 244, 241, 0.64);
+  box-shadow: none;
+  transform: none;
+}
+
+.site-footer .audio-control__button:hover,
+.site-footer .audio-control__button:focus-visible,
+.site-footer .audio-control__button[aria-pressed="true"] {
+  border-color: rgba(126,183,255,0.28);
+  color: #fff;
+  background: rgba(255,255,255,0.025);
+  box-shadow:
+    inset -1px 0 0 rgba(126,183,255,0.14),
+    inset 0 0 1rem rgba(36,119,255,0.035);
+  transform: none;
+}
+
+.site-footer .audio-control__button[aria-pressed="true"] svg {
+  filter: drop-shadow(0 0 0.3rem rgba(126,183,255,0.34));
+}
+
+.site-footer .audio-control__button svg {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 1.4;
+}
+
+.site-footer .audio-control__volume {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.56rem;
+  padding-left: 0.72rem;
+  font-size: 0.54rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+
+.site-footer .audio-control__volume span {
+  color: rgba(244,244,241,0.42);
+}
+
+.site-footer .audio-control__volume input {
+  width: 5.3rem;
+  height: 1rem;
+}
+
+.site-footer .audio-control__volume input::-webkit-slider-runnable-track {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(244,244,241,0.82), rgba(126,183,255,0.6));
+  box-shadow: none;
+}
+
+.site-footer .audio-control__volume input::-webkit-slider-thumb {
+  width: 0.48rem;
+  height: 0.48rem;
+  margin-top: -0.235rem;
+  border: 1px solid rgba(244,244,241,0.92);
+  background: #07090c;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.8),
+    0 0 0.7rem rgba(126,183,255,0.2);
+}
+
+.site-footer .audio-control__volume input::-moz-range-track {
+  height: 1px;
+  background: linear-gradient(90deg, rgba(244,244,241,0.82), rgba(126,183,255,0.6));
+}
+
+.site-footer .audio-control__volume input::-moz-range-thumb {
+  width: 0.48rem;
+  height: 0.48rem;
+  border: 1px solid rgba(244,244,241,0.92);
+  background: #07090c;
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,0.8),
+    0 0 0.7rem rgba(126,183,255,0.2);
+}
+
+@media (hover: none) and (min-width: 901px) {
+  .site-footer .audio-control {
+    transform: translate3d(0, -50%, 0);
+  }
+}
+
+@media (max-width: 900px) {
+  .brand-mark {
+    width: clamp(6.5rem, 18vw, 8.5rem);
+  }
+
+  .site-footer {
+    padding-right: clamp(1.1rem, 3.1vw, 3.6rem);
+  }
+
+  .site-footer .audio-control,
+  .site-footer .audio-control:hover,
+  .site-footer .audio-control:focus-within {
+    position: relative;
+    left: auto;
+    right: auto;
+    top: auto;
+    width: min(100%, 12.4rem);
+    height: 2.6rem;
+    justify-self: start;
+    margin: 0;
+    border-right: 1px solid rgba(244, 244, 241, 0.16);
+    transform: none;
+  }
+
+  .site-footer .audio-control__button {
+    width: 2.6rem;
+    height: 2.6rem;
+  }
+
+  .site-footer .audio-control__volume {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .brand-mark {
+    width: clamp(6.15rem, 27vw, 7.4rem);
+    padding-top: 0.08rem;
+  }
+
+  .brand-mark:hover img,
+  .brand-mark:focus-visible img {
+    transform: none;
+  }
+
+  .site-footer .audio-control {
+    width: min(100%, 11.8rem);
+  }
+
+  .site-footer .audio-control__volume input {
+    width: 4.8rem;
   }
 }
