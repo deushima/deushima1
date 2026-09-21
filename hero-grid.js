@@ -317,6 +317,8 @@
 
     if (!introComplete && (introProgress >= 1 || reduced)) {
       introComplete = true;
+      stage.classList.add('is-grid-nodes-visible');
+      stage.classList.remove('is-grid-intro-active');
     }
 
     return unsettled;
