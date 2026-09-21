@@ -267,6 +267,7 @@ button.work-node {
 
 .work-node__media {
   position: relative;
+  display: block;
   width: 100%;
   aspect-ratio: 3 / 2;
   overflow: hidden;
