@@ -156,6 +156,22 @@
   const isMobile = () => mobileLayout.matches;
   const isTablet = () => tabletLayout.matches;
 
+  let lastWorkHoverAt = 0;
+
+  function playWorkSfx(soundName, options = {}) {
+    const sfx = window.DeushimaSFX;
+    if (!sfx?.playScoped || !sfx.getEnabled?.()) return false;
+
+    if (soundName === 'nodeHover') {
+      const now = performance.now();
+      const minInterval = sfx.config?.performance?.hoverMinIntervalMs || 60;
+      if (now - lastWorkHoverAt < minInterval) return false;
+      lastWorkHoverAt = now;
+    }
+
+    return sfx.playScoped(soundName, options);
+  }
+
   function getNodeSize(model) {
     return {
       width: Math.max(1, model.el.offsetWidth || model.el.getBoundingClientRect().width / Math.max(camera.scale, 0.001)),
@@ -502,6 +518,13 @@
     body.append(top, strong);
     button.append(inPort, media, body);
 
+    button.addEventListener('pointerdown', (event) => {
+      playWorkSfx('nodeSelect', {
+        element: button,
+        eventTimestamp: event.timeStamp
+      });
+    }, { passive: true });
+
     button.addEventListener('click', () => {
       const src = getSourceForVideo(video) || getSourceForVideo(sourceVideo);
       if (!src) return;
@@ -512,7 +535,13 @@
       });
     });
 
-    button.addEventListener('pointerenter', () => {
+    button.addEventListener('pointerenter', (event) => {
+      if (!coarsePointer.matches && event.pointerType !== 'touch') {
+        playWorkSfx('nodeHover', {
+          element: button,
+          eventTimestamp: event.timeStamp
+        });
+      }
       button.classList.add('is-hot');
       if (childLink) {
         setLinkHot(childLink, true);
@@ -684,7 +713,11 @@
       startY: event.clientY,
       baseX: model.x,
       baseY: model.y,
-      dragging: false
+      dragging: false,
+      lastX: event.clientX,
+      lastY: event.clientY,
+      lastTime: performance.now(),
+      lastSfxAt: 0
     };
     model.el.setPointerCapture?.(event.pointerId);
   }
@@ -698,6 +731,32 @@
     if (!dragState.dragging) {
       dragState.dragging = true;
       dragState.model.el.classList.add('is-dragging');
+      playWorkSfx('pickup', {
+        element: dragState.model.el,
+        eventTimestamp: event.timeStamp
+      });
+      dragState.lastSfxAt = 0;
+    }
+
+    const now = performance.now();
+    const dragStep = window.DeushimaSFX?.config?.performance?.dragStepMs || 70;
+    if (now - dragState.lastSfxAt >= dragStep) {
+      const dt = Math.max(8, now - dragState.lastTime);
+      const speed = Math.hypot(
+        event.clientX - dragState.lastX,
+        event.clientY - dragState.lastY
+      ) / dt * 1000;
+      const bucket = clamp(Math.round((speed / 1650) * 4), 0, 4);
+      playWorkSfx('drag', {
+        element: dragState.model.el,
+        degree: -5 + bucket,
+        eventTimestamp: event.timeStamp,
+        gainScale: 0.92
+      });
+      dragState.lastSfxAt = now;
+      dragState.lastX = event.clientX;
+      dragState.lastY = event.clientY;
+      dragState.lastTime = now;
     }
 
     event.preventDefault();
@@ -714,7 +773,13 @@
     dragState.model.el.releasePointerCapture?.(event.pointerId);
     dragState.model.el.classList.remove('is-dragging');
 
-    if (wasDragging) suppressClickUntil = performance.now() + 280;
+    if (wasDragging) {
+      suppressClickUntil = performance.now() + 280;
+      playWorkSfx('drop', {
+        element: dragState.model.el,
+        eventTimestamp: event.timeStamp
+      });
+    }
     dragState = null;
     wakeGrid(450);
   }
@@ -754,8 +819,12 @@
     models.forEach((model, index) => {
       const baseLink = linkRecords[index];
 
-      model.el.addEventListener('pointerenter', () => {
-        if (coarsePointer.matches) return;
+      model.el.addEventListener('pointerenter', (event) => {
+        if (coarsePointer.matches || event.pointerType === 'touch') return;
+        playWorkSfx('nodeHover', {
+          element: model.el,
+          eventTimestamp: event.timeStamp
+        });
         model.el.classList.add('is-hot');
         setLinkHot(baseLink, true);
         pulseLink(baseLink);
@@ -768,7 +837,13 @@
         wakeGrid(240);
       });
 
-      model.el.addEventListener('pointerdown', (event) => startCategoryDrag(event, model));
+      model.el.addEventListener('pointerdown', (event) => {
+        playWorkSfx('nodeSelect', {
+          element: model.el,
+          eventTimestamp: event.timeStamp
+        });
+        startCategoryDrag(event, model);
+      });
       model.el.addEventListener('pointermove', moveCategoryDrag);
       model.el.addEventListener('pointerup', endCategoryDrag);
       model.el.addEventListener('pointercancel', endCategoryDrag);
@@ -1311,7 +1386,13 @@
   }
 
   fitButton?.addEventListener('click', () => fitView(true));
-  resetButton?.addEventListener('click', animateReset);
+  resetButton?.addEventListener('click', (event) => {
+    playWorkSfx('reset', {
+      element: resetButton,
+      eventTimestamp: event.timeStamp
+    });
+    animateReset();
+  });
   backButton?.addEventListener('click', () => collapseExpanded({ restoreFocus: true }));
 
   const resizeObserver = new ResizeObserver(() => {
