@@ -4610,15 +4610,13 @@ html.is-shutter-entering .page-transition__logo {
   overflow: hidden;
   border: 1px solid rgba(244, 244, 241, 0.16);
   border-left: 0;
-  background:
-    linear-gradient(100deg, rgba(255,255,255,0.035), rgba(255,255,255,0.008) 46%, rgba(36,119,255,0.065)),
-    rgba(4, 5, 7, 0.97);
+  background: rgba(3, 3, 3, 0.98);
   color: rgba(244, 244, 241, 0.76);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.045),
-    0.8rem 0 2.4rem rgba(0,0,0,0.28);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
+    inset 0 1px 0 rgba(255,255,255,0.035),
+    0.8rem 0 2.4rem rgba(0,0,0,0.3);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   transform: translate3d(calc(-100% + 2.72rem), -50%, 0);
   transition:
     transform 0.58s cubic-bezier(0.16, 1, 0.3, 1),
@@ -4638,18 +4636,17 @@ html.is-shutter-entering .page-transition__logo {
   top: 0.52rem;
   bottom: 0.52rem;
   width: 1px;
-  background: linear-gradient(180deg, transparent, rgba(126,183,255,0.52), transparent);
-  opacity: 0.42;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,0.18), transparent);
+  opacity: 0.34;
   pointer-events: none;
 }
 
 .site-footer .audio-control:hover,
 .site-footer .audio-control:focus-within {
-  border-color: rgba(244, 244, 241, 0.3);
+  border-color: rgba(244, 244, 241, 0.24);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.06),
-    1.2rem 0 3.2rem rgba(0,0,0,0.38),
-    0.3rem 0 1.4rem rgba(36,119,255,0.08);
+    inset 0 1px 0 rgba(255,255,255,0.045),
+    1.1rem 0 2.8rem rgba(0,0,0,0.34);
   transform: translate3d(0, -50%, 0);
 }
 
@@ -4669,17 +4666,15 @@ html.is-shutter-entering .page-transition__logo {
 .site-footer .audio-control__button:hover,
 .site-footer .audio-control__button:focus-visible,
 .site-footer .audio-control__button[aria-pressed="true"] {
-  border-color: rgba(126,183,255,0.28);
+  border-color: rgba(244,244,241,0.18);
   color: #fff;
-  background: rgba(255,255,255,0.025);
-  box-shadow:
-    inset 1px 0 0 rgba(126,183,255,0.14),
-    inset 0 0 1rem rgba(36,119,255,0.035);
+  background: rgba(255,255,255,0.018);
+  box-shadow: inset 1px 0 0 rgba(255,255,255,0.045);
   transform: none;
 }
 
 .site-footer .audio-control__button[aria-pressed="true"] svg {
-  filter: drop-shadow(0 0 0.3rem rgba(126,183,255,0.34));
+  filter: none;
 }
 
 .site-footer .audio-control__button svg {
@@ -4715,7 +4710,7 @@ html.is-shutter-entering .page-transition__logo {
 
 .site-footer .audio-control__volume input::-webkit-slider-runnable-track {
   height: 1px;
-  background: linear-gradient(90deg, rgba(244,244,241,0.82), rgba(126,183,255,0.6));
+  background: linear-gradient(90deg, rgba(244,244,241,0.78), rgba(244,244,241,0.34));
   box-shadow: none;
 }
 
@@ -4727,12 +4722,12 @@ html.is-shutter-entering .page-transition__logo {
   background: #07090c;
   box-shadow:
     0 0 0 1px rgba(0,0,0,0.8),
-    0 0 0.7rem rgba(126,183,255,0.2);
+    0 0 0.38rem rgba(255,255,255,0.06);
 }
 
 .site-footer .audio-control__volume input::-moz-range-track {
   height: 1px;
-  background: linear-gradient(90deg, rgba(244,244,241,0.82), rgba(126,183,255,0.6));
+  background: linear-gradient(90deg, rgba(244,244,241,0.78), rgba(244,244,241,0.34));
 }
 
 .site-footer .audio-control__volume input::-moz-range-thumb {
@@ -4742,7 +4737,7 @@ html.is-shutter-entering .page-transition__logo {
   background: #07090c;
   box-shadow:
     0 0 0 1px rgba(0,0,0,0.8),
-    0 0 0.7rem rgba(126,183,255,0.2);
+    0 0 0.38rem rgba(255,255,255,0.06);
 }
 
 @media (hover: none) and (min-width: 901px) {
