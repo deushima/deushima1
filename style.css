@@ -5145,9 +5145,7 @@ html.has-hero-copy-reveal
   backdrop-filter: blur(10px) saturate(1.04);
   opacity: 0;
   transform: translate3d(0, calc(100% + 1px), 0);
-  transition:
-    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.34s ease;
+  transition: none;
   will-change: transform, opacity;
 }
 
@@ -5366,6 +5364,6 @@ html.has-hero-copy-reveal
 @media (prefers-reduced-motion: reduce) {
   .content-panel__surface--about .about-info-bar {
     transform: none !important;
-    transition: opacity 0.18s linear;
+    transition: none;
   }
 }
