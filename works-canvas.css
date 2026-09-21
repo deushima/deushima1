@@ -77,6 +77,13 @@
   opacity: 1;
 }
 
+.work-canvas.is-grid-fallback {
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.16) 1.2px, transparent 1.3px);
+  background-size: 64px 64px;
+  background-position: center;
+}
+
 .work-canvas__viewport {
   position: absolute;
   inset: 0;
@@ -666,6 +673,14 @@ button.work-node {
     height: 1.15rem;
     background: var(--work-line);
     opacity: .76;
+  }
+
+  .work-node--root .work-node__port--out {
+    left: calc(1.22rem - 4.5px);
+    right: auto;
+    top: calc(100% + 4px);
+    width: 9px;
+    height: 9px;
   }
 
   .work-node--category {
