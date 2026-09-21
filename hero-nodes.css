@@ -814,3 +814,547 @@
       0 0 0.34rem rgba(36, 119, 255, 0.28);
   }
 }
+
+
+/* Node workspace redesign — 2026-09-21 */
+:root {
+  --node-canvas-bg: #0c0c0d;
+  --node-bg: #1f1f20;
+  --node-bg-hover: #232324;
+  --node-border: rgba(255, 255, 255, 0.06);
+  --node-border-hover: rgba(255, 255, 255, 0.14);
+  --node-radius: 24px;
+  --node-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.6);
+  --node-shadow-hover: 0 24px 52px -14px rgba(0, 0, 0, 0.72);
+  --node-inner-light: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --node-title: rgba(255, 255, 255, 0.96);
+  --node-copy: rgba(255, 255, 255, 0.66);
+  --node-meta: rgba(255, 255, 255, 0.58);
+  --node-port: #8c8c90;
+  --node-port-active: #f3f3f1;
+  --line-color: #5a5a5e;
+  --line-color-hover: rgba(255, 255, 255, 0.62);
+  --line-flare: rgba(255, 255, 255, 0.64);
+  --grid-dot: rgba(255, 255, 255, 0.22);
+  --grid-line: rgba(255, 255, 255, 0.045);
+  --grid-tile: rgba(255, 255, 255, 0.055);
+  --BG_OPACITY: 0.11;
+  --BG_BRIGHTNESS: 0.48;
+}
+
+.hero--node-canvas {
+  background: var(--node-canvas-bg);
+}
+
+.hero--node-canvas::before,
+.hero--node-canvas::after {
+  z-index: 6;
+}
+
+.hero--node-canvas .hero__video {
+  opacity: var(--BG_OPACITY);
+  filter:
+    grayscale(1)
+    saturate(0)
+    brightness(var(--BG_BRIGHTNESS))
+    contrast(0.86);
+}
+
+.hero--node-canvas .ascii-trail {
+  opacity: calc(var(--BG_OPACITY) * 0.55);
+  filter: grayscale(1) brightness(0.62) contrast(0.84);
+  mix-blend-mode: normal;
+}
+
+.hero--node-canvas .cursor-distortion {
+  opacity: 0.025 !important;
+  filter: grayscale(1);
+}
+
+.hero--node-canvas .hero__veil {
+  background:
+    linear-gradient(180deg, rgba(12, 12, 13, 0.7), rgba(12, 12, 13, 0.78)),
+    radial-gradient(circle at 50% 48%, rgba(12, 12, 13, 0.12), rgba(12, 12, 13, 0.52) 78%);
+}
+
+.hero--node-canvas .hero__vignette {
+  background:
+    radial-gradient(circle at 50% 48%, transparent 28%, rgba(12, 12, 13, 0.12) 62%, rgba(12, 12, 13, 0.5) 100%);
+}
+
+.hero-node-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 7;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
+}
+
+.hero--node-canvas.is-grid-started .hero-node-grid {
+  opacity: 1;
+}
+
+.hero--node-canvas .hero-node-stage {
+  --line-draw-progress: 1;
+}
+
+.hero--node-canvas .hero-node {
+  --node-lift: 0px;
+  --node-reveal-y: 0px;
+  --node-reveal-scale: 1;
+  display: block;
+  width: clamp(12rem, 15.2vw, 14rem);
+  min-height: clamp(5.35rem, 6.25vw, 5.9rem);
+  padding: 1.12rem 1.22rem 1.02rem;
+  border: 1px solid var(--node-border);
+  border-radius: var(--node-radius);
+  background: var(--node-bg);
+  color: var(--node-title);
+  box-shadow:
+    var(--node-inner-light),
+    var(--node-shadow);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  overflow: visible;
+  transform:
+    translate(-50%, -50%)
+    translate3d(0, calc(var(--node-lift) + var(--node-reveal-y)), 0)
+    scale(var(--node-scale))
+    scale(var(--node-reveal-scale));
+  transform-origin: center;
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.34s ease,
+    border-color 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease,
+    color 0.25s ease;
+}
+
+.hero--node-canvas .hero-node::before,
+.hero--node-canvas .hero-node::after {
+  display: none;
+  content: none;
+}
+
+.hero--node-canvas .hero-node__index {
+  position: absolute;
+  left: 1.15rem;
+  top: 0.92rem;
+  color: var(--node-meta);
+  font-family: "Inter", sans-serif;
+  font-size: 0.56rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.15em;
+}
+
+.hero--node-canvas .hero-node__copy {
+  display: grid;
+  gap: 0.32rem;
+  padding-top: 0.9rem;
+}
+
+.hero--node-canvas .hero-node strong {
+  color: var(--node-title);
+  font-family: "Inter", sans-serif;
+  font-size: clamp(1.02rem, 1.15vw, 1.2rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+}
+
+.hero--node-canvas .hero-node small {
+  max-width: none;
+  color: var(--node-copy);
+  font-family: "Inter", sans-serif;
+  font-size: clamp(0.72rem, 0.82vw, 0.8rem);
+  font-weight: 400;
+  line-height: 1.32;
+  letter-spacing: -0.005em;
+  white-space: normal;
+}
+
+.hero--node-canvas .hero-node__status {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.38rem;
+  margin-bottom: 0.02rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: "Inter", sans-serif;
+  font-size: 0.54rem;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.hero--node-canvas .hero-node__status > span {
+  width: 0.34rem;
+  height: 0.34rem;
+  border-radius: 50%;
+  background: rgba(235, 235, 232, 0.72);
+  box-shadow: none;
+  animation: nodeAvailablePulse 3.2s ease-in-out infinite;
+}
+
+@keyframes nodeAvailablePulse {
+  0%,
+  100% {
+    opacity: 0.46;
+    transform: scale(0.88);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.hero--node-canvas .hero-node--featured,
+.hero--node-canvas .hero-node--featured:hover,
+.hero--node-canvas .hero-node--featured:focus-visible {
+  border-color: var(--node-border);
+  background: var(--node-bg);
+  box-shadow:
+    var(--node-inner-light),
+    var(--node-shadow);
+}
+
+.hero--node-canvas .hero-node:hover,
+.hero--node-canvas .hero-node.is-connect-target {
+  --node-lift: -2px;
+  border-color: var(--node-border-hover);
+  background: var(--node-bg-hover);
+  box-shadow:
+    var(--node-inner-light),
+    var(--node-shadow-hover);
+}
+
+.hero--node-canvas .hero-node:active {
+  --node-scale: 0.985;
+}
+
+.hero--node-canvas .hero-node.is-dragging {
+  --node-scale: 1.01;
+  --node-lift: -2px;
+  border-color: rgba(255, 255, 255, 0.16);
+  background: var(--node-bg-hover);
+  box-shadow:
+    var(--node-inner-light),
+    0 28px 60px -16px rgba(0, 0, 0, 0.78);
+}
+
+.hero--node-canvas .hero-node:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.86);
+  outline-offset: 3px;
+  border-color: var(--node-border-hover);
+}
+
+.hero--node-canvas .hero-node__port {
+  --port-proximity: 0;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--node-port);
+  box-shadow: 0 0 0 2px var(--node-bg);
+  opacity: 1;
+  transform: translateY(-50%) scale(calc(1 + (var(--port-proximity) * 0.08)));
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.hero--node-canvas .hero-node__port--in {
+  left: -5px;
+}
+
+.hero--node-canvas .hero-node__port--out {
+  right: -5px;
+}
+
+.hero--node-canvas .hero-node__port::after {
+  display: none;
+  content: none;
+}
+
+.hero--node-canvas .hero-node:hover .hero-node__port,
+.hero--node-canvas .hero-node.is-connect-target .hero-node__port,
+.hero--node-canvas .hero-node__port:hover,
+.hero--node-canvas .hero-node__port.is-active,
+.hero--node-canvas .hero-node__port.is-near {
+  background: var(--node-port-active);
+  box-shadow:
+    0 0 0 2px var(--node-bg),
+    0 0 10px rgba(255, 255, 255, 0.14);
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line--halo {
+  display: none;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line {
+  fill: none;
+  stroke: var(--line-color);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--line-draw-progress));
+  opacity: 0.86;
+  filter: none;
+  transition:
+    stroke 0.25s ease,
+    opacity 0.25s ease;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line.is-hovered {
+  stroke: var(--line-color-hover);
+  stroke-width: 2;
+  opacity: 1;
+  filter: none;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line--glint {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 18 200;
+  opacity: 0;
+  filter: none;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line--glint.is-hovered {
+  opacity: 0.18;
+  filter: none;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line--glint.is-pulse-active {
+  opacity: 0.86;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.28));
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line-flare {
+  fill: var(--line-flare);
+  pointer-events: none;
+  filter: none;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line-flare--halo {
+  opacity: 0.08;
+  filter: blur(2px);
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line-flare--core {
+  opacity: 0.34;
+  filter: none;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line-flare--halo.is-hovered {
+  opacity: 0.28;
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line-flare--core.is-hovered {
+  opacity: 0.92;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.22));
+}
+
+.hero--node-canvas .hero-node-stage__mesh .hero-node-line--preview {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.52);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 4 7;
+  filter: none;
+}
+
+.hero--node-canvas .hero-node-stage.is-grid-intro-active:not(.is-grid-nodes-visible) .hero-node {
+  --node-reveal-y: 12px;
+  --node-reveal-scale: 0.96;
+  opacity: 0;
+}
+
+.hero--node-canvas .hero-node-stage.is-grid-intro-active.is-grid-nodes-visible .hero-node {
+  --node-reveal-y: 0px;
+  --node-reveal-scale: 1;
+  opacity: 1;
+}
+
+.hero--node-canvas .hero-node-stage.is-grid-intro-active.is-grid-nodes-visible .hero-node--works {
+  transition-delay: 0ms;
+}
+
+.hero--node-canvas .hero-node-stage.is-grid-intro-active.is-grid-nodes-visible .hero-node--about {
+  transition-delay: 55ms;
+}
+
+.hero--node-canvas .hero-node-stage.is-grid-intro-active.is-grid-nodes-visible .hero-node--launcher {
+  transition-delay: 110ms;
+}
+
+.hero--node-canvas .hero-node-stage.is-grid-intro-active.is-grid-nodes-visible .hero-node--chat {
+  transition-delay: 165ms;
+}
+
+.hero--node-canvas .hero-node-stage.is-grid-intro-active.is-grid-nodes-visible .hero-node--contact {
+  transition-delay: 220ms;
+}
+
+@media (max-width: 1023px) {
+  .hero--node-canvas {
+    --BG_OPACITY: 0.09;
+    --BG_BRIGHTNESS: 0.44;
+  }
+
+  .hero--node-canvas .hero-node {
+    --node-radius: 20px;
+    width: clamp(10.2rem, 24vw, 11.7rem);
+    min-height: 4.65rem;
+    padding: 0.9rem 0.95rem 0.82rem;
+    border-radius: 20px;
+  }
+
+  .hero--node-canvas .hero-node__index {
+    left: 0.92rem;
+    top: 0.75rem;
+    font-size: 0.5rem;
+  }
+
+  .hero--node-canvas .hero-node__copy {
+    gap: 0.25rem;
+    padding-top: 0.72rem;
+  }
+
+  .hero--node-canvas .hero-node strong {
+    font-size: clamp(0.88rem, 2vw, 1rem);
+  }
+
+  .hero--node-canvas .hero-node small {
+    font-size: clamp(0.62rem, 1.2vw, 0.7rem);
+  }
+
+  .hero--node-canvas .hero-node__status {
+    font-size: 0.48rem;
+  }
+
+  .hero--node-canvas .hero-node-stage__mesh .hero-node-line,
+  .hero--node-canvas .hero-node-stage__mesh .hero-node-line.is-hovered {
+    stroke-width: 1.7;
+  }
+
+  .hero--node-canvas .hero-node-stage__mesh .hero-node-line--glint {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero--node-canvas {
+    --BG_OPACITY: 0.075;
+    --BG_BRIGHTNESS: 0.42;
+  }
+
+  .hero--node-canvas .hero-node {
+    width: min(9.85rem, 41vw);
+    min-height: 4.2rem;
+    padding: 0.78rem 0.78rem 0.72rem;
+    border-radius: 18px;
+    transition:
+      opacity 0.26s ease,
+      border-color 0.2s ease,
+      background-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+
+  .hero--node-canvas .hero-node:hover,
+  .hero--node-canvas .hero-node:focus-visible {
+    --node-lift: 0px;
+  }
+
+  .hero--node-canvas .hero-node__index {
+    left: 0.76rem;
+    top: 0.65rem;
+    font-size: 0.45rem;
+  }
+
+  .hero--node-canvas .hero-node__copy {
+    padding-top: 0.64rem;
+  }
+
+  .hero--node-canvas .hero-node strong {
+    font-size: 0.84rem;
+  }
+
+  .hero--node-canvas .hero-node small {
+    font-size: 0.6rem;
+    line-height: 1.25;
+  }
+
+  .hero--node-canvas .hero-node__port {
+    width: 9px;
+    height: 9px;
+  }
+
+  .hero--node-canvas .hero-node__port--in {
+    left: -4.5px;
+  }
+
+  .hero--node-canvas .hero-node__port--out {
+    right: -4.5px;
+  }
+}
+
+@media (pointer: coarse) {
+  .hero--node-canvas .hero-node:hover,
+  .hero--node-canvas .hero-node:focus-visible {
+    --node-lift: 0px;
+    background: var(--node-bg);
+    box-shadow:
+      var(--node-inner-light),
+      var(--node-shadow);
+  }
+
+  .hero--node-canvas .hero-node__port,
+  .hero--node-canvas .hero-node__port:hover,
+  .hero--node-canvas .hero-node__port.is-active,
+  .hero--node-canvas .hero-node__port.is-near {
+    box-shadow: 0 0 0 2px var(--node-bg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero--node-canvas {
+    --BG_OPACITY: 0.05;
+    --BG_BRIGHTNESS: 0.4;
+  }
+
+  .hero-node-grid {
+    transition: none;
+  }
+
+  .hero--node-canvas .hero-node__status > span {
+    animation: none;
+    opacity: 0.76;
+    transform: none;
+  }
+
+  .hero--node-canvas .hero-node {
+    --node-reveal-y: 0px !important;
+    --node-reveal-scale: 1 !important;
+    --node-lift: 0px !important;
+    transition:
+      opacity 0.18s linear,
+      border-color 0.18s linear,
+      background-color 0.18s linear;
+  }
+
+  .hero--node-canvas .hero-node-stage__mesh .hero-node-line {
+    stroke-dashoffset: 0;
+  }
+}
