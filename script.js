@@ -1668,11 +1668,26 @@ function initAmbientAudio() {
     }
   };
 
+  const publishAudioState = () => {
+    const playing = !ambientAudio.paused && !ambientAudio.ended;
+    const volume = Math.max(0, Math.min(1, ambientAudio.volume));
+    const detail = {
+      enabled: playing && volume > 0.001,
+      playing,
+      volume,
+      sfxScale: Math.max(0, Math.min(1, volume / defaultVolume))
+    };
+
+    window.DeushimaAudioState = Object.freeze({ ...detail });
+    window.dispatchEvent(new CustomEvent("deushima:audio-state", { detail }));
+  };
+
   const syncAudioUi = () => {
     const playing = !ambientAudio.paused && !ambientAudio.ended;
     audioToggle.setAttribute("aria-pressed", playing ? "true" : "false");
     audioToggle.setAttribute("aria-label", playing ? "Pausar sonido" : "Activar sonido");
     audioToggle.closest("[data-audio-control]")?.classList.toggle("is-playing", playing);
+    publishAudioState();
   };
 
   const playAudio = async () => {
@@ -1698,6 +1713,7 @@ function initAmbientAudio() {
     } catch {
       // Ignore storage restrictions in embedded previews.
     }
+    publishAudioState();
   });
 
   audioToggle.addEventListener("click", async () => {
