@@ -1,5 +1,7 @@
 const hero = document.querySelector(".hero");
 const preloader = document.querySelector("[data-preloader]");
+const preloaderSharedLogoSource = document.querySelector("[data-preloader-shared-logo-source]");
+const sharedLogoTarget = document.querySelector("[data-shared-logo-target]");
 const timeNode = document.querySelector("[data-current-time]");
 const video = document.querySelector("[data-hero-video]");
 const asciiTrailCanvas = document.querySelector("[data-ascii-trail]");
@@ -36,6 +38,9 @@ const PAGE_TRANSITION_DURATION = 820;
 const compactPointerQuery = window.matchMedia("(pointer: coarse)");
 const compactLayoutQuery = window.matchMedia("(max-width: 760px)");
 const isMobilePerformanceMode = () => compactLayoutQuery.matches;
+const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+const PRELOADER_SHARED_LOGO_DURATION = 1120;
+const PRELOADER_SHARED_LOGO_EASING = "cubic-bezier(0.76, 0, 0.24, 1)";
 
 document.documentElement.classList.toggle("is-mobile-performance", isMobilePerformanceMode());
 compactLayoutQuery.addEventListener?.("change", (event) => {
@@ -106,28 +111,124 @@ function updateTime() {
   timeNode.textContent = formatter.format(new Date());
 }
 
+function completePreloaderReveal() {
+  preloader?.classList.add("is-hidden");
+  document.body.classList.add("is-site-ready");
+  initIntroText();
+  syncInitialHashScroll();
+}
+
+function animatePreloaderLogoToHeader() {
+  const root = document.documentElement;
+
+  if (
+    !preloaderSharedLogoSource ||
+    !sharedLogoTarget ||
+    root.classList.contains("has-studio-splash") ||
+    reducedMotionQuery.matches ||
+    typeof preloaderSharedLogoSource.animate !== "function"
+  ) {
+    return null;
+  }
+
+  root.classList.add("is-preloader-logo-flight");
+
+  const sourceRect = preloaderSharedLogoSource.getBoundingClientRect();
+  const targetRect = sharedLogoTarget.getBoundingClientRect();
+
+  if (
+    sourceRect.width <= 0 ||
+    sourceRect.height <= 0 ||
+    targetRect.width <= 0 ||
+    targetRect.height <= 0
+  ) {
+    root.classList.remove("is-preloader-logo-flight");
+    return null;
+  }
+
+  const sourceCenterX = sourceRect.left + sourceRect.width / 2;
+  const sourceCenterY = sourceRect.top + sourceRect.height / 2;
+  const targetCenterX = targetRect.left + targetRect.width / 2;
+  const targetCenterY = targetRect.top + targetRect.height / 2;
+
+  const deltaX = targetCenterX - sourceCenterX;
+  const deltaY = targetCenterY - sourceCenterY;
+  const scaleX = targetRect.width / sourceRect.width;
+  const scaleY = targetRect.height / sourceRect.height;
+
+  const flightLogo = preloaderSharedLogoSource.cloneNode(false);
+  flightLogo.removeAttribute("data-preloader-shared-logo-source");
+  flightLogo.className = "preloader-logo-flight";
+  flightLogo.setAttribute("aria-hidden", "true");
+  flightLogo.setAttribute("alt", "");
+
+  Object.assign(flightLogo.style, {
+    position: "fixed",
+    left: `${sourceRect.left}px`,
+    top: `${sourceRect.top}px`,
+    width: `${sourceRect.width}px`,
+    height: `${sourceRect.height}px`,
+    margin: "0",
+    transformOrigin: "50% 50%",
+    pointerEvents: "none",
+    userSelect: "none"
+  });
+
+  document.body.appendChild(flightLogo);
+  preloaderSharedLogoSource.style.visibility = "hidden";
+
+  const animation = flightLogo.animate([
+    {
+      opacity: 0.9,
+      transform: "translate3d(0, 0, 0) scale(1, 1)"
+    },
+    {
+      offset: 0.18,
+      opacity: 1
+    },
+    {
+      offset: 1,
+      opacity: 1,
+      transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(${scaleX}, ${scaleY})`
+    }
+  ], {
+    duration: PRELOADER_SHARED_LOGO_DURATION,
+    easing: PRELOADER_SHARED_LOGO_EASING,
+    fill: "forwards"
+  });
+
+  const cleanup = () => {
+    root.classList.add("is-preloader-logo-landed");
+    root.classList.remove("is-preloader-logo-flight");
+    preloaderSharedLogoSource.style.removeProperty("visibility");
+    flightLogo.remove();
+  };
+
+  return animation.finished
+    .catch(() => {})
+    .then(cleanup);
+}
+
 function hidePreloader() {
   if (preloaderHideStarted) return;
   preloaderHideStarted = true;
 
+  const flightPromise = animatePreloaderLogoToHeader();
   preloader?.classList.add("is-opening");
+  if (flightPromise) preloader?.classList.add("has-shared-logo-flight");
 
-  if (isMobilePerformanceMode()) {
-    window.setTimeout(() => {
-      preloader?.classList.add("is-hidden");
-      document.body.classList.add("is-site-ready");
-      initIntroText();
-      syncInitialHashScroll();
-    }, 120);
-    return;
+  const revealDelay = isMobilePerformanceMode() ? 120 : 820;
+  window.setTimeout(completePreloaderReveal, revealDelay);
+
+  if (flightPromise) {
+    Promise.race([
+      flightPromise,
+      new Promise((resolve) => window.setTimeout(resolve, PRELOADER_SHARED_LOGO_DURATION + 180))
+    ]).then(() => {
+      document.documentElement.classList.add("is-preloader-logo-landed");
+      document.documentElement.classList.remove("is-preloader-logo-flight");
+    });
   }
-
-  window.setTimeout(() => {
-    preloader?.classList.add("is-hidden");
-    document.body.classList.add("is-site-ready");
-    initIntroText();
-    syncInitialHashScroll();
-  }, 820);
 }
 
 function syncInitialHashScroll() {
