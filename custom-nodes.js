@@ -193,8 +193,8 @@
     };
   }
 
-  function isPointInsideStage(clientX, clientY) {
-    const rect = stage.getBoundingClientRect();
+  function isPointInsideWorkspace(clientX, clientY) {
+    const rect = hero.getBoundingClientRect();
     return (
       clientX >= rect.left &&
       clientX <= rect.right &&
@@ -226,7 +226,7 @@
   function canOpenCanvasMenuAt(target, clientX, clientY) {
     return (
       !isModalOpen() &&
-      isPointInsideStage(clientX, clientY) &&
+      isPointInsideWorkspace(clientX, clientY) &&
       !isExcludedCanvasTarget(target)
     );
   }
@@ -1629,13 +1629,17 @@
     }
   });
 
-  hero.addEventListener('contextmenu', event => {
+  document.addEventListener('contextmenu', event => {
     if (performance.now() < longPressOpenedUntil) {
-      event.preventDefault();
+      if (isPointInsideWorkspace(event.clientX, event.clientY)) event.preventDefault();
       return;
     }
 
-    const customNodeEl = event.target.closest?.('[data-custom-node]');
+    const target = event.target instanceof Element
+      ? event.target
+      : document.elementFromPoint(event.clientX, event.clientY);
+
+    const customNodeEl = target?.closest?.('[data-custom-node]');
     if (customNodeEl) {
       const model = models.get(customNodeEl.dataset.customNode);
       if (!model || isModalOpen()) return;
@@ -1646,10 +1650,12 @@
       return;
     }
 
-    if (!canOpenCanvasMenuAt(event.target, event.clientX, event.clientY)) return;
+    if (!canOpenCanvasMenuAt(target, event.clientX, event.clientY)) return;
+
     event.preventDefault();
+    event.stopPropagation();
     openCanvasMenu(event.clientX, event.clientY, stage);
-  });
+  }, { capture: true });
 
   function startLongPress(target, clientX, clientY, pointerId, source) {
     if (isModalOpen()) return;
