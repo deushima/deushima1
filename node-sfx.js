@@ -7,14 +7,11 @@
   const nodes = [...stage.querySelectorAll('[data-sfx="node"][data-hero-node]')];
   const resetButton = stage.querySelector('[data-sfx="reset"]');
   const disconnectButton = stage.querySelector('[data-sfx="disconnect"]');
-  const ambientAudio = document.querySelector('[data-ambient-audio]');
-  const audioToggle = document.querySelector('[data-audio-toggle]');
-  const audioVolume = document.querySelector('[data-audio-volume]');
   const coarsePointer = window.matchMedia('(pointer: coarse)');
 
   const CONFIG = Object.freeze({
     master: {
-      gain: 0.3,
+      gain: 0.24,
       maxVoices: 6,
       hoverMinInterval: 60,
       comboWindow: 600,
@@ -114,7 +111,6 @@
     }
   });
 
-  const STORAGE_KEY = 'deushimaNodeSfxMuted';
   const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
 
   let context = null;
@@ -122,9 +118,6 @@
   let limiter = null;
   let noiseBuffer = null;
   let unlocked = false;
-  let manualMuted = readStoredMuted();
-  let controlMuted = Boolean(audioToggle) && audioToggle.getAttribute('aria-pressed') !== 'true';
-  let controlVolume = readControlVolume();
   let stageVisible = false;
   let appearancePlayed = false;
   let appearanceQueued = false;
@@ -138,26 +131,8 @@
   let lastPointerTap = { node: null, time: 0 };
   let lastLineHoverAt = 0;
 
-  function readStoredMuted() {
-    try {
-      return localStorage.getItem(STORAGE_KEY) === 'true';
-    } catch {
-      return false;
-    }
-  }
-
-  function readControlVolume() {
-    if (!audioVolume) return 1;
-    const value = Number.parseFloat(audioVolume.value);
-    return Number.isFinite(value) ? Math.max(0, Math.min(1, value)) : 1;
-  }
-
   function randomFactor(range = 0.05) {
     return 1 + ((Math.random() * 2) - 1) * range;
-  }
-
-  function effectiveMuted() {
-    return manualMuted || controlMuted || controlVolume <= 0;
   }
 
   function canPlay() {
@@ -165,7 +140,6 @@
       context &&
       unlocked &&
       context.state === 'running' &&
-      !effectiveMuted() &&
       !document.hidden
     );
   }
@@ -204,15 +178,12 @@
 
   function syncMaster(immediate = false) {
     if (!context || !masterGain) return;
-    const target = effectiveMuted()
-      ? 0
-      : CONFIG.master.gain * Math.pow(controlVolume, 0.72);
     const now = context.currentTime;
     masterGain.gain.cancelScheduledValues(now);
     if (immediate) {
-      masterGain.gain.setValueAtTime(target, now);
+      masterGain.gain.setValueAtTime(CONFIG.master.gain, now);
     } else {
-      masterGain.gain.setTargetAtTime(target, now, 0.018);
+      masterGain.gain.setTargetAtTime(CONFIG.master.gain, now, 0.018);
     }
   }
 
@@ -719,25 +690,6 @@
     runAppearance();
   }
 
-  function setMuted(value) {
-    manualMuted = Boolean(value);
-    try {
-      localStorage.setItem(STORAGE_KEY, manualMuted ? 'true' : 'false');
-    } catch {}
-    syncMaster();
-    if (!manualMuted) maybePlayAppearance();
-  }
-
-  function syncGlobalAudioState() {
-    controlVolume = readControlVolume();
-    controlMuted = Boolean(audioToggle) && audioToggle.getAttribute('aria-pressed') !== 'true';
-    syncMaster();
-    if (!effectiveMuted()) {
-      unlock();
-      maybePlayAppearance();
-    }
-  }
-
   function nodeFromTarget(target) {
     return target?.closest?.('[data-sfx="node"][data-hero-node]') || null;
   }
@@ -922,19 +874,6 @@
     lineObserver.observe(disconnectButton, { attributes: true, attributeFilter: ['class'] });
   }
 
-  if (ambientAudio) {
-    ambientAudio.addEventListener('play', syncGlobalAudioState);
-    ambientAudio.addEventListener('pause', syncGlobalAudioState);
-    ambientAudio.addEventListener('volumechange', syncGlobalAudioState);
-  }
-
-  audioVolume?.addEventListener('input', syncGlobalAudioState);
-
-  if (audioToggle) {
-    const toggleObserver = new MutationObserver(syncGlobalAudioState);
-    toggleObserver.observe(audioToggle, { attributes: true, attributeFilter: ['aria-pressed'] });
-  }
-
   document.addEventListener('visibilitychange', async () => {
     if (!context) return;
     if (document.hidden) {
@@ -942,7 +881,7 @@
       return;
     }
 
-    if (unlocked && !effectiveMuted()) {
+    if (unlocked) {
       try { await context.resume(); } catch {}
       syncMaster(true);
     }
@@ -951,10 +890,10 @@
   window.DeushimaNodeSFX = Object.freeze({
     config: CONFIG,
     unlock,
-    setMuted,
-    getMuted: () => effectiveMuted(),
-    getContextState: () => context?.state || 'uninitialized'
+    getContextState: () => context?.state || 'uninitialized',
+    getVoiceCount: () => {
+      cleanupVoices();
+      return activeVoices.size;
+    }
   });
-
-  syncGlobalAudioState();
 })();
