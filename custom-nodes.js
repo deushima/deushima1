@@ -318,14 +318,14 @@
   }
 
   function insertLineBreak(editor) {
+    const selection = window.getSelection();
     const range = selectionInside(editor);
+
     if (!range) {
-      editor.appendChild(document.createTextNode('\n'));
-      const tail = document.createTextNode('');
-      editor.appendChild(tail);
-      const selection = window.getSelection();
+      const lineBreak = document.createTextNode('\n');
+      editor.appendChild(lineBreak);
       const nextRange = document.createRange();
-      nextRange.setStart(tail, 0);
+      nextRange.setStart(lineBreak, lineBreak.data.length);
       nextRange.collapse(true);
       selection.removeAllRanges();
       selection.addRange(nextRange);
@@ -334,12 +334,9 @@
 
     range.deleteContents();
     const lineBreak = document.createTextNode('\n');
-    const tail = document.createTextNode('');
     range.insertNode(lineBreak);
-    lineBreak.parentNode.insertBefore(tail, lineBreak.nextSibling);
-    range.setStart(tail, 0);
+    range.setStart(lineBreak, lineBreak.data.length);
     range.collapse(true);
-    const selection = window.getSelection();
     selection.removeAllRanges();
     selection.addRange(range);
   }
