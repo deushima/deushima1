@@ -6,7 +6,6 @@
     appearDuration: 500,
     travelDuration: 1000,
     settleDuration: 500,
-    totalDuration: 2000,
     textStart: 500,
     textDuration: 900,
     lineStagger: 80,
@@ -23,6 +22,8 @@
       trailLength: '2.5rem'
     })
   });
+
+  const TOTAL_DURATION = CONFIG.appearDuration + CONFIG.travelDuration + CONFIG.settleDuration;
 
   const root = document.querySelector('[data-hero-copy-reveal]');
   const stage = document.querySelector('[data-hero-node-stage]');
@@ -124,8 +125,8 @@
       const starCenterY = rect.top + rect.height / 2;
       const dx = centerX - starCenterX;
       const dy = centerY - starCenterY;
-      const appearEnd = CONFIG.appearDuration / CONFIG.totalDuration;
-      const travelEnd = (CONFIG.appearDuration + CONFIG.travelDuration) / CONFIG.totalDuration;
+      const appearEnd = CONFIG.appearDuration / TOTAL_DURATION;
+      const travelEnd = (CONFIG.appearDuration + CONFIG.travelDuration) / TOTAL_DURATION;
 
       const flight = star.animate([
         {
@@ -152,7 +153,7 @@
           transform: 'translate3d(0, 0, 0) scale(1)'
         }
       ], {
-        duration: CONFIG.totalDuration,
+        duration: TOTAL_DURATION,
         fill: 'both'
       });
       activeAnimations.push(flight);
@@ -170,7 +171,7 @@
           { offset: travelEnd, transform: `rotate(${end}deg) scale(${start === 45 ? 0.58 : 1})` },
           { offset: 1, transform: `rotate(${end}deg) scale(${start === 45 ? 0.58 : 1})` }
         ], {
-          duration: CONFIG.totalDuration,
+          duration: TOTAL_DURATION,
           fill: 'both'
         });
         activeAnimations.push(rotation);
@@ -187,7 +188,7 @@
           { offset: travelEnd, opacity: max * 0.56, transform: 'translate(-50%, -50%) scale(1.04)' },
           { offset: 1, opacity: 0, transform: 'translate(-50%, -50%) scale(0.92)' }
         ], {
-          duration: CONFIG.totalDuration,
+          duration: TOTAL_DURATION,
           easing: 'ease-out',
           fill: 'both'
         });
@@ -204,7 +205,7 @@
           { offset: travelEnd, opacity: 0, transform: 'translateY(-50%) scaleX(0.32)' },
           { offset: 1, opacity: 0, transform: 'translateY(-50%) scaleX(0.2)' }
         ], {
-          duration: CONFIG.totalDuration,
+          duration: TOTAL_DURATION,
           easing: 'ease-out',
           fill: 'both'
         });
@@ -251,7 +252,7 @@
         try { animation.cancel(); } catch {}
       });
       activeAnimations = [];
-    }, CONFIG.totalDuration + 40);
+    }, TOTAL_DURATION + 40);
   }
 
   function play() {
