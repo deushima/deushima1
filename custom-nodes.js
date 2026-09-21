@@ -9,9 +9,10 @@
   if (stage.dataset.customNodesReady === 'true') return;
   stage.dataset.customNodesReady = 'true';
 
-  const STORAGE_KEY = 'deushima:nodes:v1';
+  const STORAGE_KEY = 'deushima:nodes:v2';
+  const LEGACY_STORAGE_KEY = 'deushima:nodes:v1';
   const HINT_KEY = 'deushima:nodes:menu-hint:v1';
-  const STORAGE_VERSION = 1;
+  const STORAGE_VERSION = 2;
   const MAX_NODES = 20;
   const MAX_CONNECTIONS = 60;
   const MAX_TEXT_LENGTH = 280;
@@ -182,14 +183,43 @@
     return el.querySelector(`[data-node-port="${direction}"]`);
   }
 
-  function stagePointFromClient(clientX, clientY) {
-    const rect = stage.getBoundingClientRect();
+  function cameraApi() {
+    return window.DeushimaHeroCamera || null;
+  }
+
+  function cameraScale() {
+    return cameraApi()?.getState?.().scale || 1;
+  }
+
+  function worldPointFromClient(clientX, clientY) {
+    const camera = cameraApi();
+    if (camera?.screenToWorld) return camera.screenToWorld(clientX, clientY);
+
+    const heroRect = hero.getBoundingClientRect();
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
-      nx: clamp((clientX - rect.left) / Math.max(1, rect.width), 0, 1),
-      ny: clamp((clientY - rect.top) / Math.max(1, rect.height), 0, 1),
-      rect
+      x: clientX - heroRect.left,
+      y: clientY - heroRect.top
+    };
+  }
+
+  function worldToStageLocal(worldX, worldY) {
+    const camera = cameraApi();
+    if (camera?.worldToStage) return camera.worldToStage(worldX, worldY);
+
+    const stageRect = stage.getBoundingClientRect();
+    const heroRect = hero.getBoundingClientRect();
+    return {
+      x: worldX - (stageRect.left - heroRect.left),
+      y: worldY - (stageRect.top - heroRect.top)
+    };
+  }
+
+  function stageLocalPointFromClient(clientX, clientY) {
+    const stageRect = stage.getBoundingClientRect();
+    const scale = cameraScale();
+    return {
+      x: (clientX - stageRect.left) / scale,
+      y: (clientY - stageRect.top) / scale
     };
   }
 
@@ -239,18 +269,25 @@
   }
 
   function nodeBoundsFor(model) {
-    const stageRect = stage.getBoundingClientRect();
-    const width = Math.max(1, model.el.offsetWidth || model.el.getBoundingClientRect().width);
-    const height = Math.max(1, model.el.offsetHeight || model.el.getBoundingClientRect().height);
+    const worldBounds = cameraApi()?.getWorldBounds?.() || {
+      minX: -hero.clientWidth * 3,
+      maxX: hero.clientWidth * 4,
+      minY: -hero.clientHeight * 3,
+      maxY: hero.clientHeight * 4
+    };
+    const width = Math.max(1, model.el?.offsetWidth || 180);
+    const height = Math.max(1, model.el?.offsetHeight || 96);
     const margin = mobileQuery.matches ? 9 : 10;
-    const minX = clamp((width * 0.5 + margin) / Math.max(1, stageRect.width), 0, 0.5);
-    const maxX = 1 - minX;
-    const minY = clamp((height * 0.5 + margin) / Math.max(1, stageRect.height), 0, 0.5);
-    const maxY = 1 - minY;
-    return { minX, maxX, minY, maxY };
+    return {
+      minX: worldBounds.minX + width * 0.5 + margin,
+      maxX: worldBounds.maxX - width * 0.5 - margin,
+      minY: worldBounds.minY + height * 0.5 + margin,
+      maxY: worldBounds.maxY - height * 0.5 - margin
+    };
   }
 
   function clampModel(model) {
+    if (!model?.el) return false;
     const bounds = nodeBoundsFor(model);
     const oldX = model.x;
     const oldY = model.y;
@@ -260,9 +297,11 @@
   }
 
   function renderModel(model) {
+    if (!model?.el) return;
     clampModel(model);
-    model.el.style.setProperty('--custom-node-x', `${(model.x * 100).toFixed(4)}%`);
-    model.el.style.setProperty('--custom-node-y', `${(model.y * 100).toFixed(4)}%`);
+    const local = worldToStageLocal(model.x, model.y);
+    model.el.style.setProperty('--custom-node-x', `${local.x.toFixed(3)}px`);
+    model.el.style.setProperty('--custom-node-y', `${local.y.toFixed(3)}px`);
     model.el.style.zIndex = String(20 + model.z);
   }
 
@@ -533,13 +572,14 @@
       if (!mayDrag) return;
 
       const rect = el.getBoundingClientRect();
+      const scale = cameraScale();
       dragState = {
         id: model.id,
         pointerId: event.pointerId,
         startX: event.clientX,
         startY: event.clientY,
-        offsetX: event.clientX - (rect.left + rect.width * 0.5),
-        offsetY: event.clientY - (rect.top + rect.height * 0.5),
+        offsetX: (event.clientX - (rect.left + rect.width * 0.5)) / scale,
+        offsetY: (event.clientY - (rect.top + rect.height * 0.5)) / scale,
         moved: false,
         lastX: event.clientX,
         lastY: event.clientY,
@@ -715,8 +755,8 @@
   function createTextNode({
     id = uid('note'),
     note = nextNoteNumber++,
-    x = 0.5,
-    y = 0.5,
+    x = null,
+    y = null,
     text = '',
     z = ++zCounter,
     animate = true,
@@ -728,12 +768,20 @@
     if (models.size >= MAX_NODES) return null;
     if (models.has(id)) return null;
 
+    const heroRect = hero.getBoundingClientRect();
+    const fallbackCenter = worldPointFromClient(
+      heroRect.left + heroRect.width * 0.5,
+      heroRect.top + heroRect.height * 0.5
+    );
+    const worldX = Number.isFinite(Number(x)) ? Number(x) : fallbackCenter.x;
+    const worldY = Number.isFinite(Number(y)) ? Number(y) : fallbackCenter.y;
+
     const model = {
       id,
       note: clamp(Math.trunc(note) || 1, 1, 999),
       type: 'text',
-      x: clamp(Number(x) || 0.5, 0, 1),
-      y: clamp(Number(y) || 0.5, 0, 1),
+      x: worldX,
+      y: worldY,
       text: safeText(text),
       z: clamp(Math.trunc(z) || 1, 1, 9999),
       editing: false,
@@ -804,12 +852,9 @@
   function duplicateNode(id) {
     const source = models.get(id);
     if (!source || models.size >= MAX_NODES) return null;
-    const stageRect = stage.getBoundingClientRect();
-    const offsetX = 28 / Math.max(1, stageRect.width);
-    const offsetY = 24 / Math.max(1, stageRect.height);
     return createTextNode({
-      x: source.x + offsetX,
-      y: source.y + offsetY,
+      x: source.x + 28,
+      y: source.y + 24,
       text: source.text,
       animate: true,
       focusEditor: false,
@@ -855,9 +900,10 @@
     if (!port) return null;
     const stageRect = stage.getBoundingClientRect();
     const rect = port.getBoundingClientRect();
+    const scale = cameraScale();
     return {
-      x: rect.left - stageRect.left + rect.width * 0.5,
-      y: rect.top - stageRect.top + rect.height * 0.5
+      x: (rect.left - stageRect.left + rect.width * 0.5) / scale,
+      y: (rect.top - stageRect.top + rect.height * 0.5) / scale
     };
   }
 
@@ -1108,7 +1154,7 @@
   function moveConnection(event) {
     if (!connectionState || event.pointerId !== connectionState.pointerId) return;
     event.preventDefault();
-    const point = stagePointFromClient(event.clientX, event.clientY);
+    const point = stageLocalPointFromClient(event.clientX, event.clientY);
     connectionState.pointerX = point.x;
     connectionState.pointerY = point.y;
     connectionState.target = nearestCompatibleInput(event.clientX, event.clientY, connectionState.sourceId);
@@ -1188,12 +1234,11 @@
     }
 
     event.preventDefault();
-    const stageRect = stage.getBoundingClientRect();
-    const centerX = event.clientX - stageRect.left - dragState.offsetX;
-    const centerY = event.clientY - stageRect.top - dragState.offsetY;
-    model.x = centerX / Math.max(1, stageRect.width);
-    model.y = centerY / Math.max(1, stageRect.height);
+    const worldPoint = worldPointFromClient(event.clientX, event.clientY);
+    model.x = worldPoint.x - dragState.offsetX;
+    model.y = worldPoint.y - dragState.offsetY;
     renderModel(model);
+    window.DeushimaHeroCamera?.setAutoPanPointer?.(event.clientX, event.clientY, true);
 
     const now = performance.now();
     const step = window.DeushimaSFX?.config?.performance?.dragStepMs || 70;
@@ -1235,43 +1280,10 @@
       drawConnections();
       window.DeushimaGrid?.wake?.(500);
     }
+    window.DeushimaHeroCamera?.clearAutoPan?.();
   }
 
-  function readState() {
-    let parsed;
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return null;
-      parsed = JSON.parse(raw);
-    } catch {
-      return null;
-    }
-
-    if (!parsed || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.nodes)) return null;
-
-    const nodes = [];
-    const ids = new Set();
-
-    for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
-      if (!rawNode || rawNode.type !== 'text') continue;
-      const id = typeof rawNode.id === 'string' && rawNode.id.length <= 90 ? rawNode.id : null;
-      if (!id || ids.has(id)) continue;
-      const x = Number(rawNode.x);
-      const y = Number(rawNode.y);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-
-      ids.add(id);
-      nodes.push({
-        id,
-        type: 'text',
-        note: clamp(Math.trunc(Number(rawNode.note)) || nodes.length + 1, 1, 999),
-        text: safeText(rawNode.text),
-        x: clamp(x, 0, 1),
-        y: clamp(y, 0, 1),
-        z: clamp(Math.trunc(Number(rawNode.z)) || nodes.length + 1, 1, 9999)
-      });
-    }
-
+  function validateConnections(rawConnections, nodes) {
     const validRefs = new Set([
       ...nodes.map(node => endpointRefForUser(node.id)),
       ...[...originalNames].map(endpointRefForOriginal)
@@ -1279,9 +1291,8 @@
 
     const restoredConnections = [];
     const seen = new Set();
-    const rawConnections = Array.isArray(parsed.connections) ? parsed.connections : [];
 
-    for (const rawConnection of rawConnections.slice(0, MAX_CONNECTIONS)) {
+    for (const rawConnection of (Array.isArray(rawConnections) ? rawConnections : []).slice(0, MAX_CONNECTIONS)) {
       if (!rawConnection) continue;
       const from = String(rawConnection.from || '');
       const to = String(rawConnection.to || '');
@@ -1298,17 +1309,108 @@
       });
     }
 
+    return restoredConnections;
+  }
+
+  function validateV2State(parsed) {
+    if (!parsed || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.nodes)) return null;
+    const nodes = [];
+    const ids = new Set();
+    const bounds = cameraApi()?.getWorldBounds?.();
+
+    for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
+      if (!rawNode || rawNode.type !== 'text') continue;
+      const id = typeof rawNode.id === 'string' && rawNode.id.length <= 90 ? rawNode.id : null;
+      if (!id || ids.has(id)) continue;
+      let x = Number(rawNode.x);
+      let y = Number(rawNode.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      if (bounds) {
+        x = clamp(x, bounds.minX, bounds.maxX);
+        y = clamp(y, bounds.minY, bounds.maxY);
+      }
+      ids.add(id);
+      nodes.push({
+        id,
+        type: 'text',
+        note: clamp(Math.trunc(Number(rawNode.note)) || nodes.length + 1, 1, 999),
+        text: safeText(rawNode.text),
+        x,
+        y,
+        z: clamp(Math.trunc(Number(rawNode.z)) || nodes.length + 1, 1, 9999)
+      });
+    }
+
     return {
       nodes,
-      connections: restoredConnections,
+      connections: validateConnections(parsed.connections, nodes),
       nextNote: clamp(Math.trunc(Number(parsed.nextNote)) || nodes.length + 1, 1, 9999),
-      zCounter: clamp(Math.trunc(Number(parsed.zCounter)) || nodes.length + 1, 1, 9999)
+      zCounter: clamp(Math.trunc(Number(parsed.zCounter)) || nodes.length + 1, 1, 9999),
+      migrated: false
     };
   }
 
+  function migrateLegacyState(parsed) {
+    if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.nodes)) return null;
+    const nodes = [];
+    const ids = new Set();
+    const origin = cameraApi()?.getStageOrigin?.() || { x: 0, y: 0 };
+    const stageWidth = Math.max(1, stage.clientWidth);
+    const stageHeight = Math.max(1, stage.clientHeight);
+
+    for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
+      if (!rawNode || rawNode.type !== 'text') continue;
+      const id = typeof rawNode.id === 'string' && rawNode.id.length <= 90 ? rawNode.id : null;
+      if (!id || ids.has(id)) continue;
+      const nx = Number(rawNode.x);
+      const ny = Number(rawNode.y);
+      if (!Number.isFinite(nx) || !Number.isFinite(ny)) continue;
+      ids.add(id);
+      nodes.push({
+        id,
+        type: 'text',
+        note: clamp(Math.trunc(Number(rawNode.note)) || nodes.length + 1, 1, 999),
+        text: safeText(rawNode.text),
+        x: origin.x + nx * stageWidth,
+        y: origin.y + ny * stageHeight,
+        z: clamp(Math.trunc(Number(rawNode.z)) || nodes.length + 1, 1, 9999)
+      });
+    }
+
+    return {
+      nodes,
+      connections: validateConnections(parsed.connections, nodes),
+      nextNote: clamp(Math.trunc(Number(parsed.nextNote)) || nodes.length + 1, 1, 9999),
+      zCounter: clamp(Math.trunc(Number(parsed.zCounter)) || nodes.length + 1, 1, 9999),
+      migrated: true
+    };
+  }
+
+  function readState() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        const valid = validateV2State(parsed);
+        if (valid) return valid;
+      }
+    } catch {}
+
+    try {
+      const legacyRaw = localStorage.getItem(LEGACY_STORAGE_KEY);
+      if (!legacyRaw) return null;
+      const legacy = JSON.parse(legacyRaw);
+      return migrateLegacyState(legacy);
+    } catch {
+      return null;
+    }
+  }
+
   function saveState() {
+    const cameraState = cameraApi()?.getState?.();
     const payload = {
       version: STORAGE_VERSION,
+      viewport: cameraState ? { width: cameraState.width, height: cameraState.height } : null,
       nextNote: nextNoteNumber,
       zCounter,
       nodes: [...models.values()].map(model => ({
@@ -1355,6 +1457,12 @@
 
     connections = saved.connections;
     connections.forEach(ensureConnectionElement);
+
+    if (saved.migrated) {
+      saveState();
+      try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+    }
+
     restoreHintState();
     requestAnimationFrame(() => {
       clampAllNodesAndSave(false);
@@ -1431,8 +1539,8 @@
           closeMenu(false);
           markHintUsed();
           const model = createTextNode({
-            x: anchor.nx,
-            y: anchor.ny,
+            x: anchor.worldX,
+            y: anchor.worldY,
             animate: true,
             focusEditor: true,
             persist: true,
@@ -1445,7 +1553,10 @@
 
     menu.appendChild(separator());
 
-    const resetDisabled = window.DeushimaHeroNodes?.isDefaultLayout?.() !== false;
+    const resetDisabled = (
+      window.DeushimaHeroNodes?.isDefaultLayout?.() !== false
+      && window.DeushimaHeroCamera?.isDefaultView?.() !== false
+    );
     menu.appendChild(menuItem({
       label: 'Reset',
       icon: '↺',
@@ -1455,9 +1566,22 @@
         markHintUsed();
         playSfx('reset', { element: stage });
         window.DeushimaHeroNodes?.resetOriginals?.();
+        window.DeushimaHeroCamera?.recenter?.({ animate: !reducedMotion.matches });
         announce('Layout reset');
         window.DeushimaGrid?.wake?.(850);
         window.setTimeout(() => stage.focus({ preventScroll: true }), reducedMotion.matches ? 0 : 300);
+      }
+    }));
+
+    menu.appendChild(menuItem({
+      label: 'Recenter view',
+      icon: '⌾',
+      action: () => {
+        closeMenu(false);
+        markHintUsed();
+        window.DeushimaHeroCamera?.recenter?.({ animate: !reducedMotion.matches });
+        announce('View recentered');
+        window.setTimeout(() => stage.focus({ preventScroll: true }), reducedMotion.matches ? 0 : 180);
       }
     }));
 
@@ -1549,12 +1673,12 @@
   function openCanvasMenu(clientX, clientY, origin = stage) {
     if (isModalOpen()) return;
     closeMenu(false);
-    const point = stagePointFromClient(clientX, clientY);
+    const point = worldPointFromClient(clientX, clientY);
     menuAnchor = {
       clientX,
       clientY,
-      nx: point.nx,
-      ny: point.ny
+      worldX: point.x,
+      worldY: point.y
     };
     menuMode = 'canvas';
     menuNodeId = null;
@@ -1566,7 +1690,7 @@
 
   function openNodeMenu(model, clientX, clientY, origin = model.el) {
     closeMenu(false);
-    menuAnchor = { clientX, clientY, nx: model.x, ny: model.y };
+    menuAnchor = { clientX, clientY, worldX: model.x, worldY: model.y };
     menuMode = 'node';
     menuNodeId = model.id;
     menuFocusOrigin = origin;
@@ -1691,6 +1815,10 @@
   }, { passive: true });
 
   hero.addEventListener('touchstart', event => {
+    if (event.touches.length > 1) {
+      clearLongPress();
+      return;
+    }
     if (longPressState || event.touches.length !== 1) return;
     const touch = event.touches[0];
     startLongPress(event.target, touch.clientX, touch.clientY, touch.identifier, 'touch');
@@ -1824,7 +1952,7 @@
       clampAllNodesAndSave(true);
       window.DeushimaGrid?.refreshDynamicNodes?.();
       window.DeushimaGrid?.wake?.(600);
-    }, 90);
+    }, 180);
   }, { passive: true });
 
   document.addEventListener('visibilitychange', () => {
@@ -1836,6 +1964,26 @@
     }
     drawConnections();
     scheduleConnectionLoop();
+  });
+
+  hero.addEventListener('deushima:camera-change', () => {
+    models.forEach(renderModel);
+    drawConnections();
+
+    if (dragState?.moved) {
+      const model = models.get(dragState.id);
+      if (model) {
+        const point = worldPointFromClient(dragState.lastX, dragState.lastY);
+        model.x = point.x - dragState.offsetX;
+        model.y = point.y - dragState.offsetY;
+        renderModel(model);
+        drawConnections();
+      }
+    }
+
+    if (menuMode === 'canvas' && menu.classList.contains('is-open')) {
+      buildCanvasMenu();
+    }
   });
 
   coarsePointer.addEventListener?.('change', () => {
@@ -1867,10 +2015,12 @@
 
   window.DeushimaCustomNodes = Object.freeze({
     storageKey: STORAGE_KEY,
+    legacyStorageKey: LEGACY_STORAGE_KEY,
+    storageVersion: STORAGE_VERSION,
     hintKey: HINT_KEY,
     maxNodes: MAX_NODES,
     nodeTypes: NODE_TYPES,
-    createText: (x = .5, y = .5, text = '') => createTextNode({ x, y, text }),
+    createText: (x = null, y = null, text = '') => createTextNode({ x, y, text }),
     clear: clearAllNodes,
     getState: () => ({
       nodes: [...models.values()].map(model => ({
