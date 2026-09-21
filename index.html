@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260913-mobile4">
+  <link rel="stylesheet" href="style.css?v=20260920-footer-audio1">
   <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes13">
   <link rel="stylesheet" href="chatbot.css?v=20260913-chat3">
   <link rel="stylesheet" href="splash.css?v=20260913-splash1">
@@ -105,8 +105,8 @@
       <div class="hero__vignette" aria-hidden="true"></div>
 
       <header class="nav" aria-label="Navegacion principal">
-        <a class="brand-mark intro-fade" href="#" aria-label="Ivan Rodriguez" style="--intro-delay: 0.08s">
-          <img src="simbolo%20deushima.svg" alt="" aria-hidden="true">
+        <a class="brand-mark intro-fade" href="#" aria-label="Deushima — inicio" style="--intro-delay: 0.08s">
+          <img src="deushima.svg.svg" alt="" aria-hidden="true">
         </a>
 
         <nav class="directory" aria-label="Directorio">
@@ -132,20 +132,6 @@
           <time data-current-time>00:00:00</time>
           <span>ART</span>
           <span>ARG</span>
-        </div>
-
-        <div class="audio-control intro-fade" data-audio-control style="--intro-delay: 0.71s">
-          <button class="audio-control__button" type="button" data-audio-toggle aria-pressed="false" aria-label="Activar sonido">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 9.25h3.5L13 5v14l-5.5-4.25H4z"></path>
-              <path d="M16 8.4c1.1.95 1.7 2.16 1.7 3.6s-.6 2.65-1.7 3.6"></path>
-              <path d="M18.7 6c1.75 1.58 2.65 3.58 2.65 6s-.9 4.42-2.65 6"></path>
-            </svg>
-          </button>
-          <label class="audio-control__volume">
-            <span>Vol</span>
-            <input type="range" min="0" max="1" step="0.01" value="0.22" data-audio-volume aria-label="Volumen">
-          </label>
         </div>
 
         <a class="discover-link intro-fade" href="#about" data-panel-open="about" style="--intro-delay: 0.74s">Discover</a>
@@ -432,6 +418,20 @@
           <span aria-hidden="true">in</span>
         </a>
       </nav>
+
+      <div class="site-footer__audio-drawer audio-control" data-audio-control aria-label="Control de audio">
+        <button class="audio-control__button" type="button" data-audio-toggle aria-pressed="false" aria-label="Activar sonido">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 9.25h3.5L13 5v14l-5.5-4.25H4z"></path>
+            <path d="M16 8.4c1.1.95 1.7 2.16 1.7 3.6s-.6 2.65-1.7 3.6"></path>
+            <path d="M18.7 6c1.75 1.58 2.65 3.58 2.65 6s-.9 4.42-2.65 6"></path>
+          </svg>
+        </button>
+        <label class="audio-control__volume">
+          <span>VOL</span>
+          <input type="range" min="0" max="1" step="0.01" value="0.22" data-audio-volume aria-label="Volumen">
+        </label>
+      </div>
     </footer>
   </main>
 
