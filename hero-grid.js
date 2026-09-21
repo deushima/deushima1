@@ -32,7 +32,9 @@
     wakeAfterPointerMs: 180,
     wakeAfterDragMs: 420,
     recoveryInterval: 2500,
-    nodeRadiusFallback: 24
+    nodeRadiusFallback: 24,
+    lodMinScreenSpacing: 24,
+    lodMaxScreenSpacing: 96
   });
 
   window.DeushimaGridConfig = GRID_CONFIG;
@@ -43,11 +45,6 @@
   const canvas = hero?.querySelector('[data-node-grid]');
   const stage = hero?.querySelector('[data-hero-node-stage]');
   const originalNodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
-  const getWarpNodes = () => (
-    stage
-      ? [...originalNodes, ...stage.querySelectorAll('[data-grid-node="dynamic"]')]
-      : []
-  );
   const backgroundVideo = hero?.querySelector('[data-hero-video]');
   if (!hero || !canvas || !stage || !originalNodes.length) return;
 
@@ -64,46 +61,51 @@
   let width = 0;
   let height = 0;
   let dpr = 1;
-  let spacing = GRID_CONFIG.spacingDesktop;
-  let cols = 0;
-  let rows = 0;
-  let count = 0;
-  let baseX = new Float32Array(0);
-  let baseY = new Float32Array(0);
-  let currentX = new Float32Array(0);
-  let currentY = new Float32Array(0);
-  let targetX = new Float32Array(0);
-  let targetY = new Float32Array(0);
-  let intensity = new Float32Array(0);
-  let reveal = new Float32Array(0);
-  let warpNodeCount = 0;
-  let nodeRects = new Float32Array((originalNodes.length + 20) * 5);
+  let canvasRectLeft = 0;
+  let canvasRectTop = 0;
 
   let dotColor = 'rgba(255,255,255,.22)';
   let lineColor = 'rgba(255,255,255,.045)';
   let tileColor = 'rgba(255,255,255,.055)';
 
-  let pointerX = -9999;
-  let pointerY = -9999;
+  let pointerClientX = -9999;
+  let pointerClientY = -9999;
   let pointerInside = false;
   let pointerDownOnNode = false;
   let lastPointerAt = 0;
-  let activeUntil = 0;
 
   let raf = 0;
-  let introStarted = false;
-  let introStart = 0;
-  let introComplete = false;
-  let nodeRevealTimer = 0;
+  let activeUntil = 0;
   let hidden = document.hidden;
   let contextLost = false;
   let lastDrawAt = 0;
   let drawCount = 0;
   let recoveryCount = 0;
+  let frameId = 0;
 
-  let canvasRectLeft = 0;
-  let canvasRectTop = 0;
-  let maxDistanceFromCenter = 1;
+  let introStarted = false;
+  let introStart = 0;
+  let introComplete = false;
+  let nodeRevealTimer = 0;
+
+  let effectiveSpacing = GRID_CONFIG.spacingDesktop;
+  let visibleCols = 0;
+  let visibleRows = 0;
+  let visibleCount = 0;
+  let startCol = 0;
+  let startRow = 0;
+
+  let screenX = new Float32Array(0);
+  let screenY = new Float32Array(0);
+  let intensity = new Float32Array(0);
+  let reveal = new Float32Array(0);
+
+  let nodeRects = new Float32Array((originalNodes.length + 20) * 5);
+  let nodeRectCount = 0;
+
+  // Persistent warp offsets keyed by world-grid coordinate. Entries are only
+  // created when a point first enters the viewport and are pruned later.
+  const warpState = new Map();
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -122,6 +124,20 @@
     return reducedMotionQuery.matches;
   }
 
+  function cameraApi() {
+    return window.DeushimaHeroCamera || null;
+  }
+
+  function cameraState() {
+    return cameraApi()?.getState?.() || {
+      cx: width * 0.5,
+      cy: height * 0.5,
+      scale: 1,
+      width,
+      height
+    };
+  }
+
   function refreshColors() {
     const styles = getComputedStyle(hero);
     dotColor = styles.getPropertyValue('--grid-dot').trim() || 'rgba(255,255,255,.22)';
@@ -129,49 +145,20 @@
     tileColor = styles.getPropertyValue('--grid-tile').trim() || 'rgba(255,255,255,.055)';
   }
 
-  function allocateGrid() {
-    spacing = isMobile() ? GRID_CONFIG.spacingMobile : GRID_CONFIG.spacingDesktop;
-    cols = Math.max(2, Math.ceil(width / spacing) + 2);
-    rows = Math.max(2, Math.ceil(height / spacing) + 2);
-    count = cols * rows;
-
-    baseX = new Float32Array(count);
-    baseY = new Float32Array(count);
-    currentX = new Float32Array(count);
-    currentY = new Float32Array(count);
-    targetX = new Float32Array(count);
-    targetY = new Float32Array(count);
-    intensity = new Float32Array(count);
-    reveal = new Float32Array(count);
-
-    const startX = (width - (cols - 1) * spacing) * 0.5;
-    const startY = (height - (rows - 1) * spacing) * 0.5;
-    const centerX = width * 0.5;
-    const centerY = height * 0.5;
-    maxDistanceFromCenter = Math.hypot(centerX + spacing, centerY + spacing) || 1;
-
-    let index = 0;
-    for (let row = 0; row < rows; row += 1) {
-      const y = startY + row * spacing;
-      for (let col = 0; col < cols; col += 1) {
-        const x = startX + col * spacing;
-        baseX[index] = x;
-        baseY[index] = y;
-        currentX[index] = x;
-        currentY[index] = y;
-        targetX[index] = x;
-        targetY[index] = y;
-        reveal[index] = isReducedMotion() ? 1 : 0;
-        index += 1;
-      }
-    }
+  function ensureCapacity(count) {
+    if (screenX.length >= count) return;
+    let capacity = Math.max(256, screenX.length || 256);
+    while (capacity < count) capacity *= 2;
+    screenX = new Float32Array(capacity);
+    screenY = new Float32Array(capacity);
+    intensity = new Float32Array(capacity);
+    reveal = new Float32Array(capacity);
   }
 
   function resize(force = false) {
     const rect = hero.getBoundingClientRect();
-    const nextWidth = Math.max(1, Math.round(rect.width));
-    const nextHeight = Math.max(1, Math.round(rect.height));
-    const nextSpacing = isMobile() ? GRID_CONFIG.spacingMobile : GRID_CONFIG.spacingDesktop;
+    const nextWidth = Math.max(1, Math.round(hero.clientWidth || rect.width));
+    const nextHeight = Math.max(1, Math.round(hero.clientHeight || rect.height));
     const nextDpr = Math.min(
       window.devicePixelRatio || 1,
       isMobile() ? GRID_CONFIG.mobileDprMax : GRID_CONFIG.desktopDprMax
@@ -180,22 +167,20 @@
     canvasRectLeft = rect.left;
     canvasRectTop = rect.top;
 
-    const geometryChanged = (
+    const changed = (
       force
       || width !== nextWidth
       || height !== nextHeight
-      || spacing !== nextSpacing
       || dpr !== nextDpr
     );
 
-    if (!geometryChanged) {
-      updateNodeRects();
+    if (!changed) {
+      wake(180);
       return;
     }
 
     width = nextWidth;
     height = nextHeight;
-    spacing = nextSpacing;
     dpr = nextDpr;
 
     const pixelWidth = Math.max(1, Math.round(width * dpr));
@@ -203,164 +188,298 @@
 
     if (canvas.width !== pixelWidth) canvas.width = pixelWidth;
     if (canvas.height !== pixelHeight) canvas.height = pixelHeight;
-
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     refreshColors();
-    allocateGrid();
-    updateNodeRects();
+    warpState.clear();
     wake(700);
   }
 
-  function updateNodeRects() {
-    const heroRect = hero.getBoundingClientRect();
-    canvasRectLeft = heroRect.left;
-    canvasRectTop = heroRect.top;
+  function getWarpNodes() {
+    return [
+      ...originalNodes,
+      ...stage.querySelectorAll('[data-grid-node="dynamic"]')
+    ].slice(0, originalNodes.length + 20);
+  }
 
-    const warpNodes = getWarpNodes();
-    warpNodeCount = Math.min(warpNodes.length, originalNodes.length + 20);
+  function updateNodeRects(scale) {
+    const nodes = getWarpNodes();
+    nodeRectCount = nodes.length;
 
-    const requiredLength = warpNodeCount * 5;
-    if (nodeRects.length < requiredLength) {
-      nodeRects = new Float32Array(requiredLength);
+    const required = nodeRectCount * 5;
+    if (nodeRects.length < required) {
+      nodeRects = new Float32Array(required);
     }
 
-    for (let index = 0; index < warpNodeCount; index += 1) {
-      const node = warpNodes[index];
+    const camera = cameraApi();
+    const heroRect = hero.getBoundingClientRect();
+
+    for (let index = 0; index < nodeRectCount; index += 1) {
+      const node = nodes[index];
       const rect = node.getBoundingClientRect();
+      const centerClientX = rect.left + rect.width * 0.5;
+      const centerClientY = rect.top + rect.height * 0.5;
+      const worldPoint = camera?.screenToWorld
+        ? camera.screenToWorld(centerClientX, centerClientY)
+        : {
+            x: centerClientX - heroRect.left,
+            y: centerClientY - heroRect.top
+          };
+
       const offset = index * 5;
-      const radius = parseFloat(getComputedStyle(node).borderRadius) || GRID_CONFIG.nodeRadiusFallback;
-      nodeRects[offset] = rect.left - canvasRectLeft + rect.width * 0.5;
-      nodeRects[offset + 1] = rect.top - canvasRectTop + rect.height * 0.5;
-      nodeRects[offset + 2] = rect.width * 0.5;
-      nodeRects[offset + 3] = rect.height * 0.5;
-      nodeRects[offset + 4] = Math.min(radius, rect.width * 0.5, rect.height * 0.5);
+      const cssRadius = parseFloat(getComputedStyle(node).borderRadius) || GRID_CONFIG.nodeRadiusFallback;
+      nodeRects[offset] = worldPoint.x;
+      nodeRects[offset + 1] = worldPoint.y;
+      nodeRects[offset + 2] = rect.width * 0.5 / scale;
+      nodeRects[offset + 3] = rect.height * 0.5 / scale;
+      nodeRects[offset + 4] = Math.min(
+        cssRadius / scale,
+        nodeRects[offset + 2],
+        nodeRects[offset + 3]
+      );
     }
   }
 
-  function vignetteAt(x, y) {
+  function computeSpacing(scale) {
+    let worldSpacing = isMobile() ? GRID_CONFIG.spacingMobile : GRID_CONFIG.spacingDesktop;
+    let screenSpacing = worldSpacing * scale;
+
+    while (screenSpacing < GRID_CONFIG.lodMinScreenSpacing) {
+      worldSpacing *= 2;
+      screenSpacing = worldSpacing * scale;
+    }
+
+    while (screenSpacing > GRID_CONFIG.lodMaxScreenSpacing && worldSpacing > 8) {
+      worldSpacing *= 0.5;
+      screenSpacing = worldSpacing * scale;
+    }
+
+    return worldSpacing;
+  }
+
+  function visibleWorldBounds() {
+    const camera = cameraApi();
+    if (camera?.screenToWorld) {
+      const rect = hero.getBoundingClientRect();
+      const a = camera.screenToWorld(rect.left, rect.top);
+      const b = camera.screenToWorld(rect.right, rect.bottom);
+      return {
+        minX: Math.min(a.x, b.x),
+        maxX: Math.max(a.x, b.x),
+        minY: Math.min(a.y, b.y),
+        maxY: Math.max(a.y, b.y)
+      };
+    }
+
+    const state = cameraState();
+    const halfW = width / (2 * state.scale);
+    const halfH = height / (2 * state.scale);
+    return {
+      minX: state.cx - halfW,
+      maxX: state.cx + halfW,
+      minY: state.cy - halfH,
+      maxY: state.cy + halfH
+    };
+  }
+
+  function localScreenPoint(worldX, worldY) {
+    const camera = cameraApi();
+    if (camera?.worldToScreen) {
+      const point = camera.worldToScreen(worldX, worldY);
+      return {
+        x: point.x - canvasRectLeft,
+        y: point.y - canvasRectTop
+      };
+    }
+    return { x: worldX, y: worldY };
+  }
+
+  function vignetteAtScreen(x, y) {
     const edgeX = Math.min(x / Math.max(width, 1), 1 - x / Math.max(width, 1));
     const edgeY = Math.min(y / Math.max(height, 1), 1 - y / Math.max(height, 1));
     const edge = clamp(Math.min(edgeX, edgeY) / GRID_CONFIG.vignetteReach, 0, 1);
     return GRID_CONFIG.vignetteFloor + (1 - GRID_CONFIG.vignetteFloor) * smoothstep01(edge);
   }
 
-  function updateTargets(now) {
-    updateNodeRects();
+  function stateKey(spacingValue, col, row) {
+    return `${spacingValue}:${col}:${row}`;
+  }
 
-    const cursorEnabled = !isMobile() && !coarsePointerQuery.matches && pointerInside;
-    const reduced = isReducedMotion();
-    const lerp = reduced ? 1 : GRID_CONFIG.lerp;
-    const entranceElapsed = introStarted ? now - introStart : 0;
-    const introProgress = introComplete
-      ? 1
-      : clamp(entranceElapsed / GRID_CONFIG.revealDuration, 0, 1);
+  function getWarpEntry(key) {
+    let entry = warpState.get(key);
+    if (!entry) {
+      entry = new Float32Array(4);
+      warpState.set(key, entry);
+    }
+    entry[3] = frameId;
+    return entry;
+  }
 
-    let unsettled = false;
+  function pointWarp(worldX, worldY, scale, cursorWorld, cursorEnabled, entry) {
+    const falloff = GRID_CONFIG.nodeFalloff / scale;
+    const maxShift = GRID_CONFIG.nodeMaxShift / scale;
+    const cursorRadius = GRID_CONFIG.cursorRadius / scale;
+    const cursorForce = GRID_CONFIG.cursorForce / scale;
 
-    for (let pointIndex = 0; pointIndex < count; pointIndex += 1) {
-      const px = baseX[pointIndex];
-      const py = baseY[pointIndex];
+    let pushX = 0;
+    let pushY = 0;
+    let proximity = 0;
 
-      let pushX = 0;
-      let pushY = 0;
-      let proximity = 0;
+    for (let nodeIndex = 0; nodeIndex < nodeRectCount; nodeIndex += 1) {
+      const offset = nodeIndex * 5;
+      const cx = nodeRects[offset];
+      const cy = nodeRects[offset + 1];
+      const halfW = nodeRects[offset + 2];
+      const halfH = nodeRects[offset + 3];
+      const radius = nodeRects[offset + 4];
 
-      for (let nodeIndex = 0; nodeIndex < warpNodeCount; nodeIndex += 1) {
-        const offset = nodeIndex * 5;
-        const cx = nodeRects[offset];
-        const cy = nodeRects[offset + 1];
-        const halfW = nodeRects[offset + 2];
-        const halfH = nodeRects[offset + 3];
-        const radius = nodeRects[offset + 4];
+      const localX = worldX - cx;
+      const localY = worldY - cy;
+      const qx = Math.abs(localX) - Math.max(0, halfW - radius);
+      const qy = Math.abs(localY) - Math.max(0, halfH - radius);
+      const outsideX = Math.max(qx, 0);
+      const outsideY = Math.max(qy, 0);
+      const signedDistance = Math.hypot(outsideX, outsideY)
+        + Math.min(Math.max(qx, qy), 0)
+        - radius;
 
-        const localX = px - cx;
-        const localY = py - cy;
-        const qx = Math.abs(localX) - Math.max(0, halfW - radius);
-        const qy = Math.abs(localY) - Math.max(0, halfH - radius);
-        const outsideX = Math.max(qx, 0);
-        const outsideY = Math.max(qy, 0);
-        const signedDistance = Math.hypot(outsideX, outsideY)
-          + Math.min(Math.max(qx, qy), 0)
-          - radius;
+      if (signedDistance >= falloff) continue;
 
-        if (signedDistance >= GRID_CONFIG.nodeFalloff) continue;
+      const influence = smoothstep01(
+        1 - clamp(Math.max(0, signedDistance) / Math.max(0.001, falloff), 0, 1)
+      );
+      proximity = Math.max(proximity, influence);
 
-        const normalizedDistance = clamp(Math.max(0, signedDistance) / GRID_CONFIG.nodeFalloff, 0, 1);
-        const influence = smoothstep01(1 - normalizedDistance);
-        proximity = Math.max(proximity, influence);
-
-        let directionX = localX;
-        let directionY = localY;
-        let directionLength = Math.hypot(directionX, directionY);
-        if (directionLength < 0.001) {
-          directionX = 1;
-          directionY = 0;
-          directionLength = 1;
-        }
-
-        const shift = GRID_CONFIG.nodeMaxShift * influence;
-        pushX += directionX / directionLength * shift;
-        pushY += directionY / directionLength * shift;
+      let directionX = localX;
+      let directionY = localY;
+      let length = Math.hypot(directionX, directionY);
+      if (length < 0.001) {
+        directionX = 1;
+        directionY = 0;
+        length = 1;
       }
 
-      const pushLength = Math.hypot(pushX, pushY);
-      if (pushLength > GRID_CONFIG.nodeMaxShift) {
-        const scale = GRID_CONFIG.nodeMaxShift / pushLength;
-        pushX *= scale;
-        pushY *= scale;
-      }
+      const shift = maxShift * influence;
+      pushX += directionX / length * shift;
+      pushY += directionY / length * shift;
+    }
 
-      if (cursorEnabled) {
-        const cursorDx = px - pointerX;
-        const cursorDy = py - pointerY;
-        const cursorDistance = Math.hypot(cursorDx, cursorDy);
-        if (cursorDistance < GRID_CONFIG.cursorRadius && cursorDistance > 0.001) {
-          const cursorInfluence = smoothstep01(1 - cursorDistance / GRID_CONFIG.cursorRadius);
-          const cursorShift = GRID_CONFIG.cursorForce * cursorInfluence;
-          pushX += cursorDx / cursorDistance * cursorShift;
-          pushY += cursorDy / cursorDistance * cursorShift;
-          proximity = Math.max(proximity, cursorInfluence * 0.85);
-        }
-      }
+    const totalShift = Math.hypot(pushX, pushY);
+    if (totalShift > maxShift) {
+      const ratio = maxShift / totalShift;
+      pushX *= ratio;
+      pushY *= ratio;
+    }
 
-      targetX[pointIndex] = px + pushX;
-      targetY[pointIndex] = py + pushY;
-      intensity[pointIndex] = proximity;
-
-      const dx = targetX[pointIndex] - currentX[pointIndex];
-      const dy = targetY[pointIndex] - currentY[pointIndex];
-
-      currentX[pointIndex] += dx * lerp;
-      currentY[pointIndex] += dy * lerp;
-
-      if (Math.abs(dx) > GRID_CONFIG.settleThreshold || Math.abs(dy) > GRID_CONFIG.settleThreshold) {
-        unsettled = true;
-      }
-
-      if (!introComplete && !reduced) {
-        const distanceFromCenter = Math.hypot(px - width * 0.5, py - height * 0.5);
-        const waveDelay = (distanceFromCenter / maxDistanceFromCenter) * GRID_CONFIG.revealWaveShare;
-        const localProgress = clamp(
-          (introProgress - waveDelay) / Math.max(0.001, 1 - waveDelay),
-          0,
-          1
-        );
-        reveal[pointIndex] = 1 - Math.pow(1 - localProgress, 3);
-      } else {
-        reveal[pointIndex] = 1;
+    if (cursorEnabled && cursorWorld) {
+      const dx = worldX - cursorWorld.x;
+      const dy = worldY - cursorWorld.y;
+      const distance = Math.hypot(dx, dy);
+      if (distance < cursorRadius && distance > 0.001) {
+        const influence = smoothstep01(1 - distance / cursorRadius);
+        const shift = cursorForce * influence;
+        pushX += dx / distance * shift;
+        pushY += dy / distance * shift;
+        proximity = Math.max(proximity, influence * 0.85);
       }
     }
 
-    if (!introComplete && (introProgress >= 1 || reduced)) {
+    const lerp = isReducedMotion() ? 1 : GRID_CONFIG.lerp;
+    const oldDx = entry[0];
+    const oldDy = entry[1];
+    entry[0] += (pushX - entry[0]) * lerp;
+    entry[1] += (pushY - entry[1]) * lerp;
+    entry[2] += (proximity - entry[2]) * lerp;
+
+    return {
+      dx: entry[0],
+      dy: entry[1],
+      intensity: entry[2],
+      unsettled: (
+        Math.abs(pushX - oldDx) > GRID_CONFIG.settleThreshold / scale
+        || Math.abs(pushY - oldDy) > GRID_CONFIG.settleThreshold / scale
+      )
+    };
+  }
+
+  function prepareVisiblePoints(now) {
+    const state = cameraState();
+    const scale = Math.max(0.001, state.scale);
+    const bounds = visibleWorldBounds();
+
+    effectiveSpacing = computeSpacing(scale);
+    startCol = Math.floor(bounds.minX / effectiveSpacing) - 1;
+    const endCol = Math.ceil(bounds.maxX / effectiveSpacing) + 1;
+    startRow = Math.floor(bounds.minY / effectiveSpacing) - 1;
+    const endRow = Math.ceil(bounds.maxY / effectiveSpacing) + 1;
+
+    visibleCols = Math.max(2, endCol - startCol + 1);
+    visibleRows = Math.max(2, endRow - startRow + 1);
+    visibleCount = visibleCols * visibleRows;
+    ensureCapacity(visibleCount);
+
+    updateNodeRects(scale);
+
+    const camera = cameraApi();
+    const cursorEnabled = (
+      !isMobile()
+      && !coarsePointerQuery.matches
+      && pointerInside
+      && !isReducedMotion()
+    );
+    const cursorWorld = cursorEnabled && camera?.screenToWorld
+      ? camera.screenToWorld(pointerClientX, pointerClientY)
+      : null;
+
+    const elapsed = introStarted ? now - introStart : 0;
+    const introProgress = introComplete
+      ? 1
+      : clamp(elapsed / GRID_CONFIG.revealDuration, 0, 1);
+    const maxDistance = Math.hypot(width * 0.5, height * 0.5) || 1;
+
+    let unsettled = false;
+    let index = 0;
+
+    for (let row = startRow; row <= endRow; row += 1) {
+      const worldY = row * effectiveSpacing;
+      for (let col = startCol; col <= endCol; col += 1) {
+        const worldX = col * effectiveSpacing;
+        const entry = getWarpEntry(stateKey(effectiveSpacing, col, row));
+        const warp = pointWarp(worldX, worldY, scale, cursorWorld, cursorEnabled, entry);
+        const point = localScreenPoint(worldX + warp.dx, worldY + warp.dy);
+
+        screenX[index] = point.x;
+        screenY[index] = point.y;
+        intensity[index] = warp.intensity;
+        unsettled = unsettled || warp.unsettled;
+
+        if (!introComplete && !isReducedMotion()) {
+          const basePoint = localScreenPoint(worldX, worldY);
+          const distance = Math.hypot(basePoint.x - width * 0.5, basePoint.y - height * 0.5);
+          const waveDelay = (distance / maxDistance) * GRID_CONFIG.revealWaveShare;
+          const localProgress = clamp(
+            (introProgress - waveDelay) / Math.max(0.001, 1 - waveDelay),
+            0,
+            1
+          );
+          reveal[index] = 1 - Math.pow(1 - localProgress, 3);
+        } else {
+          reveal[index] = 1;
+        }
+
+        index += 1;
+      }
+    }
+
+    if (!introComplete && (introProgress >= 1 || isReducedMotion())) {
       introComplete = true;
       stage.classList.add('is-grid-nodes-visible');
       stage.classList.remove('is-grid-intro-active');
     }
 
-    return unsettled;
+    return { unsettled, scale };
   }
 
   function drawLines() {
@@ -368,38 +487,44 @@
     ctx.strokeStyle = lineColor;
     ctx.lineCap = 'round';
 
-    for (let row = 0; row < rows; row += 1) {
-      for (let col = 0; col < cols; col += 1) {
-        const index = row * cols + col;
+    for (let row = 0; row < visibleRows; row += 1) {
+      for (let col = 0; col < visibleCols; col += 1) {
+        const index = row * visibleCols + col;
         const sourceReveal = reveal[index];
         if (sourceReveal <= 0.002) continue;
 
-        if (col + 1 < cols) {
+        if (col + 1 < visibleCols) {
           const next = index + 1;
           const alpha = Math.min(sourceReveal, reveal[next])
-            * Math.min(vignetteAt(baseX[index], baseY[index]), vignetteAt(baseX[next], baseY[next]))
+            * Math.min(
+              vignetteAtScreen(screenX[index], screenY[index]),
+              vignetteAtScreen(screenX[next], screenY[next])
+            )
             * (0.8 + Math.max(intensity[index], intensity[next]) * 0.2);
 
           if (alpha > 0.002) {
             ctx.globalAlpha = alpha;
             ctx.beginPath();
-            ctx.moveTo(currentX[index], currentY[index]);
-            ctx.lineTo(currentX[next], currentY[next]);
+            ctx.moveTo(screenX[index], screenY[index]);
+            ctx.lineTo(screenX[next], screenY[next]);
             ctx.stroke();
           }
         }
 
-        if (row + 1 < rows) {
-          const next = index + cols;
+        if (row + 1 < visibleRows) {
+          const next = index + visibleCols;
           const alpha = Math.min(sourceReveal, reveal[next])
-            * Math.min(vignetteAt(baseX[index], baseY[index]), vignetteAt(baseX[next], baseY[next]))
+            * Math.min(
+              vignetteAtScreen(screenX[index], screenY[index]),
+              vignetteAtScreen(screenX[next], screenY[next])
+            )
             * (0.8 + Math.max(intensity[index], intensity[next]) * 0.2);
 
           if (alpha > 0.002) {
             ctx.globalAlpha = alpha;
             ctx.beginPath();
-            ctx.moveTo(currentX[index], currentY[index]);
-            ctx.lineTo(currentX[next], currentY[next]);
+            ctx.moveTo(screenX[index], screenY[index]);
+            ctx.lineTo(screenX[next], screenY[next]);
             ctx.stroke();
           }
         }
@@ -407,10 +532,11 @@
     }
   }
 
-  function drawDots() {
+  function drawDots(scale) {
     ctx.fillStyle = dotColor;
+    const zoomRadius = Math.pow(scale, 0.12);
 
-    for (let index = 0; index < count; index += 1) {
+    for (let index = 0; index < visibleCount; index += 1) {
       const pointReveal = reveal[index];
       if (pointReveal <= 0.002) continue;
 
@@ -418,15 +544,16 @@
       const radius = (
         GRID_CONFIG.dotRadius
         + (GRID_CONFIG.dotRadiusActive - GRID_CONFIG.dotRadius) * proximity
-      ) * (0.58 + pointReveal * 0.42);
+      ) * zoomRadius * (0.58 + pointReveal * 0.42);
 
       const alpha = pointReveal
-        * vignetteAt(baseX[index], baseY[index])
+        * vignetteAtScreen(screenX[index], screenY[index])
         * (0.7 + proximity * 0.3);
 
+      if (alpha <= 0.002) continue;
       ctx.globalAlpha = alpha;
       ctx.beginPath();
-      ctx.arc(currentX[index], currentY[index], radius, 0, Math.PI * 2);
+      ctx.arc(screenX[index], screenY[index], radius, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -453,11 +580,12 @@
     ctx.quadraticCurveTo(x, y, x + radius, y);
   }
 
-  function drawTiles() {
-    const size = Math.max(8, spacing - GRID_CONFIG.tileGap);
+  function drawTiles(scale) {
+    const screenSpacing = effectiveSpacing * scale;
+    const size = Math.max(8, screenSpacing - GRID_CONFIG.tileGap);
     ctx.fillStyle = tileColor;
 
-    for (let index = 0; index < count; index += 1) {
+    for (let index = 0; index < visibleCount; index += 1) {
       const pointReveal = reveal[index];
       if (pointReveal <= 0.002) continue;
 
@@ -466,18 +594,27 @@
         + (size * 0.5 - GRID_CONFIG.tileRadiusMin) * proximity;
       const scaledSize = size * (0.92 + pointReveal * 0.08);
       const alpha = pointReveal
-        * vignetteAt(baseX[index], baseY[index])
+        * vignetteAtScreen(screenX[index], screenY[index])
         * (0.72 + proximity * 0.28);
 
+      if (alpha <= 0.002) continue;
       ctx.globalAlpha = alpha;
       roundedRectPath(
-        currentX[index] - scaledSize * 0.5,
-        currentY[index] - scaledSize * 0.5,
+        screenX[index] - scaledSize * 0.5,
+        screenY[index] - scaledSize * 0.5,
         scaledSize,
         scaledSize,
         cornerRadius
       );
       ctx.fill();
+    }
+  }
+
+  function pruneWarpState() {
+    if (frameId % 120 !== 0 || warpState.size < 1500) return;
+    const threshold = frameId - 240;
+    for (const [key, entry] of warpState) {
+      if (entry[3] < threshold) warpState.delete(key);
     }
   }
 
@@ -487,16 +624,19 @@
       return;
     }
 
+    raf = 0;
+    frameId += 1;
     lastDrawAt = now;
     drawCount += 1;
+
     ctx.clearRect(0, 0, width, height);
-    const unsettled = updateTargets(now);
+    const prepared = prepareVisiblePoints(now);
 
     if (GRID_STYLE === 'tiles') {
-      drawTiles();
+      drawTiles(prepared.scale);
     } else {
       drawLines();
-      drawDots();
+      drawDots(prepared.scale);
     }
 
     ctx.globalAlpha = 1;
@@ -508,21 +648,25 @@
           0,
           1
         );
-    stage.style.setProperty('--line-draw-progress', (1 - Math.pow(1 - lineProgress, 3)).toFixed(4));
-
-    const shouldContinue = !hidden && (
-      !introComplete
-      || unsettled
-      || pointerDownOnNode
-      || performance.now() < activeUntil
-      || performance.now() - lastPointerAt < GRID_CONFIG.wakeAfterPointerMs
+    stage.style.setProperty(
+      '--line-draw-progress',
+      (1 - Math.pow(1 - lineProgress, 3)).toFixed(4)
     );
 
-    if (shouldContinue) {
-      raf = requestAnimationFrame(draw);
-    } else {
-      raf = 0;
-    }
+    pruneWarpState();
+
+    const shouldContinue = (
+      !hidden
+      && (
+        !introComplete
+        || prepared.unsettled
+        || pointerDownOnNode
+        || performance.now() < activeUntil
+        || performance.now() - lastPointerAt < GRID_CONFIG.wakeAfterPointerMs
+      )
+    );
+
+    if (shouldContinue) raf = requestAnimationFrame(draw);
   }
 
   function wake(duration = 260) {
@@ -538,9 +682,9 @@
 
     hero.classList.add('is-grid-started');
     stage.classList.add('is-grid-intro-active');
-    stage.style.setProperty('--line-draw-progress', isReducedMotion() ? '1' : '0');
+    stage.style.setProperty('--line-draw-progress', introComplete ? '1' : '0');
 
-    if (isReducedMotion()) {
+    if (introComplete) {
       stage.classList.add('is-grid-nodes-visible');
       stage.classList.remove('is-grid-intro-active');
     } else {
@@ -549,7 +693,7 @@
       }, GRID_CONFIG.nodesRevealDelay);
     }
 
-    wake(GRID_CONFIG.revealDuration + 160);
+    wake(GRID_CONFIG.revealDuration + 180);
   }
 
   function isSceneReady() {
@@ -566,12 +710,10 @@
       || isReducedMotion()
       || !isSceneReady()
       || !backgroundVideo.paused
-    ) {
-      return;
-    }
+    ) return;
 
     const playPromise = backgroundVideo.play();
-    if (playPromise?.catch) playPromise.catch(() => {});
+    playPromise?.catch?.(() => {});
   }
 
   function recoverScene(forcePaint = false) {
@@ -579,61 +721,50 @@
     if (hidden || contextLost || !isSceneReady()) return false;
 
     const rect = hero.getBoundingClientRect();
-    const expectedWidth = Math.max(1, Math.round(rect.width));
-    const expectedHeight = Math.max(1, Math.round(rect.height));
+    const expectedWidth = Math.max(1, Math.round(hero.clientWidth || rect.width));
+    const expectedHeight = Math.max(1, Math.round(hero.clientHeight || rect.height));
     const expectedDpr = Math.min(
       window.devicePixelRatio || 1,
       isMobile() ? GRID_CONFIG.mobileDprMax : GRID_CONFIG.desktopDprMax
     );
-    const expectedPixelWidth = Math.max(1, Math.round(expectedWidth * expectedDpr));
-    const expectedPixelHeight = Math.max(1, Math.round(expectedHeight * expectedDpr));
 
-    const geometryInvalid = (
+    const invalid = (
       width !== expectedWidth
       || height !== expectedHeight
-      || !count
-      || canvas.width !== expectedPixelWidth
-      || canvas.height !== expectedPixelHeight
+      || canvas.width !== Math.max(1, Math.round(expectedWidth * expectedDpr))
+      || canvas.height !== Math.max(1, Math.round(expectedHeight * expectedDpr))
     );
 
-    if (geometryInvalid) {
+    if (invalid) {
       recoveryCount += 1;
       resize(true);
     } else {
       canvasRectLeft = rect.left;
       canvasRectTop = rect.top;
-      updateNodeRects();
     }
 
-    if (!introStarted) {
-      startIntro();
-    } else {
-      hero.classList.add('is-grid-started');
+    if (!introStarted) startIntro();
+    else hero.classList.add('is-grid-started');
 
-      if (introComplete) {
-        stage.classList.add('is-grid-nodes-visible');
-        stage.classList.remove('is-grid-intro-active');
-        stage.style.setProperty('--line-draw-progress', '1');
-      }
+    if (introComplete) {
+      stage.classList.add('is-grid-nodes-visible');
+      stage.classList.remove('is-grid-intro-active');
+      stage.style.setProperty('--line-draw-progress', '1');
+    }
 
-      if (forcePaint && !raf) {
-        recoveryCount += 1;
-        draw(performance.now());
-      }
+    if (forcePaint) {
+      recoveryCount += 1;
+      wake(180);
     }
 
     ensureBackgroundVideo();
     return true;
   }
 
-  function maybeStartIntro() {
-    recoverScene(false);
-  }
-
-  hero.addEventListener('pointermove', (event) => {
+  hero.addEventListener('pointermove', event => {
     if (isMobile() || coarsePointerQuery.matches || isReducedMotion()) return;
-    pointerX = event.clientX - canvasRectLeft;
-    pointerY = event.clientY - canvasRectTop;
+    pointerClientX = event.clientX;
+    pointerClientY = event.clientY;
     pointerInside = true;
     lastPointerAt = performance.now();
     wake(220);
@@ -641,17 +772,16 @@
 
   hero.addEventListener('pointerleave', () => {
     pointerInside = false;
-    pointerX = -9999;
-    pointerY = -9999;
+    pointerClientX = -9999;
+    pointerClientY = -9999;
     wake(260);
   }, { passive: true });
 
-  originalNodes.forEach((node) => {
-    node.addEventListener('pointerdown', () => {
-      pointerDownOnNode = true;
-      wake(700);
-    }, { passive: true });
-  });
+  stage.addEventListener('pointerdown', event => {
+    if (!event.target.closest?.('[data-hero-node], [data-custom-node]')) return;
+    pointerDownOnNode = true;
+    wake(700);
+  }, { passive: true });
 
   window.addEventListener('pointerup', () => {
     if (!pointerDownOnNode) return;
@@ -664,6 +794,10 @@
     wake(GRID_CONFIG.wakeAfterDragMs);
   }, { passive: true });
 
+  hero.addEventListener('deushima:camera-change', () => {
+    wake(220);
+  });
+
   document.addEventListener('visibilitychange', () => {
     hidden = document.hidden;
     if (hidden) {
@@ -672,7 +806,6 @@
       return;
     }
     recoverScene(true);
-    wake(320);
   });
 
   const resizeObserver = new ResizeObserver(() => resize());
@@ -686,12 +819,12 @@
       stage.classList.remove('is-grid-intro-active');
       stage.style.setProperty('--line-draw-progress', '1');
     }
-    resize();
+    resize(true);
   });
 
-  mobileQuery.addEventListener?.('change', resize);
+  mobileQuery.addEventListener?.('change', () => resize(true));
 
-  const readyObserver = new MutationObserver(maybeStartIntro);
+  const readyObserver = new MutationObserver(() => recoverScene(false));
   readyObserver.observe(document.body, {
     attributes: true,
     attributeFilter: ['class']
@@ -701,7 +834,7 @@
     attributeFilter: ['class']
   });
 
-  canvas.addEventListener('contextlost', (event) => {
+  canvas.addEventListener('contextlost', event => {
     event.preventDefault();
     contextLost = true;
     if (raf) cancelAnimationFrame(raf);
@@ -733,10 +866,10 @@
       width,
       height,
       dpr,
-      spacing,
-      cols,
-      rows,
-      points: count,
+      spacing: effectiveSpacing,
+      cols: visibleCols,
+      rows: visibleRows,
+      points: visibleCount,
       running: Boolean(raf),
       introStarted,
       introComplete,
@@ -744,17 +877,15 @@
       contextLost,
       lastDrawAt,
       drawCount,
-      recoveryCount
+      recoveryCount,
+      warpStates: warpState.size
     }),
     wake: (duration = 320) => wake(duration),
-    refreshDynamicNodes: () => {
-      updateNodeRects();
-      wake(700);
-    }
+    refreshDynamicNodes: () => wake(700)
   });
 
-  resize();
-  maybeStartIntro();
+  resize(true);
+  recoverScene(false);
   window.setTimeout(() => recoverScene(true), 120);
   window.setTimeout(() => recoverScene(true), 700);
 })();
