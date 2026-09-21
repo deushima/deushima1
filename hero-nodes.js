@@ -128,12 +128,30 @@
     });
   }
 
+  function cameraScale() {
+    return window.DeushimaHeroCamera?.getState?.().scale || 1;
+  }
+
+  function screenToStageLocal(clientX, clientY) {
+    const stageRect = stage.getBoundingClientRect();
+    const scale = cameraScale();
+    return {
+      x: (clientX - stageRect.left) / scale,
+      y: (clientY - stageRect.top) / scale,
+      width: stage.clientWidth,
+      height: stage.clientHeight,
+      scale,
+      stageRect
+    };
+  }
+
   function centerOf(node) {
     const stageRect = stage.getBoundingClientRect();
     const rect = node.getBoundingClientRect();
+    const scale = cameraScale();
     return {
-      x: rect.left - stageRect.left + rect.width / 2,
-      y: rect.top - stageRect.top + rect.height / 2
+      x: (rect.left - stageRect.left + rect.width / 2) / scale,
+      y: (rect.top - stageRect.top + rect.height / 2) / scale
     };
   }
 
@@ -141,9 +159,10 @@
     if (!element) return null;
     const stageRect = stage.getBoundingClientRect();
     const rect = element.getBoundingClientRect();
+    const scale = cameraScale();
     return {
-      x: rect.left - stageRect.left + rect.width / 2,
-      y: rect.top - stageRect.top + rect.height / 2
+      x: (rect.left - stageRect.left + rect.width / 2) / scale,
+      y: (rect.top - stageRect.top + rect.height / 2) / scale
     };
   }
 
@@ -229,9 +248,9 @@
   function updateEdgeProximity(event) {
     if (coarsePointer || connectionState || dragState?.moved || disconnectHover) return;
     if (disconnectButton && event.target.closest?.('[data-node-disconnect]')) return;
-    const stageRect = stage.getBoundingClientRect();
-    const px = event.clientX - stageRect.left;
-    const py = event.clientY - stageRect.top;
+    const pointer = screenToStageLocal(event.clientX, event.clientY);
+    const px = pointer.x;
+    const py = pointer.y;
 
     if (hoveredEdge?.key) {
       const locked = edges.find(([from, to]) => pairKey(from, to) === hoveredEdge.key);
@@ -380,27 +399,31 @@
   }
 
   function freeNodePosition(clientX, clientY, grabOffsetX, grabOffsetY) {
-    const stageRect = stage.getBoundingClientRect();
-    const x = clientX - stageRect.left - grabOffsetX;
-    const y = clientY - stageRect.top - grabOffsetY;
-    return { x, y, stageRect };
+    const point = screenToStageLocal(clientX, clientY);
+    return {
+      x: point.x - grabOffsetX,
+      y: point.y - grabOffsetY,
+      width: point.width,
+      height: point.height
+    };
   }
 
   function beginNodeDrag(event, node) {
     if (event.button !== undefined && event.button !== 0) return;
     if (event.target.closest('[data-node-port]')) return;
     hideDisconnect();
-    const stageRect = stage.getBoundingClientRect();
     const nodeRect = node.getBoundingClientRect();
+    const scale = cameraScale();
     dragState = {
       node,
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
-      grabOffsetX: event.clientX - (nodeRect.left + nodeRect.width / 2),
-      grabOffsetY: event.clientY - (nodeRect.top + nodeRect.height / 2),
-      moved: false,
-      stageRect
+      lastClientX: event.clientX,
+      lastClientY: event.clientY,
+      grabOffsetX: (event.clientX - (nodeRect.left + nodeRect.width / 2)) / scale,
+      grabOffsetY: (event.clientY - (nodeRect.top + nodeRect.height / 2)) / scale,
+      moved: false
     };
     node.setPointerCapture?.(event.pointerId);
   }
@@ -419,9 +442,12 @@
     }
 
     event.preventDefault();
+    dragState.lastClientX = event.clientX;
+    dragState.lastClientY = event.clientY;
     const pos = freeNodePosition(event.clientX, event.clientY, dragState.grabOffsetX, dragState.grabOffsetY);
-    dragState.node.style.setProperty('--node-x', `${(pos.x / pos.stageRect.width * 100).toFixed(4)}%`);
-    dragState.node.style.setProperty('--node-y', `${(pos.y / pos.stageRect.height * 100).toFixed(4)}%`);
+    dragState.node.style.setProperty('--node-x', `${(pos.x / Math.max(1, pos.width) * 100).toFixed(4)}%`);
+    dragState.node.style.setProperty('--node-y', `${(pos.y / Math.max(1, pos.height) * 100).toFixed(4)}%`);
+    window.DeushimaHeroCamera?.setAutoPanPointer?.(event.clientX, event.clientY, true);
     if (mobilePerformance) queueDraw();
   }
 
@@ -434,6 +460,7 @@
       suppressClickUntil = performance.now() + 420;
       saveCanvas();
     }
+    window.DeushimaHeroCamera?.clearAutoPan?.();
     dragState = null;
   }
 
@@ -447,12 +474,12 @@
     hideDisconnect();
     event.preventDefault();
     event.stopPropagation();
-    const stageRect = stage.getBoundingClientRect();
+    const pointer = screenToStageLocal(event.clientX, event.clientY);
     connectionState = {
       pointerId: event.pointerId,
       sourceName: node.dataset.heroNode,
-      pointerX: event.clientX - stageRect.left,
-      pointerY: event.clientY - stageRect.top,
+      pointerX: pointer.x,
+      pointerY: pointer.y,
       activePort: port,
       targetName: null
     };
@@ -464,9 +491,9 @@
   function moveConnection(event) {
     if (!connectionState || event.pointerId !== connectionState.pointerId) return;
     event.preventDefault();
-    const stageRect = stage.getBoundingClientRect();
-    connectionState.pointerX = event.clientX - stageRect.left;
-    connectionState.pointerY = event.clientY - stageRect.top;
+    const pointer = screenToStageLocal(event.clientX, event.clientY);
+    connectionState.pointerX = pointer.x;
+    connectionState.pointerY = pointer.y;
     const hit = document.elementFromPoint(event.clientX, event.clientY)?.closest?.('[data-hero-node]');
     const targetName = hit?.dataset?.heroNode;
     connectionState.targetName = targetName && targetName !== connectionState.sourceName ? targetName : null;
@@ -540,6 +567,19 @@
     startTime = performance.now();
     raf = requestAnimationFrame(animate);
   }
+
+  stage.closest('.hero--node-canvas')?.addEventListener('deushima:camera-change', () => {
+    queueDraw();
+    if (!dragState?.moved) return;
+    const pos = freeNodePosition(
+      dragState.lastClientX,
+      dragState.lastClientY,
+      dragState.grabOffsetX,
+      dragState.grabOffsetY
+    );
+    dragState.node.style.setProperty('--node-x', `${(pos.x / Math.max(1, pos.width) * 100).toFixed(4)}%`);
+    dragState.node.style.setProperty('--node-y', `${(pos.y / Math.max(1, pos.height) * 100).toFixed(4)}%`);
+  });
 
   const resizeObserver = new ResizeObserver(queueDraw);
   resizeObserver.observe(stage);
