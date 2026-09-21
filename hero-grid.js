@@ -31,6 +31,7 @@
     linesRevealDuration: 700,
     wakeAfterPointerMs: 180,
     wakeAfterDragMs: 420,
+    recoveryInterval: 2500,
     nodeRadiusFallback: 24
   });
 
@@ -43,6 +44,7 @@
   const stage = hero?.querySelector('[data-hero-node-stage]');
   const nodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
   const resetButton = stage?.querySelector('[data-node-reset]');
+  const backgroundVideo = hero?.querySelector('[data-hero-video]');
   if (!hero || !canvas || !stage || !nodes.length) return;
 
   const ctx = canvas.getContext('2d', {
@@ -89,6 +91,10 @@
   let introComplete = false;
   let nodeRevealTimer = 0;
   let hidden = document.hidden;
+  let contextLost = false;
+  let lastDrawAt = 0;
+  let drawCount = 0;
+  let recoveryCount = 0;
 
   let canvasRectLeft = 0;
   let canvasRectTop = 0;
@@ -156,7 +162,7 @@
     }
   }
 
-  function resize() {
+  function resize(force = false) {
     const rect = hero.getBoundingClientRect();
     const nextWidth = Math.max(1, Math.round(rect.width));
     const nextHeight = Math.max(1, Math.round(rect.height));
@@ -170,7 +176,8 @@
     canvasRectTop = rect.top;
 
     const geometryChanged = (
-      width !== nextWidth
+      force
+      || width !== nextWidth
       || height !== nextHeight
       || spacing !== nextSpacing
       || dpr !== nextDpr
@@ -461,6 +468,13 @@
   }
 
   function draw(now) {
+    if (contextLost || hidden) {
+      raf = 0;
+      return;
+    }
+
+    lastDrawAt = now;
+    drawCount += 1;
     ctx.clearRect(0, 0, width, height);
     const unsettled = updateTargets(now);
 
@@ -524,13 +538,82 @@
     wake(GRID_CONFIG.revealDuration + 160);
   }
 
-  function maybeStartIntro() {
-    if (
+  function isSceneReady() {
+    return (
       document.body.classList.contains('is-site-ready')
       && !document.documentElement.classList.contains('has-studio-splash')
+    );
+  }
+
+  function ensureBackgroundVideo() {
+    if (
+      !backgroundVideo
+      || hidden
+      || isReducedMotion()
+      || !isSceneReady()
+      || !backgroundVideo.paused
     ) {
-      startIntro();
+      return;
     }
+
+    const playPromise = backgroundVideo.play();
+    if (playPromise?.catch) playPromise.catch(() => {});
+  }
+
+  function recoverScene(forcePaint = false) {
+    hidden = document.hidden;
+    if (hidden || contextLost || !isSceneReady()) return false;
+
+    const rect = hero.getBoundingClientRect();
+    const expectedWidth = Math.max(1, Math.round(rect.width));
+    const expectedHeight = Math.max(1, Math.round(rect.height));
+    const expectedDpr = Math.min(
+      window.devicePixelRatio || 1,
+      isMobile() ? GRID_CONFIG.mobileDprMax : GRID_CONFIG.desktopDprMax
+    );
+    const expectedPixelWidth = Math.max(1, Math.round(expectedWidth * expectedDpr));
+    const expectedPixelHeight = Math.max(1, Math.round(expectedHeight * expectedDpr));
+
+    const geometryInvalid = (
+      width !== expectedWidth
+      || height !== expectedHeight
+      || !count
+      || canvas.width !== expectedPixelWidth
+      || canvas.height !== expectedPixelHeight
+    );
+
+    if (geometryInvalid) {
+      recoveryCount += 1;
+      resize(true);
+    } else {
+      canvasRectLeft = rect.left;
+      canvasRectTop = rect.top;
+      updateNodeRects();
+    }
+
+    if (!introStarted) {
+      startIntro();
+    } else {
+      hero.classList.add('is-grid-started');
+
+      if (introComplete) {
+        stage.classList.add('is-grid-nodes-visible');
+        stage.classList.remove('is-grid-intro-active');
+        stage.style.setProperty('--line-draw-progress', '1');
+      }
+
+      if (forcePaint && !raf) {
+        recoveryCount += 1;
+        draw(performance.now());
+      }
+    }
+
+    ensureBackgroundVideo();
+    return true;
+  }
+
+  function maybeStartIntro() {
+    recoverScene(false);
   }
 
   hero.addEventListener('pointermove', (event) => {
@@ -578,6 +661,7 @@
       raf = 0;
       return;
     }
+    recoverScene(true);
     wake(320);
   });
 
@@ -602,6 +686,35 @@
     attributes: true,
     attributeFilter: ['class']
   });
+  readyObserver.observe(document.documentElement, {
+    attributes: true,
+    attributeFilter: ['class']
+  });
+
+  canvas.addEventListener('contextlost', (event) => {
+    event.preventDefault();
+    contextLost = true;
+    if (raf) cancelAnimationFrame(raf);
+    raf = 0;
+  });
+
+  canvas.addEventListener('contextrestored', () => {
+    contextLost = false;
+    recoveryCount += 1;
+    resize(true);
+    recoverScene(true);
+  });
+
+  window.addEventListener('pageshow', () => recoverScene(true));
+  window.addEventListener('load', () => recoverScene(true), { once: true });
+  window.addEventListener('focus', () => recoverScene(true));
+
+  backgroundVideo?.addEventListener('canplay', ensureBackgroundVideo);
+  backgroundVideo?.addEventListener('loadeddata', ensureBackgroundVideo);
+
+  window.setInterval(() => {
+    if (!document.hidden) recoverScene(true);
+  }, GRID_CONFIG.recoveryInterval);
 
   window.DeushimaGrid = Object.freeze({
     config: GRID_CONFIG,
@@ -617,11 +730,17 @@
       running: Boolean(raf),
       introStarted,
       introComplete,
-      pointerInside
+      pointerInside,
+      contextLost,
+      lastDrawAt,
+      drawCount,
+      recoveryCount
     }),
     wake: () => wake(320)
   });
 
   resize();
   maybeStartIntro();
+  window.setTimeout(() => recoverScene(true), 120);
+  window.setTimeout(() => recoverScene(true), 700);
 })();
