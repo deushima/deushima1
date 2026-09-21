@@ -2057,6 +2057,9 @@ function initFloatingFallback(stage) {
   }
 
   function animateFallback() {
+    const aboutPanel = stage.closest('[data-panel="about"]');
+    if (aboutPanel && !aboutPanel.classList.contains("is-panel-open")) return;
+
     const rect = stage.getBoundingClientRect();
     const time = performance.now() * 0.001;
 
@@ -2366,6 +2369,14 @@ function initFloatingWorld() {
   resizeObserver?.observe(stage);
 
   function animateMatter(now = performance.now()) {
+    const aboutPanel = stage.closest('[data-panel="about"]');
+
+    if (aboutPanel && !aboutPanel.classList.contains("is-panel-open")) {
+      lastTick = now;
+      frameId = window.requestAnimationFrame(animateMatter);
+      return;
+    }
+
     const delta = clamp(now - lastTick, 1000 / 90, 1000 / 60);
     lastTick = now;
     Engine.update(engine, delta);
@@ -2647,7 +2658,6 @@ if (!isMobilePerformanceMode()) {
   window.addEventListener("resize", requestScrollParallax);
 }
 
-scheduleFloatingWorld();
 updateScrollParallax();
 initTextReveals();
 initPageTransitions();
