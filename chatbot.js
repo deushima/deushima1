@@ -222,6 +222,13 @@
     textarea.style.height = `${Math.min(textarea.scrollHeight, 140)}px`;
   });
 
+  textarea?.addEventListener('keydown', (event) => {
+    if (event.isComposing || event.key !== 'Enter' || event.shiftKey) return;
+    event.preventDefault();
+    if (busy) return;
+    form?.requestSubmit();
+  });
+
   form?.addEventListener('submit', async (event) => {
     event.preventDefault();
     if (!textarea) return;
