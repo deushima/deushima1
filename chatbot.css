@@ -117,17 +117,6 @@
   font-weight: 500;
 }
 
-.deu-chat__close {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  border: 1px solid rgba(255,255,255,.12);
-  background: transparent;
-  color: #fff;
-  font-size: 22px;
-  cursor: pointer;
-}
-
 .deu-chat__feed {
   display: flex;
   flex-direction: column;
@@ -452,4 +441,50 @@ body.deu-chat-open { overflow: hidden !important; }
   .deu-chat-processing__dots i { opacity: .62; }
   .deu-chat,
   .deu-chat__panel { transition-duration: .001ms; }
+}
+
+
+/* Integrated modal close cell — 2026-09-21 */
+.deu-chat__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 3.5rem;
+  height: 3.5rem;
+  min-height: 3.5rem;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.deu-chat__header > div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0.2rem 1.25rem;
+}
+
+.deu-chat__close.modal-close {
+  --modal-close-size: 3.5rem;
+  --modal-close-line: rgba(255, 255, 255, 0.08);
+  width: 3.5rem;
+  height: 3.5rem;
+}
+
+@media (max-width: 640px) {
+  .deu-chat__header {
+    grid-template-columns: minmax(0, 1fr) 3.25rem;
+    height: 3.25rem;
+    min-height: 3.25rem;
+    padding: 0;
+  }
+
+  .deu-chat__header > div {
+    padding: 0.14rem 1rem;
+  }
+
+  .deu-chat__close.modal-close {
+    --modal-close-size: 3.25rem;
+    width: 3.25rem;
+    height: 3.25rem;
+  }
 }
