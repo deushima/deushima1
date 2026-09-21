@@ -1,6 +1,9 @@
 (() => {
   'use strict';
 
+  const CONFIG = window.DeushimaSFXConfig;
+  if (!CONFIG) return;
+
   const stage = document.querySelector('[data-hero-node-stage][data-sfx-scope="nodes"]');
   const chat = document.querySelector('[data-chat]');
   if (!stage && !chat) return;
@@ -8,233 +11,77 @@
   const nodes = stage ? [...stage.querySelectorAll('[data-sfx="node"][data-hero-node]')] : [];
   const resetButton = stage?.querySelector('[data-sfx="reset"]');
   const disconnectButton = stage?.querySelector('[data-sfx="disconnect"]');
-  const coarsePointer = window.matchMedia('(pointer: coarse)');
-
   const chatFeed = chat?.querySelector('[data-chat-feed]');
   const chatForm = chat?.querySelector('[data-chat-form]');
   const chatTextarea = chatForm?.elements?.message;
   const chatSuggestions = chat ? [...chat.querySelectorAll('[data-chat-suggestions] button')] : [];
-
-  // +6 dB aprox. respecto del master anterior (0.24).
-  // Es el único control de nivel general de los SFX y no depende de la música.
-  const SFX_MASTER_VOLUME = 0.48;
-
-  const CONFIG = {
-    master: {
-      gain: SFX_MASTER_VOLUME,
-      maxVoices: 6,
-      hoverMinInterval: 60,
-      comboWindow: 600,
-      comboReset: 800,
-      panAmount: 0.58,
-      dragUpdateMs: 44
-    },
-    limiter: {
-      threshold: -5.5,
-      knee: 0,
-      ratio: 20,
-      attack: 0.0015,
-      release: 0.085
-    },
-    reverb: {
-      duration: 0.115,
-      decay: 4.8,
-      wet: 0.085
-    },
-    notes: {
-      works: 261.63,
-      about: 293.66,
-      launcher: 329.63,
-      chat: 392,
-      contact: 440
-    },
-    sounds: {
-      nodeAppearance: {
-        file: null,
-        gain: 0.92,
-        duration: 0.115,
-        transientGain: 0.075,
-        bodyGain: 0.16
-      },
-      nodeHover: {
-        file: null,
-        gain: 1,
-        duration: 0.095,
-        transientGain: 0.08,
-        bodyGain: 0.17
-      },
-      port: {
-        file: null,
-        gain: 0.72,
-        duration: 0.045,
-        transientGain: 0.065,
-        bodyGain: 0.105
-      },
-      nodeClick: {
-        file: null,
-        gain: 1.06,
-        duration: 0.155,
-        transientGain: 0.105,
-        bodyGain: 0.21,
-        thumpGain: 0.15
-      },
-      pickup: {
-        file: null,
-        gain: 0.82,
-        duration: 0.082,
-        transientGain: 0.07,
-        bodyGain: 0.13
-      },
-      drop: {
-        file: null,
-        gain: 0.98,
-        duration: 0.135,
-        transientGain: 0.09,
-        bodyGain: 0.18
-      },
-      reset: {
-        file: null,
-        gain: 0.9,
-        duration: 0.18,
-        transientGain: 0.072,
-        bodyGain: 0.14
-      },
-      lineShimmer: {
-        file: null,
-        gain: 0.54,
-        duration: 0.16,
-        transientGain: 0.055,
-        bodyGain: 0.07
-      },
-      link: {
-        file: null,
-        gain: 0.82,
-        duration: 0.13,
-        transientGain: 0.07,
-        bodyGain: 0.13
-      },
-      disconnect: {
-        file: null,
-        gain: 0.72,
-        duration: 0.075,
-        transientGain: 0.08,
-        bodyGain: 0.105
-      },
-      chatType: {
-        files: [null, null, null, null],
-        gain: 1,
-        duration: 0.038,
-        transientGain: 0.105,
-        bodyGain: 0.16,
-        variants: [188, 205, 224, 242]
-      },
-      chatSpace: {
-        file: null,
-        gain: 1.04,
-        duration: 0.046,
-        transientGain: 0.105,
-        bodyGain: 0.18,
-        frequency: 154
-      },
-      chatDelete: {
-        file: null,
-        gain: 0.76,
-        duration: 0.04,
-        transientGain: 0.07,
-        bodyGain: 0.13,
-        frequency: 138
-      },
-      chatSend: {
-        file: null,
-        gain: 0.94,
-        duration: 0.14,
-        transientGain: 0.085,
-        bodyGain: 0.18
-      },
-      chatReceive: {
-        file: null,
-        gain: 0.78,
-        duration: 0.16,
-        transientGain: 0.06,
-        bodyGain: 0.15
-      },
-      chatStream: {
-        file: null,
-        gain: 0.34,
-        duration: 0.026,
-        transientGain: 0.035,
-        bodyGain: 0.055
-      },
-      chipHover: {
-        file: null,
-        gain: 0.54,
-        duration: 0.052,
-        transientGain: 0.055,
-        bodyGain: 0.09
-      },
-      chipClick: {
-        file: null,
-        gain: 0.82,
-        duration: 0.105,
-        transientGain: 0.08,
-        bodyGain: 0.15
-      },
-      chatOpen: {
-        file: null,
-        gain: 0.76,
-        duration: 0.14,
-        transientGain: 0.065,
-        bodyGain: 0.14
-      },
-      chatClose: {
-        file: null,
-        gain: 0.68,
-        duration: 0.13,
-        transientGain: 0.06,
-        bodyGain: 0.125
-      }
-    }
-  };
+  const coarsePointer = window.matchMedia('(pointer: coarse)');
+  const debugEnabled = new URLSearchParams(window.location.search).get('sfxdebug') === '1';
 
   const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) return;
 
-  let context = null;
-  let masterGain = null;
-  let limiter = null;
-  let reverb = null;
-  let reverbWet = null;
-  let noiseBuffer = null;
-  let unlocked = false;
+  const context = new AudioContextCtor({
+    latencyHint: 'interactive',
+    sampleRate: CONFIG.sampleRate
+  });
+
+  const buffers = new Map();
+  const externalBuffers = new Map();
+  const externalRequests = new Map();
+  const voiceSlots = [];
+  const counters = new Map();
+  const stats = Object.create(null);
+
+  let dryBus;
+  let reverbSend;
+  let convolver;
+  let reverbWet;
+  let mixBus;
+  let masterGain;
+  let lowShelf;
+  let presenceEq;
+  let compressor;
+  let limiter;
+  let silenceBuffer;
+  let warmed = false;
+  let unlocked = context.state === 'running';
+
   let stageVisible = false;
   let appearancePlayed = false;
   let appearanceQueued = false;
-  let activeVoices = new Set();
   let pointerState = null;
   let connectionPointer = null;
-  let dragVoice = null;
   let lastHoverAt = 0;
   let comboLevel = 0;
   let comboResetTimer = 0;
-  let lastPointerTap = { node: null, time: 0 };
   let lastLineHoverAt = 0;
+  let lastDragPulseAt = 0;
 
   let typingVariant = 0;
   let lastTypingSoundAt = 0;
   let lastPhysicalKeyAt = 0;
   let lastPhysicalInputKind = '';
+  let lastBeforeInputAt = 0;
+  let lastSendAt = 0;
   let lastReceiveAt = 0;
-  let lastStreamTapAt = 0;
-  let resolvedMessages = new WeakSet();
+  let lastStreamAt = 0;
+  const resolvedMessages = new WeakSet();
 
-  const buffers = new Map();
-  const pendingBuffers = new Map();
-  const stats = Object.create(null);
+  let lastLatency = {
+    jsMs: 0,
+    baseMs: 0,
+    outputMs: 0,
+    estimatedMs: 0,
+    source: '—'
+  };
+  let debugLatencyEl = null;
 
   function recordStat(name) {
     stats[name] = (stats[name] || 0) + 1;
   }
 
-  function randomFactor(range = 0.05) {
+  function randomFactor(range = 0.025) {
     return 1 + ((Math.random() * 2) - 1) * range;
   }
 
@@ -242,372 +89,351 @@
     return Math.max(min, Math.min(max, value));
   }
 
-  function canPlay() {
-    return Boolean(
-      context &&
-      unlocked &&
-      context.state === 'running' &&
-      !document.hidden
-    );
+  function positiveModulo(value, modulo) {
+    return ((value % modulo) + modulo) % modulo;
   }
 
-  function makeNoiseBuffer() {
-    if (!context) return null;
-    const length = Math.max(1, Math.floor(context.sampleRate * 0.24));
-    const buffer = context.createBuffer(1, length, context.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let index = 0; index < length; index += 1) {
-      data[index] = Math.random() * 2 - 1;
+  function scaleDegreeToMidi(degree) {
+    const size = CONFIG.scale.intervals.length;
+    const octave = Math.floor(degree / size);
+    const index = positiveModulo(degree, size);
+    return CONFIG.scale.rootMidi + octave * 12 + CONFIG.scale.intervals[index];
+  }
+
+  function midiToFrequency(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  function degreeToFrequency(degree) {
+    return midiToFrequency(scaleDegreeToMidi(degree));
+  }
+
+  function degreeToLabel(degree) {
+    const midi = scaleDegreeToMidi(degree);
+    const pitchClasses = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+    const octave = Math.floor(midi / 12) - 1;
+    return `${pitchClasses[positiveModulo(midi, 12)]}${octave}`;
+  }
+
+  function seededRandom(seed) {
+    let state = seed >>> 0;
+    return () => {
+      state += 0x6D2B79F5;
+      let t = state;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function createMonoBuffer(length) {
+    if (typeof AudioBuffer === 'function') {
+      return new AudioBuffer({
+        length,
+        numberOfChannels: 1,
+        sampleRate: CONFIG.sampleRate
+      });
     }
+    return context.createBuffer(1, length, CONFIG.sampleRate);
+  }
+
+  function centsRatio(cents) {
+    return Math.pow(2, cents / 1200);
+  }
+
+  function normalizeSamples(samples, targetPeak = 0.78) {
+    let peak = 0;
+    for (let i = 0; i < samples.length; i += 1) {
+      peak = Math.max(peak, Math.abs(samples[i]));
+    }
+    if (peak <= 0.000001) return;
+    const scale = targetPeak / peak;
+    for (let i = 0; i < samples.length; i += 1) {
+      samples[i] *= scale;
+    }
+  }
+
+  function addHit(samples, {
+    role,
+    frequency,
+    onsetSec = 0,
+    durationSec,
+    seed = 1,
+    amplitude = 1
+  }) {
+    const timbre = CONFIG.timbres[role];
+    const random = seededRandom(seed);
+    const sampleRate = CONFIG.sampleRate;
+    const start = Math.max(0, Math.floor(onsetSec * sampleRate));
+    const end = Math.min(samples.length, start + Math.floor(durationSec * sampleRate));
+    const attackSec = Math.max(0.001, (timbre.attackMs / 1000) * (0.9 + random() * 0.2));
+    const noiseSec = timbre.noiseMs / 1000;
+    const detuneCents = (random() * 2 - 1) * CONFIG.scale.maxDetuneCents;
+    const settledFrequency = frequency * centsRatio(detuneCents);
+    const startFrequency = settledFrequency * centsRatio(6);
+    let phase = 0;
+    let previousNoise = 0;
+
+    for (let index = start; index < end; index += 1) {
+      const localIndex = index - start;
+      const t = localIndex / sampleRate;
+      const p = clamp(t / durationSec, 0, 1);
+      const attack = Math.min(1, t / attackSec);
+      const decayPower = role === 'percussive' ? 9.5 : role === 'accent' ? 5.8 : 6.6;
+      const envelope = attack * Math.pow(1 - p, decayPower);
+
+      const settle = Math.min(1, t / 0.024);
+      const instantaneousFrequency = startFrequency + (settledFrequency - startFrequency) * settle;
+      phase += (Math.PI * 2 * instantaneousFrequency) / sampleRate;
+
+      let tonal = 0;
+      const harmonics = timbre.harmonics;
+      for (let harmonic = 0; harmonic < harmonics.length; harmonic += 1) {
+        const partial = harmonic + 1;
+        tonal += Math.sin(phase * partial) * harmonics[harmonic];
+      }
+
+      if (role === 'tonal') {
+        tonal += Math.sin(phase * 3) * 0.04 * Math.pow(1 - p, 3);
+      } else if (role === 'percussive') {
+        tonal += Math.sin(phase * 0.5) * 0.16 * Math.pow(1 - p, 12);
+      } else {
+        tonal += Math.sin(phase * 2) * 0.07 * Math.pow(1 - p, 4);
+      }
+
+      let transient = 0;
+      if (t <= noiseSec) {
+        const rawNoise = random() * 2 - 1;
+        const highPassed = rawNoise - previousNoise * 0.86;
+        previousNoise = rawNoise;
+        transient = highPassed
+          * timbre.transient
+          * Math.pow(1 - (t / noiseSec), 4);
+      }
+
+      samples[index] += (tonal * envelope + transient) * amplitude;
+    }
+  }
+
+  function renderSoundBuffer(soundName, sound, {
+    degree = null,
+    degrees = null,
+    variant = 0,
+    typingVariantIndex = null
+  } = {}) {
+    const durationSec = sound.durationMs / 1000;
+    const tailSec = sound.role === 'accent' ? 0.045 : sound.role === 'tonal' ? 0.028 : 0.012;
+    const length = Math.max(1, Math.ceil((durationSec + tailSec) * CONFIG.sampleRate));
+    const samples = new Float32Array(length);
+
+    if (soundName === 'chatType') {
+      const targetDegree = sound.variantDegrees[typingVariantIndex ?? 0];
+      addHit(samples, {
+        role: sound.role,
+        frequency: degreeToFrequency(targetDegree),
+        durationSec,
+        seed: 9000 + (typingVariantIndex ?? 0) * 97,
+        amplitude: 1
+      });
+    } else if (Array.isArray(degrees) || Array.isArray(sound.degrees)) {
+      const sequence = degrees || sound.degrees;
+      const count = sequence.length;
+      const spacing = count <= 2
+        ? Math.min(0.09, durationSec * 0.42)
+        : Math.max(0.038, (durationSec - 0.11) / Math.max(1, count - 1));
+      const noteDuration = sound.role === 'accent'
+        ? Math.min(0.17, durationSec * 0.72)
+        : Math.min(0.15, durationSec * 0.62);
+
+      sequence.forEach((sequenceDegree, index) => {
+        addHit(samples, {
+          role: sound.role,
+          frequency: degreeToFrequency(sequenceDegree),
+          onsetSec: index * spacing,
+          durationSec: noteDuration,
+          seed: 5000 + index * 211 + variant * 37 + soundName.length * 19,
+          amplitude: index === 0 ? 1 : 0.92
+        });
+      });
+    } else {
+      const targetDegree = degree ?? sound.degree ?? 0;
+      addHit(samples, {
+        role: sound.role,
+        frequency: degreeToFrequency(targetDegree),
+        durationSec,
+        seed: 3000 + targetDegree * 131 + variant * 53 + soundName.length * 17,
+        amplitude: 1
+      });
+    }
+
+    const targetPeak = sound.role === 'percussive'
+      ? 0.84
+      : sound.role === 'accent'
+        ? 0.78
+        : 0.76;
+    normalizeSamples(samples, targetPeak);
+
+    const buffer = createMonoBuffer(samples.length);
+    buffer.copyToChannel(samples, 0);
     return buffer;
   }
 
-  function makeReverbImpulse() {
-    if (!context) return null;
-    const length = Math.max(1, Math.floor(context.sampleRate * CONFIG.reverb.duration));
-    const impulse = context.createBuffer(2, length, context.sampleRate);
-
-    for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
-      const data = impulse.getChannelData(channel);
-      for (let index = 0; index < length; index += 1) {
-        const progress = index / length;
-        const decay = Math.pow(1 - progress, CONFIG.reverb.decay);
-        data[index] = (Math.random() * 2 - 1) * decay * 0.72;
-      }
-    }
-
-    return impulse;
+  function synthKey(soundName, {
+    degree = null,
+    variant = 0,
+    typingVariantIndex = null
+  } = {}) {
+    if (soundName === 'chatType') return `${soundName}:typing:${typingVariantIndex ?? 0}`;
+    if (degree != null) return `${soundName}:degree:${degree}:v:${variant}`;
+    return `${soundName}:v:${variant}`;
   }
 
-  function ensureContext() {
-    if (context || !AudioContextCtor) return context;
+  function buildSynthLibrary() {
+    const dynamicNodeSounds = ['nodeAppearance', 'nodeHover', 'nodeSelect'];
 
-    context = new AudioContextCtor({ latencyHint: 'interactive' });
-    masterGain = context.createGain();
-    limiter = context.createDynamicsCompressor();
-    reverb = context.createConvolver();
+    Object.entries(CONFIG.sounds).forEach(([soundName, sound]) => {
+      if (soundName === 'chatType') {
+        sound.variantDegrees.forEach((degree, index) => {
+          buffers.set(
+            synthKey(soundName, { typingVariantIndex: index }),
+            renderSoundBuffer(soundName, sound, { typingVariantIndex: index })
+          );
+        });
+        return;
+      }
+
+      if (dynamicNodeSounds.includes(soundName)) {
+        for (let degree = 0; degree <= 8; degree += 1) {
+          for (let variant = 0; variant < (sound.variants || 1); variant += 1) {
+            buffers.set(
+              synthKey(soundName, { degree, variant }),
+              renderSoundBuffer(soundName, sound, { degree, variant })
+            );
+          }
+        }
+        return;
+      }
+
+      if (soundName === 'drag') {
+        for (let degree = -5; degree <= -1; degree += 1) {
+          for (let variant = 0; variant < (sound.variants || 1); variant += 1) {
+            buffers.set(
+              synthKey(soundName, { degree, variant }),
+              renderSoundBuffer(soundName, sound, { degree, variant })
+            );
+          }
+        }
+        return;
+      }
+
+      for (let variant = 0; variant < (sound.variants || 1); variant += 1) {
+        buffers.set(
+          synthKey(soundName, { variant }),
+          renderSoundBuffer(soundName, sound, {
+            degree: sound.degree,
+            degrees: sound.degrees,
+            variant
+          })
+        );
+      }
+    });
+
+    silenceBuffer = createMonoBuffer(2);
+    silenceBuffer.getChannelData(0).fill(0);
+  }
+
+  function makeReverbImpulse() {
+    const length = Math.max(1, Math.floor(CONFIG.sampleRate * (CONFIG.mix.reverb.durationMs / 1000)));
+    const buffer = createMonoBuffer(length);
+    const data = buffer.getChannelData(0);
+    const random = seededRandom(88421);
+
+    for (let index = 0; index < length; index += 1) {
+      const progress = index / length;
+      data[index] = (random() * 2 - 1)
+        * Math.pow(1 - progress, CONFIG.mix.reverb.decay)
+        * 0.72;
+    }
+
+    return buffer;
+  }
+
+  function buildAudioGraph() {
+    dryBus = context.createGain();
+    reverbSend = context.createGain();
+    convolver = context.createConvolver();
     reverbWet = context.createGain();
+    mixBus = context.createGain();
+    masterGain = context.createGain();
+    lowShelf = context.createBiquadFilter();
+    presenceEq = context.createBiquadFilter();
+    compressor = context.createDynamicsCompressor();
+    limiter = context.createDynamicsCompressor();
 
-    limiter.threshold.value = CONFIG.limiter.threshold;
-    limiter.knee.value = CONFIG.limiter.knee;
-    limiter.ratio.value = CONFIG.limiter.ratio;
-    limiter.attack.value = CONFIG.limiter.attack;
-    limiter.release.value = CONFIG.limiter.release;
+    reverbSend.gain.value = CONFIG.mix.reverb.wet;
+    convolver.buffer = makeReverbImpulse();
+    reverbWet.gain.value = 1;
+    masterGain.gain.value = CONFIG.masterVolume;
 
-    masterGain.gain.value = CONFIG.master.gain;
-    reverbWet.gain.value = CONFIG.reverb.wet;
-    reverb.buffer = makeReverbImpulse();
+    lowShelf.type = 'lowshelf';
+    lowShelf.frequency.value = CONFIG.mix.eq.lowShelfHz;
+    lowShelf.gain.value = CONFIG.mix.eq.lowShelfDb;
 
-    masterGain.connect(limiter);
-    reverb.connect(reverbWet);
-    reverbWet.connect(limiter);
+    presenceEq.type = 'peaking';
+    presenceEq.frequency.value = CONFIG.mix.eq.presenceHz;
+    presenceEq.Q.value = CONFIG.mix.eq.presenceQ;
+    presenceEq.gain.value = CONFIG.mix.eq.presenceDb;
+
+    Object.assign(compressor, {});
+    compressor.threshold.value = CONFIG.mix.compressor.threshold;
+    compressor.knee.value = CONFIG.mix.compressor.knee;
+    compressor.ratio.value = CONFIG.mix.compressor.ratio;
+    compressor.attack.value = CONFIG.mix.compressor.attack;
+    compressor.release.value = CONFIG.mix.compressor.release;
+
+    limiter.threshold.value = CONFIG.mix.limiter.threshold;
+    limiter.knee.value = CONFIG.mix.limiter.knee;
+    limiter.ratio.value = CONFIG.mix.limiter.ratio;
+    limiter.attack.value = CONFIG.mix.limiter.attack;
+    limiter.release.value = CONFIG.mix.limiter.release;
+
+    dryBus.connect(mixBus);
+    reverbSend.connect(convolver);
+    convolver.connect(reverbWet);
+    reverbWet.connect(mixBus);
+
+    mixBus.connect(masterGain);
+    masterGain.connect(lowShelf);
+    lowShelf.connect(presenceEq);
+    presenceEq.connect(compressor);
+    compressor.connect(limiter);
     limiter.connect(context.destination);
 
-    noiseBuffer = makeNoiseBuffer();
-    return context;
-  }
+    for (let index = 0; index < CONFIG.performance.maxVoices; index += 1) {
+      const gain = context.createGain();
+      const panner = typeof context.createStereoPanner === 'function'
+        ? context.createStereoPanner()
+        : null;
 
-  async function unlock() {
-    ensureContext();
-    if (!context) return false;
-
-    try {
-      if (context.state === 'suspended') await context.resume();
-      unlocked = context.state === 'running';
-    } catch {
-      unlocked = false;
-    }
-
-    if (unlocked) {
-      preloadConfiguredFiles();
-      maybePlayAppearance();
-    }
-
-    return unlocked;
-  }
-
-  function cleanupVoices() {
-    const now = performance.now();
-    activeVoices.forEach((voice) => {
-      if (!voice.sustained && voice.endsAt <= now) {
-        activeVoices.delete(voice);
+      gain.gain.value = 0;
+      if (panner) {
+        gain.connect(panner);
+        panner.connect(dryBus);
+        panner.connect(reverbSend);
+      } else {
+        gain.connect(dryBus);
+        gain.connect(reverbSend);
       }
-    });
-  }
 
-  function connectVoiceOutput(node, panner) {
-    if (panner) {
-      node.connect(panner);
-      panner.connect(masterGain);
-      panner.connect(reverb);
-      return;
-    }
-
-    node.connect(masterGain);
-    node.connect(reverb);
-  }
-
-  function panForElement(element) {
-    if (!element) return 0;
-    const rect = element.getBoundingClientRect();
-    const center = rect.left + rect.width / 2;
-    const normalized = (center / Math.max(1, window.innerWidth)) * 2 - 1;
-    return clamp(normalized * CONFIG.master.panAmount, -CONFIG.master.panAmount, CONFIG.master.panAmount);
-  }
-
-  function createVoice(element, durationMs, overallGain = 1, sustained = false, forcedPan = null) {
-    cleanupVoices();
-    if (!canPlay() || activeVoices.size >= CONFIG.master.maxVoices) return null;
-
-    const input = context.createGain();
-    const panValue = forcedPan == null ? panForElement(element) : forcedPan;
-    const panner = typeof context.createStereoPanner === 'function'
-      ? context.createStereoPanner()
-      : null;
-
-    input.gain.value = overallGain * randomFactor(0.055);
-    if (panner) panner.pan.value = panValue;
-    connectVoiceOutput(input, panner);
-
-    const voice = {
-      input,
-      panner,
-      pan: panValue,
-      pitch: randomFactor(0.05),
-      sustained,
-      ended: false,
-      endsAt: performance.now() + durationMs + 140
-    };
-
-    activeVoices.add(voice);
-
-    if (!sustained) {
-      window.setTimeout(() => endVoice(voice), durationMs + 120);
-    }
-
-    return voice;
-  }
-
-  function endVoice(voice) {
-    if (!voice || voice.ended) return;
-    voice.ended = true;
-    activeVoices.delete(voice);
-    try { voice.input.disconnect(); } catch {}
-    try { voice.panner?.disconnect(); } catch {}
-  }
-
-  function envelopeGain(voice, start, duration, peak, attack = 0.003, releaseCurve = true) {
-    const gain = context.createGain();
-    const end = start + duration;
-    const safePeak = Math.max(0.0002, peak);
-
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(safePeak, start + Math.min(attack, duration * 0.28));
-
-    if (releaseCurve) {
-      gain.gain.exponentialRampToValueAtTime(0.0001, end);
-    } else {
-      gain.gain.linearRampToValueAtTime(0.0001, end);
-    }
-
-    gain.connect(voice.input);
-    return gain;
-  }
-
-  function transientNoise(voice, {
-    duration = 0.018,
-    gain = 0.08,
-    frequency = 1500,
-    q = 0.75,
-    delay = 0,
-    type = 'bandpass'
-  } = {}) {
-    if (!voice || !context || !noiseBuffer) return;
-    const start = context.currentTime + delay;
-    const source = context.createBufferSource();
-    const filter = context.createBiquadFilter();
-    const amplitude = envelopeGain(voice, start, duration, gain * randomFactor(0.08), 0.0015);
-
-    source.buffer = noiseBuffer;
-    filter.type = type;
-    filter.frequency.value = Math.max(90, frequency * randomFactor(0.06));
-    filter.Q.value = q;
-
-    source.connect(filter);
-    filter.connect(amplitude);
-    source.start(start);
-    source.stop(start + duration + 0.008);
-  }
-
-  function tonalBody(voice, {
-    frequency,
-    endRatio = 0.68,
-    duration = 0.09,
-    gain = 0.14,
-    delay = 0,
-    type = 'triangle',
-    filterFrequency = 1350,
-    attack = 0.003
-  }) {
-    if (!voice || !context) return;
-    const start = context.currentTime + delay;
-    const oscillator = context.createOscillator();
-    const filter = context.createBiquadFilter();
-    const amplitude = envelopeGain(voice, start, duration, gain * randomFactor(0.07), attack);
-    const startFrequency = Math.max(35, frequency * voice.pitch);
-
-    oscillator.type = type;
-    oscillator.frequency.setValueAtTime(startFrequency, start);
-    oscillator.frequency.exponentialRampToValueAtTime(
-      Math.max(30, startFrequency * endRatio),
-      start + Math.max(0.018, duration * 0.72)
-    );
-
-    filter.type = 'lowpass';
-    filter.frequency.value = Math.max(220, filterFrequency * randomFactor(0.035));
-    filter.Q.value = 0.72;
-
-    oscillator.connect(filter);
-    filter.connect(amplitude);
-    oscillator.start(start);
-    oscillator.stop(start + duration + 0.012);
-  }
-
-  function resonantBody(voice, {
-    frequency,
-    duration,
-    gain,
-    delay = 0,
-    ratio = 2.78,
-    filterFrequency = 1800
-  }) {
-    tonalBody(voice, {
-      frequency: frequency * ratio,
-      endRatio: 0.74,
-      duration: duration * 0.62,
-      gain,
-      delay,
-      type: 'triangle',
-      filterFrequency
-    });
-  }
-
-  function organicHit(element, sound, frequency, {
-    kind = 'mallet',
-    pan = null,
-    secondNote = null,
-    boing = false
-  } = {}) {
-    const durationMs = Math.ceil((sound.duration + 0.09) * 1000);
-    const voice = createVoice(element, durationMs, sound.gain, false, pan);
-    if (!voice) return null;
-
-    const transientFrequency = kind === 'thock' ? 1250 : kind === 'bubble' ? 1850 : 1550;
-    transientNoise(voice, {
-      duration: kind === 'thock' ? 0.015 : 0.018,
-      gain: sound.transientGain,
-      frequency: transientFrequency,
-      q: kind === 'wood' ? 1.15 : 0.72
-    });
-
-    const endRatio = kind === 'bubble' ? 0.56 : kind === 'thock' ? 0.72 : 0.64;
-    const filterFrequency = kind === 'thock' ? 920 : kind === 'wood' ? 1420 : 1700;
-
-    tonalBody(voice, {
-      frequency,
-      endRatio,
-      duration: sound.duration,
-      gain: sound.bodyGain,
-      type: 'triangle',
-      filterFrequency
-    });
-
-    if (kind === 'wood' || kind === 'mallet') {
-      resonantBody(voice, {
-        frequency,
-        duration: sound.duration,
-        gain: sound.bodyGain * 0.23,
-        delay: 0.002,
-        ratio: kind === 'wood' ? 2.92 : 2.46,
-        filterFrequency: 2100
+      voiceSlots.push({
+        gain,
+        panner,
+        source: null,
+        busyUntil: 0,
+        sustained: false,
+        startedAt: 0
       });
     }
-
-    if (boing) {
-      tonalBody(voice, {
-        frequency: frequency * 0.72,
-        endRatio: 0.48,
-        duration: Math.min(0.12, sound.duration * 0.92),
-        gain: sound.bodyGain * 0.34,
-        delay: 0.022,
-        type: 'triangle',
-        filterFrequency: 880
-      });
-    }
-
-    if (secondNote) {
-      tonalBody(voice, {
-        frequency: secondNote.frequency,
-        endRatio: secondNote.endRatio ?? 0.7,
-        duration: secondNote.duration ?? sound.duration * 0.7,
-        gain: secondNote.gain ?? sound.bodyGain * 0.55,
-        delay: secondNote.delay ?? 0.035,
-        type: 'triangle',
-        filterFrequency: secondNote.filterFrequency ?? 1600
-      });
-    }
-
-    return voice;
-  }
-
-  function brush(element, sound, frequency = 900) {
-    const voice = createVoice(element, Math.ceil((sound.duration + 0.08) * 1000), sound.gain);
-    if (!voice) return null;
-
-    transientNoise(voice, {
-      duration: sound.duration,
-      gain: sound.transientGain,
-      frequency,
-      q: 0.55,
-      type: 'bandpass'
-    });
-
-    tonalBody(voice, {
-      frequency: Math.max(120, frequency * 0.28),
-      endRatio: 0.7,
-      duration: sound.duration * 0.58,
-      gain: sound.bodyGain,
-      delay: 0.008,
-      type: 'triangle',
-      filterFrequency: 1100
-    });
-
-    return voice;
-  }
-
-  async function loadBuffer(path) {
-    if (!path || !context) return null;
-    if (buffers.has(path)) return buffers.get(path);
-    if (pendingBuffers.has(path)) return pendingBuffers.get(path);
-
-    const pending = fetch(path, { cache: 'force-cache' })
-      .then((response) => {
-        if (!response.ok) throw new Error(`SFX HTTP ${response.status}`);
-        return response.arrayBuffer();
-      })
-      .then((arrayBuffer) => context.decodeAudioData(arrayBuffer.slice(0)))
-      .then((buffer) => {
-        buffers.set(path, buffer);
-        pendingBuffers.delete(path);
-        return buffer;
-      })
-      .catch(() => {
-        pendingBuffers.delete(path);
-        return null;
-      });
-
-    pendingBuffers.set(path, pending);
-    return pending;
   }
 
   function configuredPaths() {
@@ -623,94 +449,251 @@
     return [...new Set(paths)];
   }
 
-  function preloadConfiguredFiles() {
-    if (!context) return;
+  function preloadExternalFiles() {
     configuredPaths().forEach((path) => {
-      loadBuffer(path);
+      if (externalBuffers.has(path) || externalRequests.has(path)) return;
+
+      const request = fetch(path, { cache: 'force-cache' })
+        .then((response) => {
+          if (!response.ok) throw new Error(`SFX HTTP ${response.status}`);
+          return response.arrayBuffer();
+        })
+        .then((arrayBuffer) => context.decodeAudioData(arrayBuffer.slice(0)))
+        .then((buffer) => {
+          externalBuffers.set(path, buffer);
+          externalRequests.delete(path);
+          return buffer;
+        })
+        .catch(() => {
+          externalRequests.delete(path);
+          return null;
+        });
+
+      externalRequests.set(path, request);
     });
   }
 
-  function playBuffer(path, element, {
-    gain = 1,
-    playbackRate = 1,
-    pan = null
-  } = {}) {
-    const buffer = buffers.get(path);
-    if (!buffer || !canPlay()) return false;
-
-    const rate = Math.max(0.5, playbackRate * randomFactor(0.035));
-    const durationMs = (buffer.duration / rate) * 1000;
-    const voice = createVoice(element, durationMs, gain, false, pan);
-    if (!voice) return false;
-
-    const source = context.createBufferSource();
-    source.buffer = buffer;
-    source.playbackRate.value = rate;
-    source.connect(voice.input);
-    source.start();
-    return true;
-  }
-
-  function tryConfiguredFile(soundName, element, {
-    gain = 1,
-    variantIndex = null,
-    playbackRate = 1,
-    pan = null
-  } = {}) {
-    const sound = CONFIG.sounds[soundName];
-    if (!sound) return false;
-
-    const path = variantIndex != null && Array.isArray(sound.files)
-      ? sound.files[variantIndex % sound.files.length]
-      : sound.file;
-
-    if (!path) return false;
-    if (buffers.has(path)) {
-      return playBuffer(path, element, {
-        gain: sound.gain * gain,
-        playbackRate,
-        pan
-      });
+  function resumeContext() {
+    if (context.state === 'running') {
+      unlocked = true;
+      warmContext();
+      return;
     }
 
-    loadBuffer(path);
-    return false;
+    const resumePromise = context.resume();
+    if (resumePromise?.then) {
+      resumePromise.then(() => {
+        unlocked = context.state === 'running';
+        warmContext();
+        maybePlayAppearance();
+      }).catch(() => {});
+    }
   }
 
-  function noteFor(node) {
-    return CONFIG.notes[node?.dataset?.heroNode] || CONFIG.notes.launcher;
+  function warmContext() {
+    if (warmed || !silenceBuffer || context.state !== 'running') return;
+    warmed = true;
+    const source = context.createBufferSource();
+    source.buffer = silenceBuffer;
+    source.connect(dryBus);
+    source.start();
   }
 
-  function playAppearanceNote(node, index) {
-    const sound = CONFIG.sounds.nodeAppearance;
-    recordStat('nodeAppearance');
-    if (tryConfiguredFile('nodeAppearance', node)) return;
+  function eventTimestampToPerformance(timestamp) {
+    if (!Number.isFinite(timestamp)) return null;
+    if (timestamp > 1e9 && Number.isFinite(performance.timeOrigin)) {
+      return timestamp - performance.timeOrigin;
+    }
+    return timestamp;
+  }
 
-    const base = noteFor(node) * (1 + index * 0.004);
-    organicHit(node, sound, base, {
-      kind: 'mallet',
-      secondNote: {
-        frequency: base * 1.5,
-        delay: 0.022,
-        gain: sound.bodyGain * 0.2,
-        duration: 0.055
+  function updateLatency(eventTimestamp, startCallAt, sourceName) {
+    const eventTime = eventTimestampToPerformance(eventTimestamp);
+    if (eventTime == null) return;
+
+    const jsMs = Math.max(0, startCallAt - eventTime);
+    const baseMs = Number.isFinite(context.baseLatency) ? context.baseLatency * 1000 : 0;
+    const outputMs = Number.isFinite(context.outputLatency) ? context.outputLatency * 1000 : 0;
+
+    lastLatency = {
+      jsMs,
+      baseMs,
+      outputMs,
+      estimatedMs: jsMs + baseMs + outputMs,
+      source: sourceName
+    };
+
+    updateDebugLatency();
+  }
+
+  function panForElement(element) {
+    if (!element) return 0;
+    const rect = element.getBoundingClientRect();
+    const center = rect.left + rect.width / 2;
+    const normalized = (center / Math.max(1, window.innerWidth)) * 2 - 1;
+    return clamp(
+      normalized * CONFIG.performance.panAmount,
+      -CONFIG.performance.panAmount,
+      CONFIG.performance.panAmount
+    );
+  }
+
+  function refreshVoiceSlots(nowMs = performance.now()) {
+    voiceSlots.forEach((slot) => {
+      if (!slot.sustained && slot.busyUntil <= nowMs) {
+        slot.source = null;
       }
     });
   }
 
-  function playLineShimmer(element = stage, gainScale = 1) {
-    const sound = CONFIG.sounds.lineShimmer;
-    recordStat('lineShimmer');
-    if (tryConfiguredFile('lineShimmer', element, { gain: gainScale })) return;
-    const local = { ...sound, gain: sound.gain * gainScale };
-    brush(element, local, 980);
+  function acquireVoice(nowMs = performance.now()) {
+    refreshVoiceSlots(nowMs);
+
+    let slot = voiceSlots.find((candidate) => !candidate.source);
+    if (slot) return slot;
+
+    slot = voiceSlots
+      .filter((candidate) => !candidate.sustained)
+      .sort((a, b) => a.startedAt - b.startedAt)[0]
+      || [...voiceSlots].sort((a, b) => a.startedAt - b.startedAt)[0];
+
+    if (slot?.source) {
+      try { slot.source.stop(); } catch {}
+      slot.source = null;
+      slot.sustained = false;
+    }
+
+    return slot || null;
   }
 
-  function playNodeHover(node) {
-    const now = performance.now();
-    if (now - lastHoverAt < CONFIG.master.hoverMinInterval) return;
+  function nextVariant(soundName, sound) {
+    const count = Math.max(1, sound.variants || 1);
+    const current = counters.get(soundName) || 0;
+    counters.set(soundName, (current + 1) % count);
+    return current % count;
+  }
 
-    if (now - lastHoverAt <= CONFIG.master.comboWindow) {
+  function externalPathFor(sound, variantIndex) {
+    if (Array.isArray(sound.files)) {
+      return sound.files[variantIndex % sound.files.length] || null;
+    }
+    return sound.file || null;
+  }
+
+  function bufferFor(soundName, sound, {
+    degree = null,
+    variant = 0,
+    typingVariantIndex = null
+  } = {}) {
+    const path = externalPathFor(sound, typingVariantIndex ?? variant);
+    if (path && externalBuffers.has(path)) {
+      const baseDegree = Number.isFinite(sound.fileBaseDegree)
+        ? sound.fileBaseDegree
+        : (degree ?? sound.degree ?? 0);
+      const targetDegree = degree ?? sound.degree ?? baseDegree;
+      const playbackRate = degreeToFrequency(targetDegree) / degreeToFrequency(baseDegree);
+      return {
+        buffer: externalBuffers.get(path),
+        playbackRate
+      };
+    }
+
+    const key = synthKey(soundName, {
+      degree,
+      variant,
+      typingVariantIndex
+    });
+
+    return {
+      buffer: buffers.get(key),
+      playbackRate: 1
+    };
+  }
+
+  function playSound(soundName, {
+    element = null,
+    degree = null,
+    variantIndex = null,
+    pan = null,
+    eventTimestamp = null,
+    gainScale = 1,
+    when = null
+  } = {}) {
+    const sound = CONFIG.sounds[soundName];
+    if (!sound) return false;
+
+    if (context.state !== 'running') resumeContext();
+
+    const nowPerf = performance.now();
+    const slot = acquireVoice(nowPerf);
+    if (!slot) return false;
+
+    let synthVariant;
+    let typingVariantIndex = null;
+
+    if (soundName === 'chatType') {
+      typingVariantIndex = variantIndex ?? 0;
+      synthVariant = 0;
+    } else {
+      synthVariant = nextVariant(soundName, sound);
+    }
+
+    const resolved = bufferFor(soundName, sound, {
+      degree,
+      variant: synthVariant,
+      typingVariantIndex
+    });
+
+    if (!resolved.buffer) return false;
+
+    const source = context.createBufferSource();
+    source.buffer = resolved.buffer;
+    source.playbackRate.value = resolved.playbackRate;
+
+    const startAt = when ?? context.currentTime;
+    const durationMs = (resolved.buffer.duration / resolved.playbackRate) * 1000;
+    const startDelayMs = Math.max(0, (startAt - context.currentTime) * 1000);
+
+    slot.gain.gain.cancelScheduledValues(context.currentTime);
+    slot.gain.gain.setValueAtTime(
+      sound.gain * gainScale * randomFactor(0.025),
+      context.currentTime
+    );
+
+    if (slot.panner) {
+      slot.panner.pan.setValueAtTime(
+        pan == null ? panForElement(element) : clamp(pan, -1, 1),
+        context.currentTime
+      );
+    }
+
+    source.connect(slot.gain);
+    slot.source = source;
+    slot.sustained = false;
+    slot.startedAt = nowPerf;
+    slot.busyUntil = nowPerf + startDelayMs + durationMs;
+
+    const startCallAt = performance.now();
+    source.start(startAt);
+    updateLatency(eventTimestamp, startCallAt, soundName);
+    recordStat(soundName);
+    return true;
+  }
+
+  function playNodeAppearance(node, index, when) {
+    const degree = CONFIG.nodes[node.dataset.heroNode] ?? index;
+    playSound('nodeAppearance', {
+      element: node,
+      degree,
+      when
+    });
+  }
+
+  function playNodeHover(node, eventTimestamp) {
+    const now = performance.now();
+    if (now - lastHoverAt < CONFIG.performance.hoverMinIntervalMs) return;
+
+    if (now - lastHoverAt <= CONFIG.performance.comboWindowMs) {
       comboLevel = Math.min(4, comboLevel + 1);
     } else {
       comboLevel = 0;
@@ -720,336 +703,60 @@
     window.clearTimeout(comboResetTimer);
     comboResetTimer = window.setTimeout(() => {
       comboLevel = 0;
-    }, CONFIG.master.comboReset);
+    }, CONFIG.performance.comboResetMs);
 
-    const sound = CONFIG.sounds.nodeHover;
-    recordStat('nodeHover');
-    if (tryConfiguredFile('nodeHover', node, { playbackRate: 1 + comboLevel * 0.012 })) return;
-
-    const base = noteFor(node) * (1 + comboLevel * 0.012);
-    const local = {
-      ...sound,
-      bodyGain: sound.bodyGain * (1 + comboLevel * 0.08),
-      transientGain: sound.transientGain * (1 + comboLevel * 0.05)
-    };
-
-    organicHit(node, local, base, {
-      kind: 'wood',
-      secondNote: {
-        frequency: base * 1.5,
-        delay: 0.018,
-        gain: local.bodyGain * 0.18,
-        duration: 0.048
-      }
+    const baseDegree = CONFIG.nodes[node.dataset.heroNode] ?? 0;
+    playSound('nodeHover', {
+      element: node,
+      degree: baseDegree + comboLevel,
+      eventTimestamp
     });
   }
 
-  function playPort(port) {
-    const sound = CONFIG.sounds.port;
-    recordStat('port');
-    if (tryConfiguredFile('port', port)) return;
-    organicHit(port, sound, 520, { kind: 'wood' });
-  }
-
-  function playNodeTap(node) {
-    const sound = CONFIG.sounds.nodeClick;
-    recordStat('nodeClick');
-    if (tryConfiguredFile('nodeClick', node)) return;
-
-    const base = noteFor(node);
-    const voice = organicHit(node, sound, base * 0.92, {
-      kind: 'thock',
-      boing: true,
-      secondNote: node?.dataset?.heroNode === 'contact'
-        ? {
-            frequency: base * 1.5,
-            delay: 0.025,
-            gain: sound.bodyGain * 0.34,
-            duration: 0.08
-          }
-        : null
-    });
-
-    if (voice) {
-      tonalBody(voice, {
-        frequency: 82,
-        endRatio: 0.58,
-        duration: 0.085,
-        gain: sound.thumpGain,
-        delay: 0.004,
-        type: 'triangle',
-        filterFrequency: 420
-      });
-    }
-  }
-
-  function playPickup(node) {
-    const sound = CONFIG.sounds.pickup;
-    recordStat('pickup');
-    if (tryConfiguredFile('pickup', node)) return;
-    organicHit(node, sound, noteFor(node) * 0.74, { kind: 'rubber', boing: true });
-  }
-
-  function startDragTone(node) {
-    if (!canPlay() || dragVoice || activeVoices.size >= CONFIG.master.maxVoices) return;
-
-    const voice = createVoice(node, 10000, 0.74, true);
-    if (!voice) return;
-
-    const oscillator = context.createOscillator();
-    const filter = context.createBiquadFilter();
-    const gain = context.createGain();
-    const now = context.currentTime;
-    const base = noteFor(node) * 0.46;
-
-    oscillator.type = 'triangle';
-    oscillator.frequency.value = base;
-    filter.type = 'lowpass';
-    filter.frequency.value = 620;
-    filter.Q.value = 0.55;
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.012, now + 0.05);
-
-    oscillator.connect(filter);
-    filter.connect(gain);
-    gain.connect(voice.input);
-    oscillator.start(now);
-
-    dragVoice = { voice, oscillator, gain, base };
-    recordStat('drag');
-  }
-
-  function updateDragTone(speed, node) {
-    if (!dragVoice || !context) return;
-    const normalized = clamp(speed / 1650, 0, 1);
-    const frequency = dragVoice.base * (1 + normalized * 0.66);
-    const now = context.currentTime;
-
-    dragVoice.oscillator.frequency.setTargetAtTime(frequency, now, 0.032);
-    dragVoice.gain.gain.setTargetAtTime(
-      0.009 + normalized * 0.008,
-      now,
-      0.04
-    );
-
-    if (dragVoice.voice.panner && node) {
-      dragVoice.voice.panner.pan.setTargetAtTime(panForElement(node), now, 0.045);
-    }
-  }
-
-  function stopDragTone() {
-    if (!dragVoice || !context) return;
-    const current = dragVoice;
-    dragVoice = null;
-    const now = context.currentTime;
-
-    current.gain.gain.cancelScheduledValues(now);
-    current.gain.gain.setTargetAtTime(0.0001, now, 0.055);
-    try { current.oscillator.stop(now + 0.16); } catch {}
-    window.setTimeout(() => endVoice(current.voice), 190);
-  }
-
-  function playDrop(node) {
-    const sound = CONFIG.sounds.drop;
-    recordStat('drop');
-    if (tryConfiguredFile('drop', node)) return;
-
-    const base = noteFor(node) * 0.72;
-    organicHit(node, sound, base, {
-      kind: 'thock',
-      boing: true,
-      secondNote: {
-        frequency: base * 1.28,
-        delay: 0.06,
-        gain: sound.bodyGain * 0.3,
-        duration: 0.052
-      }
+  function playNodeSelect(node, eventTimestamp) {
+    const degree = CONFIG.nodes[node.dataset.heroNode] ?? 0;
+    playSound('nodeSelect', {
+      element: node,
+      degree,
+      eventTimestamp
     });
   }
 
-  function playReset() {
-    const sound = CONFIG.sounds.reset;
-    recordStat('reset');
-    if (tryConfiguredFile('reset', resetButton || stage)) return;
-
-    const element = resetButton || stage;
-    [392, 311, 247].forEach((frequency, index) => {
-      window.setTimeout(() => {
-        if (!canPlay()) return;
-        const local = {
-          ...sound,
-          gain: sound.gain * (1 - index * 0.12),
-          bodyGain: sound.bodyGain * (1 - index * 0.1)
-        };
-        organicHit(element, local, frequency, { kind: 'wood' });
-      }, index * 48);
-    });
-  }
-
-  function playLink(element) {
-    const sound = CONFIG.sounds.link;
-    recordStat('link');
-    if (tryConfiguredFile('link', element || stage)) return;
-
-    organicHit(element || stage, sound, 330, {
-      kind: 'mallet',
-      secondNote: {
-        frequency: 440,
-        delay: 0.042,
-        gain: sound.bodyGain * 0.58,
-        duration: 0.072
-      }
-    });
-  }
-
-  function playDisconnect() {
-    const sound = CONFIG.sounds.disconnect;
-    recordStat('disconnect');
-    if (tryConfiguredFile('disconnect', disconnectButton || stage)) return;
-    organicHit(disconnectButton || stage, sound, 220, { kind: 'thock' });
-  }
-
-  function playChatType(kind = 'normal', element = chatTextarea) {
+  function playTyping(kind, eventTimestamp) {
     const now = performance.now();
-    if (now - lastTypingSoundAt < 35) return;
+    if (now - lastTypingSoundAt < CONFIG.performance.typingMinIntervalMs) return false;
     lastTypingSoundAt = now;
 
     if (kind === 'space') {
-      const sound = CONFIG.sounds.chatSpace;
-      recordStat('chatSpace');
-      if (tryConfiguredFile('chatSpace', element, { pan: 0.34 })) return;
-      organicHit(element, sound, sound.frequency, { kind: 'thock', pan: 0.34 });
-      return;
+      return playSound('chatSpace', {
+        element: chatTextarea,
+        pan: 0.32,
+        eventTimestamp
+      });
     }
 
     if (kind === 'delete') {
-      const sound = CONFIG.sounds.chatDelete;
-      recordStat('chatDelete');
-      if (tryConfiguredFile('chatDelete', element, { pan: 0.34 })) return;
-      organicHit(element, sound, sound.frequency, { kind: 'thock', pan: 0.34 });
-      return;
+      return playSound('chatDelete', {
+        element: chatTextarea,
+        pan: 0.32,
+        eventTimestamp
+      });
     }
 
-    const sound = CONFIG.sounds.chatType;
-    const variantIndex = typingVariant % sound.variants.length;
-    typingVariant = (typingVariant + 1) % sound.variants.length;
-    const base = sound.variants[variantIndex] * randomFactor(0.045);
+    const index = typingVariant % CONFIG.sounds.chatType.variantDegrees.length;
+    typingVariant = (typingVariant + 1) % CONFIG.sounds.chatType.variantDegrees.length;
 
-    recordStat('chatType');
-    if (tryConfiguredFile('chatType', element, {
-      variantIndex,
-      pan: 0.34,
-      playbackRate: randomFactor(0.035)
-    })) return;
-
-    organicHit(element, sound, base, { kind: 'thock', pan: 0.34 });
-  }
-
-  function playChatSend(element = chatForm) {
-    const sound = CONFIG.sounds.chatSend;
-    recordStat('chatSend');
-    if (tryConfiguredFile('chatSend', element, { pan: 0.34 })) return;
-
-    organicHit(element, sound, 310, {
-      kind: 'bubble',
-      pan: 0.34,
-      secondNote: {
-        frequency: 405,
-        delay: 0.04,
-        gain: sound.bodyGain * 0.62,
-        duration: 0.08,
-        endRatio: 0.76
-      }
-    });
-  }
-
-  function playChatReceive(element) {
-    const sound = CONFIG.sounds.chatReceive;
-    recordStat('chatReceive');
-    if (tryConfiguredFile('chatReceive', element, { pan: 0.3 })) return;
-
-    organicHit(element, sound, 355, {
-      kind: 'bubble',
-      pan: 0.3,
-      boing: true,
-      secondNote: {
-        frequency: 470,
-        delay: 0.052,
-        gain: sound.bodyGain * 0.42,
-        duration: 0.085
-      }
-    });
-  }
-
-  function playChatStream(element) {
-    const now = performance.now();
-    if (now - lastStreamTapAt < 80 || now - lastReceiveAt < 160) return;
-    lastStreamTapAt = now;
-
-    const sound = CONFIG.sounds.chatStream;
-    recordStat('chatStream');
-    if (tryConfiguredFile('chatStream', element, { pan: 0.3 })) return;
-    organicHit(element, sound, 215, { kind: 'thock', pan: 0.3 });
-  }
-
-  function playChipHover(element) {
-    const sound = CONFIG.sounds.chipHover;
-    recordStat('chipHover');
-    if (tryConfiguredFile('chipHover', element, { pan: 0.3 })) return;
-    organicHit(element, sound, 330, { kind: 'wood', pan: 0.3 });
-  }
-
-  function playChipClick(element) {
-    const sound = CONFIG.sounds.chipClick;
-    recordStat('chipClick');
-    if (tryConfiguredFile('chipClick', element, { pan: 0.3 })) return;
-    organicHit(element, sound, 285, {
-      kind: 'bubble',
-      pan: 0.3,
-      secondNote: {
-        frequency: 360,
-        delay: 0.032,
-        gain: sound.bodyGain * 0.42,
-        duration: 0.065
-      }
-    });
-  }
-
-  function playChatOpen(element) {
-    const sound = CONFIG.sounds.chatOpen;
-    recordStat('chatOpen');
-    if (tryConfiguredFile('chatOpen', element, { pan: 0.36 })) return;
-    organicHit(element, sound, 270, {
-      kind: 'mallet',
-      pan: 0.36,
-      secondNote: {
-        frequency: 360,
-        delay: 0.045,
-        gain: sound.bodyGain * 0.56,
-        duration: 0.072,
-        endRatio: 0.76
-      }
-    });
-  }
-
-  function playChatClose(element) {
-    const sound = CONFIG.sounds.chatClose;
-    recordStat('chatClose');
-    if (tryConfiguredFile('chatClose', element, { pan: 0.36 })) return;
-    organicHit(element, sound, 340, {
-      kind: 'mallet',
-      pan: 0.36,
-      secondNote: {
-        frequency: 245,
-        delay: 0.04,
-        gain: sound.bodyGain * 0.52,
-        duration: 0.068
-      }
+    return playSound('chatType', {
+      element: chatTextarea,
+      variantIndex: index,
+      pan: 0.32,
+      eventTimestamp
     });
   }
 
   function runAppearance() {
-    if (!stage || appearancePlayed || appearanceQueued || !canPlay() || !stageVisible) return;
+    if (!stage || appearancePlayed || appearanceQueued || !stageVisible) return;
+    if (context.state !== 'running') return;
     if (!document.body.classList.contains('is-site-ready')) return;
     if (document.body.classList.contains('is-content-panel-open')) return;
 
@@ -1058,33 +765,38 @@
       Number(a.dataset.sfxOrder || 0) - Number(b.dataset.sfxOrder || 0)
     ));
 
+    const startAt = context.currentTime + 0.02;
     ordered.forEach((node, index) => {
-      window.setTimeout(() => playAppearanceNote(node, index), index * 86);
+      playNodeAppearance(node, index, startAt + index * 0.086);
     });
 
-    window.setTimeout(() => {
-      playLineShimmer(stage, 0.9);
-      appearancePlayed = true;
-      appearanceQueued = false;
-    }, 470);
+    playSound('lineShimmer', {
+      element: stage,
+      when: startAt + ordered.length * 0.086 + 0.025,
+      gainScale: 0.9
+    });
+
+    appearancePlayed = true;
+    appearanceQueued = false;
   }
 
   function maybePlayAppearance() {
-    if (!canPlay()) return;
-    runAppearance();
+    if (context.state === 'running') runAppearance();
   }
 
   function nodeFromTarget(target) {
     return target?.closest?.('[data-sfx="node"][data-hero-node]') || null;
   }
 
-  function onPointerOver(event) {
+  function onNodePointerOver(event) {
     if (coarsePointer.matches || event.pointerType === 'touch') return;
 
     const port = event.target.closest?.('[data-sfx="port"]');
     if (port && !port.contains(event.relatedTarget)) {
-      unlock();
-      playPort(port);
+      playSound('port', {
+        element: port,
+        eventTimestamp: event.timeStamp
+      });
       return;
     }
 
@@ -1093,26 +805,48 @@
     const relatedNode = nodeFromTarget(event.relatedTarget);
     if (relatedNode === node) return;
 
-    unlock();
-    playNodeHover(node);
+    playNodeHover(node, event.timeStamp);
   }
 
-  function onPointerDown(event) {
-    unlock();
+  function onNodePointerDown(event) {
+    const reset = event.target.closest?.('[data-sfx="reset"]');
+    if (reset) {
+      playSound('reset', {
+        element: reset,
+        eventTimestamp: event.timeStamp
+      });
+      return;
+    }
+
+    const disconnect = event.target.closest?.('[data-sfx="disconnect"]');
+    if (disconnect) {
+      playSound('disconnect', {
+        element: disconnect,
+        eventTimestamp: event.timeStamp
+      });
+      return;
+    }
 
     const port = event.target.closest?.('[data-sfx="port"]');
     if (port) {
-      const sourceNode = nodeFromTarget(port);
       connectionPointer = {
         pointerId: event.pointerId,
-        sourceNode
+        sourceNode: nodeFromTarget(port)
       };
-      if (coarsePointer.matches || event.pointerType === 'touch') playPort(port);
+
+      if (coarsePointer.matches || event.pointerType === 'touch') {
+        playSound('port', {
+          element: port,
+          eventTimestamp: event.timeStamp
+        });
+      }
       return;
     }
 
     const node = nodeFromTarget(event.target);
     if (!node) return;
+
+    playNodeSelect(node, event.timeStamp);
 
     pointerState = {
       pointerId: event.pointerId,
@@ -1122,13 +856,12 @@
       lastX: event.clientX,
       lastY: event.clientY,
       lastTime: performance.now(),
-      lastToneUpdate: 0,
       dragged: false,
       pointerType: event.pointerType
     };
   }
 
-  function onPointerMove(event) {
+  function onNodePointerMove(event) {
     if (!pointerState || event.pointerId !== pointerState.pointerId) return;
 
     const now = performance.now();
@@ -1140,11 +873,14 @@
     const threshold = coarsePointer.matches ? 7 : 4;
     if (!pointerState.dragged && totalDistance >= threshold) {
       pointerState.dragged = true;
-      playPickup(pointerState.node);
-      startDragTone(pointerState.node);
+      playSound('pickup', {
+        element: pointerState.node,
+        eventTimestamp: event.timeStamp
+      });
+      lastDragPulseAt = 0;
     }
 
-    if (!pointerState.dragged || now - pointerState.lastToneUpdate < CONFIG.master.dragUpdateMs) return;
+    if (!pointerState.dragged || now - lastDragPulseAt < CONFIG.performance.dragStepMs) return;
 
     const dt = Math.max(8, now - pointerState.lastTime);
     const speed = Math.hypot(
@@ -1152,19 +888,30 @@
       event.clientY - pointerState.lastY
     ) / dt * 1000;
 
-    updateDragTone(speed, pointerState.node);
-    pointerState.lastToneUpdate = now;
+    const bucket = clamp(Math.round((speed / 1650) * 4), 0, 4);
+    const degree = -5 + bucket;
+
+    playSound('drag', {
+      element: pointerState.node,
+      degree,
+      eventTimestamp: event.timeStamp
+    });
+
+    lastDragPulseAt = now;
     pointerState.lastX = event.clientX;
     pointerState.lastY = event.clientY;
     pointerState.lastTime = now;
   }
 
-  function onPointerUp(event) {
+  function onNodePointerUp(event) {
     if (connectionPointer && event.pointerId === connectionPointer.pointerId) {
       const target = document.elementFromPoint(event.clientX, event.clientY);
       const targetNode = nodeFromTarget(target);
       if (targetNode && targetNode !== connectionPointer.sourceNode) {
-        playLink(targetNode);
+        playSound('link', {
+          element: targetNode,
+          eventTimestamp: event.timeStamp
+        });
       }
       connectionPointer = null;
     }
@@ -1175,48 +922,27 @@
     pointerState = null;
 
     if (state.dragged) {
-      stopDragTone();
-      playDrop(state.node);
+      playSound('drop', {
+        element: state.node,
+        eventTimestamp: event.timeStamp
+      });
       return;
     }
 
-    playNodeTap(state.node);
-    lastPointerTap = { node: state.node, time: performance.now() };
+    playSound('nodeOpen', {
+      element: state.node,
+      eventTimestamp: event.timeStamp,
+      gainScale: 0.78
+    });
 
     if (state.pointerType === 'touch' && typeof navigator.vibrate === 'function') {
       try { navigator.vibrate(8); } catch {}
     }
   }
 
-  function onPointerCancel(event) {
+  function onNodePointerCancel(event) {
     if (connectionPointer?.pointerId === event.pointerId) connectionPointer = null;
-    if (!pointerState || event.pointerId !== pointerState.pointerId) return;
-    const wasDragging = pointerState.dragged;
-    pointerState = null;
-    if (wasDragging) stopDragTone();
-  }
-
-  function onStageClick(event) {
-    const reset = event.target.closest?.('[data-sfx="reset"]');
-    if (reset) {
-      unlock();
-      playReset();
-      return;
-    }
-
-    const disconnect = event.target.closest?.('[data-sfx="disconnect"]');
-    if (disconnect) {
-      unlock();
-      playDisconnect();
-      return;
-    }
-
-    const node = nodeFromTarget(event.target);
-    if (!node || event.detail !== 0) return;
-
-    if (lastPointerTap.node === node && performance.now() - lastPointerTap.time < 320) return;
-    unlock();
-    playNodeTap(node);
+    if (pointerState?.pointerId === event.pointerId) pointerState = null;
   }
 
   function isIgnoredTypingKey(event) {
@@ -1238,40 +964,66 @@
     const now = performance.now();
 
     if (event.key === 'Enter' && !event.shiftKey) {
+      playSound('chatSend', {
+        element: chatForm,
+        pan: 0.32,
+        eventTimestamp: event.timeStamp
+      });
+      lastSendAt = now;
       lastPhysicalKeyAt = now;
       lastPhysicalInputKind = 'send';
       return;
     }
 
-    if (event.repeat && now - lastTypingSoundAt < 35) return;
-
-    lastPhysicalKeyAt = now;
+    if (event.repeat && now - lastTypingSoundAt < CONFIG.performance.typingMinIntervalMs) return;
 
     if (event.key === 'Backspace' || event.key === 'Delete') {
+      playTyping('delete', event.timeStamp);
+      lastPhysicalKeyAt = now;
       lastPhysicalInputKind = 'delete';
-      unlock();
-      playChatType('delete');
       return;
     }
 
     if (event.key === ' ') {
+      playTyping('space', event.timeStamp);
+      lastPhysicalKeyAt = now;
       lastPhysicalInputKind = 'space';
-      unlock();
-      playChatType('space');
       return;
     }
 
     if (event.key === 'Unidentified') {
-      // En teclados virtuales dejamos que InputEvent sea la fuente de verdad.
       lastPhysicalKeyAt = 0;
       lastPhysicalInputKind = '';
       return;
     }
 
     if (event.key.length === 1) {
+      playTyping('normal', event.timeStamp);
+      lastPhysicalKeyAt = now;
       lastPhysicalInputKind = 'normal';
-      unlock();
-      playChatType('normal');
+    }
+  }
+
+  function onChatBeforeInput(event) {
+    if (event.target !== chatTextarea || event.isComposing) return;
+
+    const now = performance.now();
+    if (now - lastPhysicalKeyAt < 70 && lastPhysicalInputKind) return;
+
+    const inputType = String(event.inputType || '');
+    if (!inputType) return;
+
+    if (inputType.startsWith('delete')) {
+      playTyping('delete', event.timeStamp);
+      lastBeforeInputAt = now;
+      return;
+    }
+
+    if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') return;
+
+    if (inputType.startsWith('insert')) {
+      playTyping(event.data === ' ' ? 'space' : 'normal', event.timeStamp);
+      lastBeforeInputAt = now;
     }
   }
 
@@ -1279,65 +1031,97 @@
     if (event.target !== chatTextarea || event.isComposing) return;
 
     const now = performance.now();
-    const keyboardHandled = now - lastPhysicalKeyAt < 70 && lastPhysicalInputKind !== '';
-    if (keyboardHandled) return;
+    if (now - lastPhysicalKeyAt < 80 && lastPhysicalInputKind) return;
+    if (now - lastBeforeInputAt < 80) return;
 
     const inputType = String(event.inputType || '');
-
-    unlock();
-
     if (inputType.startsWith('delete')) {
-      playChatType('delete');
+      playTyping('delete', event.timeStamp);
       return;
     }
 
-    if (inputType === 'insertLineBreak' || inputType === 'insertParagraph') return;
-
     if (inputType.startsWith('insert')) {
-      playChatType(event.data === ' ' ? 'space' : 'normal');
+      playTyping(event.data === ' ' ? 'space' : 'normal', event.timeStamp);
+    }
+  }
+
+  function onGlobalPointerDown(event) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+
+    const closer = target.closest('[data-chat-close]');
+    if (closer) {
+      playSound('chatClose', {
+        element: closer,
+        pan: 0.35,
+        eventTimestamp: event.timeStamp
+      });
+      return;
+    }
+
+    const sendButton = target.closest('.deu-chat__send');
+    if (sendButton) {
+      const value = String(chatTextarea?.value || '').trim();
+      if (value && !chat?.classList.contains('is-busy')) {
+        playSound('chatSend', {
+          element: sendButton,
+          pan: 0.34,
+          eventTimestamp: event.timeStamp
+        });
+        lastSendAt = performance.now();
+      }
+      return;
+    }
+
+    const chip = target.closest('[data-chat-suggestions] button');
+    if (chip) {
+      playSound('chipClick', {
+        element: chip,
+        pan: 0.3,
+        eventTimestamp: event.timeStamp
+      });
+      return;
+    }
+
+    const opener = target.closest('[data-chat-open], .deu-chat-launcher');
+    if (opener && !opener.closest('[data-hero-node-stage]')) {
+      playSound('chatOpen', {
+        element: opener,
+        pan: 0.34,
+        eventTimestamp: event.timeStamp
+      });
     }
   }
 
   function setupChatSounds() {
     if (!chat) return;
 
-    document.addEventListener('click', (event) => {
-      const opener = event.target.closest?.('[data-chat-open]');
-      if (opener) {
-        unlock();
-        playChatOpen(opener);
-        return;
-      }
+    chatTextarea?.addEventListener('keydown', onChatKeyDown, {
+      capture: true,
+      passive: true
+    });
 
-      const closer = event.target.closest?.('[data-chat-close]');
-      if (closer) {
-        unlock();
-        playChatClose(closer);
-      }
-    }, true);
+    chatTextarea?.addEventListener('beforeinput', onChatBeforeInput, {
+      capture: true,
+      passive: true
+    });
 
-    chatForm?.addEventListener('submit', () => {
-      const value = String(chatTextarea?.value || '').trim();
-      if (!value || chat?.classList.contains('is-busy')) return;
-      unlock();
-      playChatSend(chatForm);
-    }, true);
-
-    chatTextarea?.addEventListener('keydown', onChatKeyDown, true);
-    chatTextarea?.addEventListener('input', onChatInput, true);
+    chatTextarea?.addEventListener('input', onChatInput, {
+      capture: true,
+      passive: true
+    });
 
     chatSuggestions.forEach((button) => {
       button.addEventListener('pointerover', (event) => {
         if (coarsePointer.matches || event.pointerType === 'touch') return;
         if (button.contains(event.relatedTarget)) return;
-        unlock();
-        playChipHover(button);
-      });
 
-      button.addEventListener('click', () => {
-        unlock();
-        playChipClick(button);
-      }, true);
+        playSound('chipHover', {
+          element: button,
+          pan: 0.3,
+          eventTimestamp: event.timeStamp
+        });
+      }, { passive: true });
     });
 
     if (chatFeed) {
@@ -1347,7 +1131,6 @@
 
         mutations.forEach((mutation) => {
           const candidates = [];
-
           if (mutation.target instanceof Element) candidates.push(mutation.target);
           mutation.addedNodes.forEach((node) => {
             if (node instanceof Element) candidates.push(node);
@@ -1379,14 +1162,24 @@
 
         if (resolvedTarget) {
           lastReceiveAt = performance.now();
-          unlock();
-          playChatReceive(resolvedTarget);
+          playSound('chatReceive', {
+            element: resolvedTarget,
+            pan: 0.28
+          });
           return;
         }
 
-        if (streamTarget) {
-          unlock();
-          playChatStream(streamTarget);
+        const now = performance.now();
+        if (
+          streamTarget &&
+          now - lastReceiveAt >= 160 &&
+          now - lastStreamAt >= CONFIG.performance.streamMinIntervalMs
+        ) {
+          lastStreamAt = now;
+          playSound('chatStream', {
+            element: streamTarget,
+            pan: 0.28
+          });
         }
       });
 
@@ -1398,15 +1191,37 @@
         attributeFilter: ['class']
       });
     }
+
+    chatForm?.addEventListener('submit', (event) => {
+      const now = performance.now();
+      if (now - lastSendAt < 140) return;
+
+      const value = String(chatTextarea?.value || '').trim();
+      if (!value || chat?.classList.contains('is-busy')) return;
+
+      playSound('chatSend', {
+        element: chatForm,
+        pan: 0.32,
+        eventTimestamp: event.timeStamp
+      });
+      lastSendAt = now;
+    }, {
+      capture: true,
+      passive: true
+    });
   }
 
-  if (stage) {
-    stage.addEventListener('pointerover', onPointerOver);
-    stage.addEventListener('pointerdown', onPointerDown, true);
-    stage.addEventListener('click', onStageClick);
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
-    window.addEventListener('pointerup', onPointerUp, { passive: true });
-    window.addEventListener('pointercancel', onPointerCancel, { passive: true });
+  function setupNodeSounds() {
+    if (!stage) return;
+
+    stage.addEventListener('pointerover', onNodePointerOver, { passive: true });
+    stage.addEventListener('pointerdown', onNodePointerDown, {
+      capture: true,
+      passive: true
+    });
+    window.addEventListener('pointermove', onNodePointerMove, { passive: true });
+    window.addEventListener('pointerup', onNodePointerUp, { passive: true });
+    window.addEventListener('pointercancel', onNodePointerCancel, { passive: true });
 
     if ('IntersectionObserver' in window) {
       const observer = new IntersectionObserver((entries) => {
@@ -1421,55 +1236,265 @@
     const readyObserver = new MutationObserver(() => {
       if (document.body.classList.contains('is-site-ready')) maybePlayAppearance();
     });
-    readyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    readyObserver.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
 
     if (disconnectButton) {
       const lineObserver = new MutationObserver(() => {
         if (coarsePointer.matches || !disconnectButton.classList.contains('is-visible')) return;
+
         const now = performance.now();
         if (now - lastLineHoverAt < 180) return;
         lastLineHoverAt = now;
-        playLineShimmer(disconnectButton, 0.42);
+
+        playSound('lineShimmer', {
+          element: disconnectButton,
+          gainScale: 0.72
+        });
       });
-      lineObserver.observe(disconnectButton, { attributes: true, attributeFilter: ['class'] });
+
+      lineObserver.observe(disconnectButton, {
+        attributes: true,
+        attributeFilter: ['class']
+      });
     }
   }
 
+  function createDebugPanel() {
+    if (!debugEnabled) return;
+
+    const style = document.createElement('style');
+    style.textContent = `
+      .sfx-debug {
+        position: fixed;
+        left: 0.75rem;
+        bottom: 0.75rem;
+        z-index: 50000;
+        width: min(25rem, calc(100vw - 1.5rem));
+        max-height: min(70vh, 34rem);
+        overflow: auto;
+        padding: 0.7rem;
+        border: 1px solid rgba(255,255,255,.18);
+        background: rgba(5,5,5,.96);
+        color: #f4f4f1;
+        font: 11px/1.35 Inter, system-ui, sans-serif;
+        box-shadow: 0 1rem 3rem rgba(0,0,0,.45);
+      }
+      .sfx-debug__title {
+        display:flex;
+        justify-content:space-between;
+        gap:.75rem;
+        margin-bottom:.55rem;
+        font-weight:600;
+      }
+      .sfx-debug__latency {
+        margin:0 0 .65rem;
+        color:rgba(244,244,241,.68);
+        white-space:pre-wrap;
+      }
+      .sfx-debug__grid {
+        display:grid;
+        grid-template-columns:repeat(3,minmax(0,1fr));
+        gap:.3rem;
+      }
+      .sfx-debug button {
+        min-height:2rem;
+        padding:.35rem .45rem;
+        border:1px solid rgba(255,255,255,.16);
+        background:#0a0a0a;
+        color:#fff;
+        font:inherit;
+        text-align:left;
+        cursor:pointer;
+      }
+      .sfx-debug button:hover { background:#fff; color:#050505; }
+      .sfx-debug__tools {
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:.3rem;
+        margin-bottom:.5rem;
+      }
+    `;
+    document.head.appendChild(style);
+
+    const panel = document.createElement('aside');
+    panel.className = 'sfx-debug';
+    panel.setAttribute('aria-label', 'SFX debug');
+
+    const title = document.createElement('div');
+    title.className = 'sfx-debug__title';
+    title.innerHTML = `<span>SFX DEBUG · ${CONFIG.scale.name}</span><span>${CONFIG.masterVolume.toFixed(2)}</span>`;
+
+    debugLatencyEl = document.createElement('p');
+    debugLatencyEl.className = 'sfx-debug__latency';
+
+    const tools = document.createElement('div');
+    tools.className = 'sfx-debug__tools';
+
+    const scaleButton = document.createElement('button');
+    scaleButton.type = 'button';
+    scaleButton.textContent = '▶ Escala C D E G A';
+    scaleButton.addEventListener('pointerdown', (event) => {
+      const startAt = context.currentTime + 0.01;
+      for (let degree = 0; degree < 5; degree += 1) {
+        playSound('nodeAppearance', {
+          degree,
+          when: startAt + degree * 0.12,
+          eventTimestamp: degree === 0 ? event.timeStamp : null
+        });
+      }
+    }, { passive: true });
+
+    const intervalButton = document.createElement('button');
+    intervalButton.type = 'button';
+    intervalButton.textContent = '▶ Open / Close / Send / Receive';
+    intervalButton.addEventListener('pointerdown', (event) => {
+      const now = context.currentTime + 0.01;
+      playSound('chatOpen', { when: now, eventTimestamp: event.timeStamp });
+      playSound('chatClose', { when: now + 0.45 });
+      playSound('chatSend', { when: now + 0.9 });
+      playSound('chatReceive', { when: now + 1.35 });
+    }, { passive: true });
+
+    tools.append(scaleButton, intervalButton);
+
+    const grid = document.createElement('div');
+    grid.className = 'sfx-debug__grid';
+
+    Object.keys(CONFIG.sounds).forEach((soundName) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = soundName;
+      button.addEventListener('pointerdown', (event) => {
+        const sound = CONFIG.sounds[soundName];
+
+        if (soundName === 'chatType') {
+          playSound(soundName, {
+            variantIndex: 0,
+            eventTimestamp: event.timeStamp
+          });
+          return;
+        }
+
+        if (['nodeAppearance', 'nodeHover', 'nodeSelect'].includes(soundName)) {
+          playSound(soundName, {
+            degree: 0,
+            eventTimestamp: event.timeStamp
+          });
+          return;
+        }
+
+        if (soundName === 'drag') {
+          playSound(soundName, {
+            degree: -5,
+            eventTimestamp: event.timeStamp
+          });
+          return;
+        }
+
+        playSound(soundName, {
+          eventTimestamp: event.timeStamp
+        });
+      }, { passive: true });
+      grid.appendChild(button);
+    });
+
+    panel.append(title, debugLatencyEl, tools, grid);
+    document.body.appendChild(panel);
+    updateDebugLatency();
+  }
+
+  function updateDebugLatency() {
+    if (!debugLatencyEl) return;
+
+    debugLatencyEl.textContent =
+      `last: ${lastLatency.source}\n`
+      + `JS event → source.start(): ${lastLatency.jsMs.toFixed(2)} ms\n`
+      + `ctx.baseLatency: ${lastLatency.baseMs.toFixed(2)} ms\n`
+      + `ctx.outputLatency: ${lastLatency.outputMs.toFixed(2)} ms\n`
+      + `estimated total: ${lastLatency.estimatedMs.toFixed(2)} ms`;
+  }
+
+  function playDebugSound(soundName) {
+    if (!CONFIG.sounds[soundName]) return false;
+
+    if (soundName === 'chatType') {
+      return playSound(soundName, { variantIndex: 0 });
+    }
+
+    if (['nodeAppearance', 'nodeHover', 'nodeSelect'].includes(soundName)) {
+      return playSound(soundName, { degree: 0 });
+    }
+
+    if (soundName === 'drag') {
+      return playSound(soundName, { degree: -5 });
+    }
+
+    return playSound(soundName);
+  }
+
+  buildSynthLibrary();
+  buildAudioGraph();
+  preloadExternalFiles();
+  setupNodeSounds();
   setupChatSounds();
+  createDebugPanel();
 
-  const unlockFromInteraction = () => {
-    unlock();
-  };
+  document.addEventListener('pointerdown', (event) => {
+    resumeContext();
+    onGlobalPointerDown(event);
+  }, {
+    capture: true,
+    passive: true
+  });
 
-  document.addEventListener('pointerdown', unlockFromInteraction, { capture: true, passive: true });
-  document.addEventListener('keydown', unlockFromInteraction, { capture: true });
+  document.addEventListener('keydown', () => {
+    resumeContext();
+  }, {
+    capture: true,
+    passive: true
+  });
 
-  document.addEventListener('visibilitychange', async () => {
-    if (!context) return;
-
+  document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
-      try { await context.suspend(); } catch {}
+      if (context.state === 'running') {
+        context.suspend().catch(() => {});
+      }
       return;
     }
 
-    if (unlocked) {
-      try { await context.resume(); } catch {}
+    if (unlocked && context.state === 'suspended') {
+      context.resume().then(() => {
+        warmContext();
+      }).catch(() => {});
     }
   });
 
   const api = Object.freeze({
     config: CONFIG,
-    masterVolume: SFX_MASTER_VOLUME,
-    unlock,
-    getContextState: () => context?.state || 'uninitialized',
+    masterVolume: CONFIG.masterVolume,
+    unlock: resumeContext,
+    playDebugSound,
+    degreeToFrequency,
+    degreeToLabel,
+    getContextState: () => context.state,
     getVoiceCount: () => {
-      cleanupVoices();
-      return activeVoices.size;
+      refreshVoiceSlots();
+      return voiceSlots.filter((slot) => slot.source).length;
     },
     getStats: () => ({ ...stats }),
-    preloadFiles: preloadConfiguredFiles
+    getLatency: () => ({ ...lastLatency }),
+    getBufferCount: () => buffers.size + externalBuffers.size
   });
 
   window.DeushimaNodeSFX = api;
   window.DeushimaSFX = api;
+
+  if (context.state === 'running') {
+    unlocked = true;
+    warmContext();
+    maybePlayAppearance();
+  }
 })();
