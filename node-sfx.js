@@ -311,7 +311,7 @@
   }
 
   function buildSynthLibrary() {
-    const dynamicNodeSounds = ['nodeAppearance', 'nodeSelect'];
+    const dynamicNodeSounds = ['nodeAppearance'];
 
     Object.entries(CONFIG.sounds).forEach(([soundName, sound]) => {
       if (soundName === 'chatType') {
@@ -753,10 +753,8 @@
   }
 
   function playNodeSelect(node, eventTimestamp) {
-    const degree = CONFIG.nodes[node.dataset.heroNode] ?? 0;
     playSound('nodeSelect', {
       element: node,
-      degree,
       eventTimestamp
     });
   }
@@ -970,12 +968,6 @@
       });
       return;
     }
-
-    playSound('nodeOpen', {
-      element: state.node,
-      eventTimestamp: event.timeStamp,
-      gainScale: 0.78
-    });
 
     if (state.pointerType === 'touch' && typeof navigator.vibrate === 'function') {
       try { navigator.vibrate(8); } catch {}
@@ -1422,7 +1414,7 @@
           return;
         }
 
-        if (['nodeAppearance', 'nodeSelect'].includes(soundName)) {
+        if (soundName === 'nodeAppearance') {
           playSound(soundName, {
             degree: 0,
             eventTimestamp: event.timeStamp
@@ -1469,7 +1461,7 @@
       return playSound(soundName, { variantIndex: 0 });
     }
 
-    if (['nodeAppearance', 'nodeSelect'].includes(soundName)) {
+    if (soundName === 'nodeAppearance') {
       return playSound(soundName, { degree: 0 });
     }
 
