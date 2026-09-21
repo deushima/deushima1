@@ -42,10 +42,14 @@
   const hero = document.querySelector('.hero--node-canvas');
   const canvas = hero?.querySelector('[data-node-grid]');
   const stage = hero?.querySelector('[data-hero-node-stage]');
-  const nodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
-  const resetButton = stage?.querySelector('[data-node-reset]');
+  const originalNodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
+  const getWarpNodes = () => (
+    stage
+      ? [...originalNodes, ...stage.querySelectorAll('[data-grid-node="dynamic"]')]
+      : []
+  );
   const backgroundVideo = hero?.querySelector('[data-hero-video]');
-  if (!hero || !canvas || !stage || !nodes.length) return;
+  if (!hero || !canvas || !stage || !originalNodes.length) return;
 
   const ctx = canvas.getContext('2d', {
     alpha: true,
@@ -72,7 +76,8 @@
   let targetY = new Float32Array(0);
   let intensity = new Float32Array(0);
   let reveal = new Float32Array(0);
-  let nodeRects = new Float32Array(nodes.length * 5);
+  let warpNodeCount = 0;
+  let nodeRects = new Float32Array((originalNodes.length + 20) * 5);
 
   let dotColor = 'rgba(255,255,255,.22)';
   let lineColor = 'rgba(255,255,255,.045)';
@@ -214,10 +219,19 @@
     canvasRectLeft = heroRect.left;
     canvasRectTop = heroRect.top;
 
-    for (let index = 0; index < nodes.length; index += 1) {
-      const rect = nodes[index].getBoundingClientRect();
+    const warpNodes = getWarpNodes();
+    warpNodeCount = Math.min(warpNodes.length, originalNodes.length + 20);
+
+    const requiredLength = warpNodeCount * 5;
+    if (nodeRects.length < requiredLength) {
+      nodeRects = new Float32Array(requiredLength);
+    }
+
+    for (let index = 0; index < warpNodeCount; index += 1) {
+      const node = warpNodes[index];
+      const rect = node.getBoundingClientRect();
       const offset = index * 5;
-      const radius = parseFloat(getComputedStyle(nodes[index]).borderRadius) || GRID_CONFIG.nodeRadiusFallback;
+      const radius = parseFloat(getComputedStyle(node).borderRadius) || GRID_CONFIG.nodeRadiusFallback;
       nodeRects[offset] = rect.left - canvasRectLeft + rect.width * 0.5;
       nodeRects[offset + 1] = rect.top - canvasRectTop + rect.height * 0.5;
       nodeRects[offset + 2] = rect.width * 0.5;
@@ -254,7 +268,7 @@
       let pushY = 0;
       let proximity = 0;
 
-      for (let nodeIndex = 0; nodeIndex < nodes.length; nodeIndex += 1) {
+      for (let nodeIndex = 0; nodeIndex < warpNodeCount; nodeIndex += 1) {
         const offset = nodeIndex * 5;
         const cx = nodeRects[offset];
         const cy = nodeRects[offset + 1];
@@ -632,7 +646,7 @@
     wake(260);
   }, { passive: true });
 
-  nodes.forEach((node) => {
+  originalNodes.forEach((node) => {
     node.addEventListener('pointerdown', () => {
       pointerDownOnNode = true;
       wake(700);
@@ -648,10 +662,6 @@
   window.addEventListener('pointercancel', () => {
     pointerDownOnNode = false;
     wake(GRID_CONFIG.wakeAfterDragMs);
-  }, { passive: true });
-
-  resetButton?.addEventListener('click', () => {
-    wake(850);
   }, { passive: true });
 
   document.addEventListener('visibilitychange', () => {
@@ -736,7 +746,11 @@
       drawCount,
       recoveryCount
     }),
-    wake: () => wake(320)
+    wake: (duration = 320) => wake(duration),
+    refreshDynamicNodes: () => {
+      updateNodeRects();
+      wake(700);
+    }
   });
 
   resize();
