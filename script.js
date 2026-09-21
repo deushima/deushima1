@@ -2723,6 +2723,7 @@ function initContentPanels() {
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented) return;
     if (!document.body.classList.contains("is-content-panel-open")) return;
     if (event.key === "Escape") {
       if (window.DeushimaWorkCanvas?.isExpanded?.()) {
