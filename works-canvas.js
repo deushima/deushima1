@@ -1088,8 +1088,8 @@
         const smoothInfluence = influence * influence * (3 - 2 * influence);
         proximity = Math.max(proximity, smoothInfluence);
 
-        let vx = sampleX - nodeRect.cx;
-        let vy = sampleY - nodeRect.cy;
+        let vx = sampleX - grid.nodeRects[offset];
+        let vy = sampleY - grid.nodeRects[offset + 1];
         let len = Math.hypot(vx, vy);
         if (len < .001) {
           vx = 1;
