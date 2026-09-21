@@ -2524,14 +2524,10 @@ function closeContentPanel() {
 
   if (isAboutPanel) {
     activePanel.classList.remove("is-about-bar-visible");
-    if (activePanel._aboutBarRafA) window.cancelAnimationFrame(activePanel._aboutBarRafA);
-    if (activePanel._aboutBarRafB) window.cancelAnimationFrame(activePanel._aboutBarRafB);
     if (activePanel._aboutWorldTimer) {
       window.clearTimeout(activePanel._aboutWorldTimer);
       activePanel._aboutWorldTimer = 0;
     }
-    activePanel._aboutBarRafA = 0;
-    activePanel._aboutBarRafB = 0;
   }
 
   activePanel.classList.remove("is-panel-open");
@@ -2584,17 +2580,13 @@ function openContentPanel(panelName) {
   if (panel.dataset.panel === "about") {
     panel.classList.remove("is-about-bar-visible");
 
-    if (panel._aboutBarRafA) window.cancelAnimationFrame(panel._aboutBarRafA);
-    if (panel._aboutBarRafB) window.cancelAnimationFrame(panel._aboutBarRafB);
     if (panel._aboutWorldTimer) window.clearTimeout(panel._aboutWorldTimer);
 
-    panel._aboutBarRafA = window.requestAnimationFrame(() => {
-      panel._aboutBarRafB = window.requestAnimationFrame(() => {
-        panel.classList.add("is-about-bar-visible");
-        panel._aboutBarRafA = 0;
-        panel._aboutBarRafB = 0;
-      });
-    });
+    // Force one layout read with the bar in its initial off-canvas state.
+    // This guarantees that the following transform/opacity change is
+    // recognized as a real transition even when the canvas is busy.
+    panel.querySelector("[data-about-info-bar]")?.getBoundingClientRect();
+    panel.classList.add("is-about-bar-visible");
 
     // Start the heavier canvas/physics bootstrap only after the bar has
     // completed its compositor-only entrance.
