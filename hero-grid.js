@@ -585,6 +585,25 @@
     attributeFilter: ['class']
   });
 
+  window.DeushimaGrid = Object.freeze({
+    config: GRID_CONFIG,
+    style: GRID_STYLE,
+    getState: () => ({
+      width,
+      height,
+      dpr,
+      spacing,
+      cols,
+      rows,
+      points: count,
+      running: Boolean(raf),
+      introStarted,
+      introComplete,
+      pointerInside
+    }),
+    wake: () => wake(320)
+  });
+
   resize();
   maybeStartIntro();
 })();
