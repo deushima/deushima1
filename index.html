@@ -31,6 +31,7 @@
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
   <link rel="stylesheet" href="style.css?v=20260921-header-system2">
   <link rel="stylesheet" href="hero-nodes.css?v=20260921-workspace2">
+  <link rel="stylesheet" href="works-canvas.css?v=20260921-works1">
   <link rel="stylesheet" href="chatbot.css?v=20260921-modal-close1">
   <link rel="stylesheet" href="splash.css?v=20260920-shared-logo1">
 </head>
@@ -299,63 +300,128 @@
       <button class="content-panel__backdrop" type="button" data-panel-close aria-label="Cerrar works"></button>
       <div class="content-panel__surface content-panel__surface--works">
         <button class="content-panel__close modal-close modal-close--edge" type="button" data-panel-close aria-label="Cerrar"></button>
-      <div class="work-archive__meta" aria-hidden="true">
-        <span>DEUSHIMA / 2021-2024</span>
-        <span>PACKAGING / SOCIAL / GARMENTS / 3D</span>
-        <span>NATIONAL &amp; INTERNATIONAL BRANDS</span>
-        <span>VISUAL DIRECTION / MARKETING</span>
-      </div>
 
-      <div class="work-archive__content">
-        <div class="work-archive__intro">
-          <p class="section-kicker wipe-container"><span class="wipe-text reveal-on-view">Works / commercial practice</span></p>
-          <h2 class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.1s">Trabajos realizados entre moda, gr&aacute;fica y direcci&oacute;n visual.</span></h2>
-          <div class="work-archive__copy">
-            <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.18s">Trabaj&eacute; con Deushima, mi marca personal de ropa indie, desarrollando prendas, identidad visual y contenido de marca.</span></p>
-            <p class="wipe-container"><span class="wipe-text reveal-on-view" style="--wipe-delay: 0.26s">Tambi&eacute;n colabor&eacute; con marcas nacionales e internacionales en packaging, redes sociales, prendas de dise&ntilde;o, modelado 3D y piezas orientadas a marketing.</span></p>
+        <div class="work-canvas is-entering" data-work-canvas>
+          <video class="work-canvas__background" data-work-background muted loop playsinline preload="metadata" aria-hidden="true">
+            <source src="Video%20Background/Video%202%20mobile.mp4" type="video/mp4" media="(max-width: 760px)">
+            <source src="Video%20Background/Video%201.mp4" type="video/mp4" media="(min-width: 761px)">
+          </video>
+          <canvas class="work-canvas__grid" data-work-grid aria-hidden="true"></canvas>
+          <div class="work-canvas__vignette" aria-hidden="true"></div>
+
+          <div class="work-canvas__toolbar">
+            <div class="work-canvas__breadcrumb" data-work-breadcrumb aria-live="polite">
+              <button class="work-canvas__back" type="button" data-work-back>&larr; Back</button>
+              <span>Selected work</span>
+              <span class="work-canvas__breadcrumb-current" data-work-breadcrumb-current></span>
+            </div>
+          </div>
+
+          <div class="work-canvas__viewport" data-work-viewport tabindex="0" aria-label="Canvas interactivo de Selected work">
+            <div class="work-canvas__world" data-work-world>
+              <svg class="work-canvas__links" data-work-links viewBox="0 0 1360 820" aria-hidden="true"></svg>
+
+              <article class="work-node work-node--root" data-work-root aria-label="Selected work, 04 categories">
+                <strong>Selected work</strong>
+                <small>04 categories</small>
+                <span class="work-node__port work-node__port--out" aria-hidden="true"></span>
+              </article>
+
+              <button class="work-node work-node--category" type="button" data-work-trigger data-work-index="0" aria-expanded="false">
+                <span class="work-node__port work-node__port--in" aria-hidden="true"></span>
+                <span class="work-node__port work-node__port--out" aria-hidden="true"></span>
+                <span class="work-node__media">
+                  <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
+                    <source src="Trabajos/mobile/trabajos%20(1).mp4" type="video/mp4" media="(max-width: 760px)">
+                    <source src="Trabajos/trabajos%20(1).mp4" type="video/mp4" media="(min-width: 761px)">
+                  </video>
+                </span>
+                <span class="work-node__body">
+                  <span class="work-node__topline">
+                    <span class="work-node__index">01</span>
+                    <span class="work-node__chip">DEUSHIMA / 2021-2024</span>
+                  </span>
+                  <strong>Deushima Clothing</strong>
+                  <small>Marca personal, prendas, identidad y direcci&oacute;n visual.</small>
+                </span>
+              </button>
+
+              <button class="work-node work-node--category" type="button" data-work-trigger data-work-index="1" aria-expanded="false">
+                <span class="work-node__port work-node__port--in" aria-hidden="true"></span>
+                <span class="work-node__port work-node__port--out" aria-hidden="true"></span>
+                <span class="work-node__media">
+                  <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
+                    <source src="Trabajos/mobile/trabajos%20(2).mp4" type="video/mp4" media="(max-width: 760px)">
+                    <source src="Trabajos/trabajos%20(2).mp4" type="video/mp4" media="(min-width: 761px)">
+                  </video>
+                </span>
+                <span class="work-node__body">
+                  <span class="work-node__topline">
+                    <span class="work-node__index">02</span>
+                    <span class="work-node__chip">NATIONAL &amp; INTERNATIONAL BRANDS</span>
+                  </span>
+                  <strong>Packaging &amp; Brand Systems</strong>
+                  <small>Dise&ntilde;o aplicado para marcas nacionales e internacionales.</small>
+                </span>
+              </button>
+
+              <button class="work-node work-node--category" type="button" data-work-trigger data-work-index="2" aria-expanded="false">
+                <span class="work-node__port work-node__port--in" aria-hidden="true"></span>
+                <span class="work-node__port work-node__port--out" aria-hidden="true"></span>
+                <span class="work-node__media">
+                  <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
+                    <source src="Trabajos/mobile/trabajos%20(3).mp4" type="video/mp4" media="(max-width: 760px)">
+                    <source src="Trabajos/trabajos%20(3).mp4?v=social-content-3" type="video/mp4" media="(min-width: 761px)">
+                  </video>
+                </span>
+                <span class="work-node__body">
+                  <span class="work-node__topline">
+                    <span class="work-node__index">03</span>
+                    <span class="work-node__chip">VISUAL DIRECTION / MARKETING</span>
+                  </span>
+                  <strong>Social Content &amp; Marketing</strong>
+                  <small>Contenido visual para redes, campa&ntilde;as y lanzamientos.</small>
+                </span>
+              </button>
+
+              <button class="work-node work-node--category" type="button" data-work-trigger data-work-index="3" aria-expanded="false">
+                <span class="work-node__port work-node__port--in" aria-hidden="true"></span>
+                <span class="work-node__port work-node__port--out" aria-hidden="true"></span>
+                <span class="work-node__media">
+                  <video class="work-archive__video" data-work-video muted loop playsinline preload="metadata">
+                    <source src="Trabajos/mobile/trabajos%20(4).mp4" type="video/mp4" media="(max-width: 760px)">
+                    <source src="Trabajos/trabajos%20(4).mp4?v=digital-exploration-4" type="video/mp4" media="(min-width: 761px)">
+                  </video>
+                </span>
+                <span class="work-node__body">
+                  <span class="work-node__topline">
+                    <span class="work-node__index">04</span>
+                    <span class="work-node__chip">PACKAGING / SOCIAL / GARMENTS / 3D</span>
+                  </span>
+                  <strong>3D &amp; Digital Exploration</strong>
+                  <small>Modelado 3D, assets digitales y exploraci&oacute;n multimedia.</small>
+                </span>
+              </button>
+            </div>
+          </div>
+
+          <div class="work-canvas__controls">
+            <button class="work-canvas__control" type="button" data-work-fit>Fit <span class="work-canvas__zoom" data-work-zoom>100%</span></button>
+          </div>
+          <span class="work-canvas__hint">Drag to pan &middot; Scroll to zoom</span>
+          <button class="work-canvas__reset" type="button" data-work-reset>RESET</button>
+
+          <div class="work-canvas__legacy-copy">
+            <p>Works / commercial practice</p>
+            <h2>Trabajos realizados entre moda, gr&aacute;fica y direcci&oacute;n visual.</h2>
+            <p>Trabaj&eacute; con Deushima, mi marca personal de ropa indie, desarrollando prendas, identidad visual y contenido de marca.</p>
+            <p>Tambi&eacute;n colabor&eacute; con marcas nacionales e internacionales en packaging, redes sociales, prendas de dise&ntilde;o, modelado 3D y piezas orientadas a marketing.</p>
+            <span>DEUSHIMA / 2021-2024</span>
+            <span>PACKAGING / SOCIAL / GARMENTS / 3D</span>
+            <span>NATIONAL &amp; INTERNATIONAL BRANDS</span>
+            <span>VISUAL DIRECTION / MARKETING</span>
           </div>
         </div>
-
-        <div class="work-archive__filmstrip" aria-label="Film strip de trabajos">
-          <button class="work-archive__item is-active" type="button" data-work-trigger data-work-index="0">
-            <video class="work-archive__video is-active" data-work-video muted loop playsinline preload="none">
-              <source src="Trabajos/mobile/trabajos%20(1).mp4" type="video/mp4" media="(max-width: 760px)">
-              <source src="Trabajos/trabajos%20(1).mp4" type="video/mp4" media="(min-width: 761px)">
-            </video>
-            <span>01</span>
-            <strong>Deushima Clothing</strong>
-            <small>Marca personal, prendas, identidad y direcci&oacute;n visual.</small>
-          </button>
-          <button class="work-archive__item" type="button" data-work-trigger data-work-index="1">
-            <video class="work-archive__video" data-work-video muted loop playsinline preload="none">
-              <source src="Trabajos/mobile/trabajos%20(2).mp4" type="video/mp4" media="(max-width: 760px)">
-              <source src="Trabajos/trabajos%20(2).mp4" type="video/mp4" media="(min-width: 761px)">
-            </video>
-            <span>02</span>
-            <strong>Packaging &amp; Brand Systems</strong>
-            <small>Dise&ntilde;o aplicado para marcas nacionales e internacionales.</small>
-          </button>
-          <button class="work-archive__item" type="button" data-work-trigger data-work-index="2">
-            <video class="work-archive__video" data-work-video muted loop playsinline preload="none">
-              <source src="Trabajos/mobile/trabajos%20(3).mp4" type="video/mp4" media="(max-width: 760px)">
-              <source src="Trabajos/trabajos%20(3).mp4?v=social-content-3" type="video/mp4" media="(min-width: 761px)">
-            </video>
-            <span>03</span>
-            <strong>Social Content &amp; Marketing</strong>
-            <small>Contenido visual para redes, campa&ntilde;as y lanzamientos.</small>
-          </button>
-          <button class="work-archive__item" type="button" data-work-trigger data-work-index="3">
-            <video class="work-archive__video" data-work-video muted loop playsinline preload="none">
-              <source src="Trabajos/mobile/trabajos%20(4).mp4" type="video/mp4" media="(max-width: 760px)">
-              <source src="Trabajos/trabajos%20(4).mp4?v=digital-exploration-4" type="video/mp4" media="(min-width: 761px)">
-            </video>
-            <span>04</span>
-            <strong>3D &amp; Digital Exploration</strong>
-            <small>Modelado 3D, assets digitales y exploraci&oacute;n multimedia.</small>
-          </button>
-        </div>
-
-      </div>
       </div>
     </section>
 
@@ -462,13 +528,14 @@
       </header>
       <div class="design-viewer__stage" data-design-stage>
         <img class="design-viewer__image" data-design-image src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" alt="">
+        <video class="design-viewer__video" data-design-video muted loop playsinline preload="metadata" aria-hidden="true"></video>
         <span class="design-viewer__corner design-viewer__corner--nw" aria-hidden="true"></span>
         <span class="design-viewer__corner design-viewer__corner--ne" aria-hidden="true"></span>
         <span class="design-viewer__corner design-viewer__corner--se" aria-hidden="true"></span>
         <span class="design-viewer__corner design-viewer__corner--sw" aria-hidden="true"></span>
       </div>
       <footer class="design-viewer__footer">
-        <span>SVG / detail view</span>
+        <span data-design-format>SVG / detail view</span>
         <span data-design-zoom>100%</span>
       </footer>
     </section>
@@ -555,6 +622,7 @@
   <script src="sfx-config.js?v=20260921-sfx9" defer></script>
   <script src="node-sfx.js?v=20260921-sfx9" defer></script>
   <script src="hero-grid.js?v=20260921-grid4" defer></script>
+  <script src="works-canvas.js?v=20260921-works1" defer></script>
   <script src="hero-nodes.js?v=20260921-workspace1" defer></script>
   <script src="hero-copy-reveal.js?v=20260920-copy-reveal1" defer></script>
   <script src="chatbot.js?v=20260921-chat3" defer></script>
