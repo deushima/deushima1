@@ -260,7 +260,7 @@
         if (fromNode && toNode) {
           const lockedPoints = connectionPoints(fromNode, toNode);
           const lockedNearest = closestPointOnCurve(px, py, lockedPoints);
-          if (lockedNearest.distance <= 78) {
+          if (lockedNearest.distance <= 78 / cameraScale()) {
             positionDisconnectButton(lockedPoints, hoveredEdge.t);
             return;
           }
@@ -281,7 +281,7 @@
       }
     });
 
-    if (best && best.distance <= 18) {
+    if (best && best.distance <= 18 / cameraScale()) {
       showDisconnect(best.key, best.t);
       positionDisconnectButton(best.points, hoveredEdge?.t ?? best.t);
     } else {
