@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260920-preloader-logo1">
+  <link rel="stylesheet" href="style.css?v=20260920-copy-reveal1">
   <link rel="stylesheet" href="hero-nodes.css?v=20260913-nodes13">
   <link rel="stylesheet" href="chatbot.css?v=20260913-chat3">
   <link rel="stylesheet" href="splash.css?v=20260920-shared-logo1">
@@ -146,12 +146,22 @@
         </span>
       </a>
 
-      <div class="hero__copy">
-        <span class="hero__pin hero__pin--left" aria-hidden="true"></span>
-        <span class="hero__pin hero__pin--right" aria-hidden="true"></span>
-        <h1 class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.2s">Iv&aacute;n Rodr&iacute;guez</span></h1>
-        <p class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.34s">Design, code & AI for interactive experiences.</span></p>
-        <strong class="wipe-container"><span class="wipe-text" style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
+      <div class="hero__copy" data-hero-copy-reveal>
+        <span class="hero__pin hero__pin--left" data-hero-copy-star="left" aria-hidden="true">
+          <span class="hero__pin-halo"></span>
+          <span class="hero__pin-trail"></span>
+          <span class="hero__pin-shape hero__pin-shape--primary"></span>
+          <span class="hero__pin-shape hero__pin-shape--secondary"></span>
+        </span>
+        <span class="hero__pin hero__pin--right" data-hero-copy-star="right" aria-hidden="true">
+          <span class="hero__pin-halo"></span>
+          <span class="hero__pin-trail"></span>
+          <span class="hero__pin-shape hero__pin-shape--primary"></span>
+          <span class="hero__pin-shape hero__pin-shape--secondary"></span>
+        </span>
+        <h1 class="wipe-container"><span class="wipe-text" data-hero-copy-line style="--wipe-delay: 0.2s">Iv&aacute;n Rodr&iacute;guez</span></h1>
+        <p class="wipe-container"><span class="wipe-text" data-hero-copy-line style="--wipe-delay: 0.34s">Design, code & AI for interactive experiences.</span></p>
+        <strong class="wipe-container"><span class="wipe-text" data-hero-copy-line style="--wipe-delay: 0.5s">1999 &mdash; Future</span></strong>
       </div>
 
       <div class="hero-node-stage" data-hero-node-stage data-sfx-scope="nodes" aria-label="Accesos principales">
@@ -539,6 +549,7 @@
   <script src="splash.js?v=20260920-shared-logo1"></script>
   <script src="node-sfx.js?v=20260920-sfx1" defer></script>
   <script src="hero-nodes.js?v=20260913-nodes13" defer></script>
+  <script src="hero-copy-reveal.js?v=20260920-copy-reveal1" defer></script>
   <script src="chatbot.js?v=20260913-chat2" defer></script>
 </body>
 </html>
