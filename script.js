@@ -22,8 +22,10 @@ const designViewer = document.querySelector("[data-design-viewer]");
 const designViewerPanel = designViewer?.querySelector(".design-viewer__panel");
 const designViewerStage = designViewer?.querySelector("[data-design-stage]");
 const designViewerImage = designViewer?.querySelector("[data-design-image]");
+const designViewerVideo = designViewer?.querySelector("[data-design-video]");
 const designViewerTitle = designViewer?.querySelector("[data-design-title]");
 const designViewerZoom = designViewer?.querySelector("[data-design-zoom]");
+const designViewerFormat = designViewer?.querySelector("[data-design-format]");
 const launcherPop = document.querySelector("[data-launcher-pop]");
 const launcherPopPanel = launcherPop?.querySelector(".launcher-pop__panel");
 const CONTACT_ENDPOINT = "https://api.web3forms.com/submit";
@@ -732,11 +734,13 @@ function getTouchCenter(touches) {
 }
 
 function applyViewerTransform() {
-  if (!designViewerImage) return;
+  if (!designViewerImage && !designViewerVideo) return;
 
-  designViewerImage.style.setProperty("--viewer-x", `${viewerX.toFixed(2)}px`);
-  designViewerImage.style.setProperty("--viewer-y", `${viewerY.toFixed(2)}px`);
-  designViewerImage.style.setProperty("--viewer-scale", viewerScale.toFixed(3));
+  [designViewerImage, designViewerVideo].filter(Boolean).forEach((media) => {
+    media.style.setProperty("--viewer-x", `${viewerX.toFixed(2)}px`);
+    media.style.setProperty("--viewer-y", `${viewerY.toFixed(2)}px`);
+    media.style.setProperty("--viewer-scale", viewerScale.toFixed(3));
+  });
   if (designViewerZoom) designViewerZoom.textContent = `${Math.round(viewerScale * 100)}%`;
 }
 
@@ -763,11 +767,38 @@ function zoomDesignViewerAt(clientX, clientY, nextScale) {
 }
 
 function openDesignViewer(asset) {
-  if (!designViewer || !designViewerImage || !designViewerTitle || !designViewerPanel) return;
+  if (!designViewer || !designViewerTitle || !designViewerPanel) return;
 
+  const isVideo = asset?.type === "video";
   lastFocusedElement = document.activeElement;
-  designViewerImage.src = asset.src;
-  designViewerImage.alt = asset.title || "Design detail";
+
+  designViewer.classList.toggle("is-video", isVideo);
+
+  if (isVideo) {
+    if (!designViewerVideo) return;
+    designViewerImage?.removeAttribute("src");
+    if (designViewerImage) designViewerImage.alt = "";
+    designViewerVideo.src = asset.src;
+    designViewerVideo.muted = true;
+    designViewerVideo.loop = true;
+    designViewerVideo.playsInline = true;
+    designViewerVideo.setAttribute("aria-hidden", "false");
+    const playPromise = designViewerVideo.play();
+    playPromise?.catch?.(() => {});
+    if (designViewerFormat) designViewerFormat.textContent = "VIDEO / detail view";
+  } else {
+    if (!designViewerImage) return;
+    if (designViewerVideo) {
+      designViewerVideo.pause();
+      designViewerVideo.removeAttribute("src");
+      designViewerVideo.load();
+      designViewerVideo.setAttribute("aria-hidden", "true");
+    }
+    designViewerImage.src = asset.src;
+    designViewerImage.alt = asset.title || "Design detail";
+    if (designViewerFormat) designViewerFormat.textContent = "SVG / detail view";
+  }
+
   designViewerTitle.textContent = asset.title || "Selected piece";
   designViewer.setAttribute("aria-hidden", "false");
   document.body.classList.add("is-design-viewer-open");
@@ -779,6 +810,8 @@ function openDesignViewer(asset) {
   });
 }
 
+window.DeushimaOpenDesignViewer = openDesignViewer;
+
 function closeDesignViewer() {
   if (!designViewer) return;
 
@@ -789,6 +822,15 @@ function closeDesignViewer() {
   viewerPanning = false;
   viewerPointerId = null;
   viewerTouchMode = null;
+
+  if (designViewerVideo) {
+    designViewerVideo.pause();
+    designViewerVideo.removeAttribute("src");
+    designViewerVideo.load();
+    designViewerVideo.setAttribute("aria-hidden", "true");
+  }
+  designViewer.classList.remove("is-video");
+  if (designViewerFormat) designViewerFormat.textContent = "SVG / detail view";
 
   if (lastFocusedElement?.focus) {
     window.setTimeout(() => lastFocusedElement.focus({ preventScroll: true }), 80);
@@ -2683,6 +2725,11 @@ function initContentPanels() {
   document.addEventListener("keydown", (event) => {
     if (!document.body.classList.contains("is-content-panel-open")) return;
     if (event.key === "Escape") {
+      if (window.DeushimaWorkCanvas?.isExpanded?.()) {
+        event.preventDefault();
+        window.DeushimaWorkCanvas.back();
+        return;
+      }
       event.preventDefault();
       closeContentPanel();
     }
