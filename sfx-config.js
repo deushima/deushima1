@@ -4,7 +4,7 @@
   const SFX_MASTER_VOLUME = 0.46;
 
   window.DeushimaSFXConfig = Object.freeze({
-    version: '3.0.0',
+    version: '3.0.1',
     sampleRate: 48000,
     masterVolume: SFX_MASTER_VOLUME,
 
@@ -101,11 +101,12 @@
       }),
       nodeHover: Object.freeze({
         role: 'tonal',
-        interaction: 'Hover de nodo',
+        interaction: 'Hover de nodo — nota grave fija',
         durationMs: 145,
         gain: 0.79,
+        degree: -5,
         file: null,
-        fileBaseDegree: 0,
+        fileBaseDegree: -5,
         variants: 2
       }),
       nodeSelect: Object.freeze({
