@@ -4838,3 +4838,165 @@ html.is-preloader-logo-landed .brand-mark {
     display: none !important;
   }
 }
+
+
+/* Hero footer star reveal — 2026-09-20 */
+.hero__copy[data-hero-copy-reveal] {
+  --hero-copy-glow-color: rgba(190, 224, 255, 0.88);
+  --hero-copy-glow-size: 4.4rem;
+  --hero-copy-trail-length: 2.5rem;
+  overflow: visible;
+}
+
+.hero__copy[data-hero-copy-reveal] .wipe-text {
+  animation: none !important;
+  transform: none;
+}
+
+html.has-hero-copy-reveal
+.hero__copy[data-hero-copy-reveal]:not(.is-copy-reveal-complete)
+[data-hero-copy-line] {
+  opacity: 0;
+  clip-path: inset(0 50% 0 50%);
+  filter: blur(5px);
+  transform: translate3d(0, 0.42rem, 0);
+}
+
+.hero__copy[data-hero-copy-reveal].is-copy-reveal-complete [data-hero-copy-line] {
+  opacity: 1;
+  clip-path: inset(0 0 0 0);
+  filter: none;
+  transform: none;
+}
+
+.hero__copy[data-hero-copy-reveal] [data-hero-copy-line] {
+  will-change: transform, opacity, clip-path, filter;
+}
+
+.hero__pin {
+  overflow: visible;
+  transform-origin: center;
+}
+
+.hero__pin::before,
+.hero__pin::after {
+  content: none;
+  display: none;
+}
+
+.hero__pin-shape,
+.hero__pin-halo,
+.hero__pin-trail {
+  position: absolute;
+  pointer-events: none;
+}
+
+.hero__pin-shape {
+  inset: 0;
+  z-index: 2;
+  display: block;
+  background: currentColor;
+  clip-path: polygon(50% 0, 61% 37%, 100% 50%, 61% 63%, 50% 100%, 39% 63%, 0 50%, 39% 37%);
+  transform-origin: 50% 50%;
+  will-change: transform;
+}
+
+.hero__pin-shape--primary {
+  transform: rotate(0deg) scale(1);
+}
+
+.hero__pin-shape--secondary {
+  opacity: 0.94;
+  transform: rotate(45deg) scale(0.58);
+}
+
+.hero__pin-halo {
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  width: var(--hero-copy-glow-size);
+  height: var(--hero-copy-glow-size);
+  border-radius: 999px;
+  background:
+    radial-gradient(
+      circle,
+      rgba(255, 255, 255, 0.72) 0%,
+      var(--hero-copy-glow-color) 18%,
+      rgba(131, 190, 255, 0.24) 42%,
+      rgba(80, 144, 255, 0.07) 58%,
+      transparent 74%
+    );
+  opacity: 0;
+  filter: blur(5px);
+  transform: translate(-50%, -50%) scale(0.5);
+  will-change: transform, opacity;
+}
+
+.hero__pin-trail {
+  top: 50%;
+  z-index: 1;
+  width: var(--hero-copy-trail-length);
+  height: 1px;
+  opacity: 0;
+  filter: blur(1.5px);
+  will-change: transform, opacity;
+}
+
+.hero__pin--left .hero__pin-trail {
+  left: 50%;
+  transform-origin: left center;
+  background: linear-gradient(
+    90deg,
+    rgba(224, 241, 255, 0.42) 0%,
+    rgba(166, 211, 255, 0.16) 42%,
+    transparent 100%
+  );
+}
+
+.hero__pin--right .hero__pin-trail {
+  right: 50%;
+  transform-origin: right center;
+  background: linear-gradient(
+    270deg,
+    rgba(224, 241, 255, 0.42) 0%,
+    rgba(166, 211, 255, 0.16) 42%,
+    transparent 100%
+  );
+}
+
+html.has-hero-copy-reveal
+.hero__copy[data-hero-copy-reveal]:not(.is-copy-reveal-complete)
+.hero__copy .hero__pin,
+html.has-hero-copy-reveal
+.hero__copy[data-hero-copy-reveal]:not(.is-copy-reveal-complete)
+.hero__pin {
+  opacity: 0;
+}
+
+.hero__copy[data-hero-copy-reveal].is-copy-reveal-complete .hero__pin {
+  opacity: 1;
+}
+
+@media (max-width: 640px) {
+  .hero__copy[data-hero-copy-reveal].is-copy-reveal-measuring .hero__pin,
+  .hero__copy[data-hero-copy-reveal].is-copy-reveal-playing .hero__pin {
+    display: block;
+  }
+
+  .hero__copy[data-hero-copy-reveal].is-copy-reveal-complete .hero__pin {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__copy[data-hero-copy-reveal] [data-hero-copy-line],
+  .hero__copy[data-hero-copy-reveal] .hero__pin {
+    filter: none;
+    transform: none;
+  }
+
+  .hero__copy[data-hero-copy-reveal] .hero__pin-halo,
+  .hero__copy[data-hero-copy-reveal] .hero__pin-trail {
+    display: none !important;
+  }
+}
