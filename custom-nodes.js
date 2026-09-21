@@ -317,28 +317,97 @@
     selection.addRange(range);
   }
 
-  function insertLineBreak(editor) {
+  function selectionOffsets(editor) {
     const selection = window.getSelection();
-    const range = selectionInside(editor);
-
-    if (!range) {
-      const lineBreak = document.createTextNode('\n');
-      editor.appendChild(lineBreak);
-      const nextRange = document.createRange();
-      nextRange.setStart(lineBreak, lineBreak.data.length);
-      nextRange.collapse(true);
-      selection.removeAllRanges();
-      selection.addRange(nextRange);
-      return;
+    if (!selection?.rangeCount) {
+      const length = editor.textContent.length;
+      return { start: length, end: length };
     }
 
-    range.deleteContents();
-    const lineBreak = document.createTextNode('\n');
-    range.insertNode(lineBreak);
-    range.setStart(lineBreak, lineBreak.data.length);
+    const range = selection.getRangeAt(0);
+    const startContainer = range.startContainer;
+    const endContainer = range.endContainer;
+
+    if (
+      !(startContainer === editor || editor.contains(startContainer.nodeType === Node.ELEMENT_NODE ? startContainer : startContainer.parentNode))
+      || !(endContainer === editor || editor.contains(endContainer.nodeType === Node.ELEMENT_NODE ? endContainer : endContainer.parentNode))
+    ) {
+      const length = editor.textContent.length;
+      return { start: length, end: length };
+    }
+
+    const startRange = document.createRange();
+    startRange.selectNodeContents(editor);
+    startRange.setEnd(startContainer, range.startOffset);
+
+    const endRange = document.createRange();
+    endRange.selectNodeContents(editor);
+    endRange.setEnd(endContainer, range.endOffset);
+
+    return {
+      start: startRange.toString().length,
+      end: endRange.toString().length
+    };
+  }
+
+  function setCaretOffset(editor, targetOffset) {
+    const selection = window.getSelection();
+    if (!selection) return;
+
+    const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+    let remaining = Math.max(0, targetOffset);
+    let node = walker.nextNode();
+
+    if (!node) {
+      node = document.createTextNode('');
+      editor.appendChild(node);
+    }
+
+    let lastNode = node;
+    while (node) {
+      lastNode = node;
+      const length = node.data.length;
+      if (remaining <= length) {
+        const range = document.createRange();
+        range.setStart(node, remaining);
+        range.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
+      }
+      remaining -= length;
+      node = walker.nextNode();
+    }
+
+    const range = document.createRange();
+    range.setStart(lastNode, lastNode.data.length);
     range.collapse(true);
     selection.removeAllRanges();
     selection.addRange(range);
+  }
+
+  function insertLineBreak(editor, model) {
+    const current = safeText(editor.textContent);
+    const offsets = selectionOffsets(editor);
+    const start = clamp(offsets.start, 0, current.length);
+    const end = clamp(offsets.end, start, current.length);
+
+    if (current.length - (end - start) >= MAX_TEXT_LENGTH) return false;
+
+    const next = safeText(
+      current.slice(0, start)
+      + '\n'
+      + current.slice(end)
+    );
+
+    editor.textContent = next;
+    model.text = next;
+    updateCounter(model);
+    setCaretOffset(editor, start + 1);
+    saveState();
+    drawConnections();
+    window.DeushimaGrid?.wake?.(280);
+    return true;
   }
 
   function setEditing(model, editing, focus = true) {
@@ -527,9 +596,7 @@
 
       if (event.key === 'Enter') {
         event.preventDefault();
-        const remaining = MAX_TEXT_LENGTH - model.editor.textContent.length + selectedLength(editor);
-        if (remaining > 0) insertLineBreak(editor);
-        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        insertLineBreak(editor, model);
       }
     }, { capture: true });
 
