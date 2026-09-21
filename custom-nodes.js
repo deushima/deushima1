@@ -1234,6 +1234,8 @@
     }
 
     event.preventDefault();
+    dragState.lastX = event.clientX;
+    dragState.lastY = event.clientY;
     const worldPoint = worldPointFromClient(event.clientX, event.clientY);
     model.x = worldPoint.x - dragState.offsetX;
     model.y = worldPoint.y - dragState.offsetY;
@@ -1256,8 +1258,6 @@
         gainScale: .88
       });
       dragState.lastSoundAt = now;
-      dragState.lastX = event.clientX;
-      dragState.lastY = event.clientY;
       dragState.lastTime = now;
     }
 
