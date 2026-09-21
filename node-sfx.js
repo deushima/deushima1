@@ -76,8 +76,6 @@
   let pointerState = null;
   let connectionPointer = null;
   let lastHoverAt = 0;
-  let comboLevel = 0;
-  let comboResetTimer = 0;
   let lastLineHoverAt = 0;
   let lastDragPulseAt = 0;
 
@@ -313,7 +311,7 @@
   }
 
   function buildSynthLibrary() {
-    const dynamicNodeSounds = ['nodeAppearance', 'nodeHover', 'nodeSelect'];
+    const dynamicNodeSounds = ['nodeAppearance', 'nodeSelect'];
 
     Object.entries(CONFIG.sounds).forEach(([soundName, sound]) => {
       if (soundName === 'chatType') {
@@ -747,22 +745,9 @@
     const now = performance.now();
     if (now - lastHoverAt < CONFIG.performance.hoverMinIntervalMs) return;
 
-    if (now - lastHoverAt <= CONFIG.performance.comboWindowMs) {
-      comboLevel = Math.min(4, comboLevel + 1);
-    } else {
-      comboLevel = 0;
-    }
-
     lastHoverAt = now;
-    window.clearTimeout(comboResetTimer);
-    comboResetTimer = window.setTimeout(() => {
-      comboLevel = 0;
-    }, CONFIG.performance.comboResetMs);
-
-    const baseDegree = CONFIG.nodes[node.dataset.heroNode] ?? 0;
     playSound('nodeHover', {
       element: node,
-      degree: baseDegree + comboLevel,
       eventTimestamp
     });
   }
@@ -1437,7 +1422,7 @@
           return;
         }
 
-        if (['nodeAppearance', 'nodeHover', 'nodeSelect'].includes(soundName)) {
+        if (['nodeAppearance', 'nodeSelect'].includes(soundName)) {
           playSound(soundName, {
             degree: 0,
             eventTimestamp: event.timeStamp
@@ -1484,7 +1469,7 @@
       return playSound(soundName, { variantIndex: 0 });
     }
 
-    if (['nodeAppearance', 'nodeHover', 'nodeSelect'].includes(soundName)) {
+    if (['nodeAppearance', 'nodeSelect'].includes(soundName)) {
       return playSound(soundName, { degree: 0 });
     }
 
