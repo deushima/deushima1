@@ -46,6 +46,8 @@
   let dragState = null;
   let connectionState = null;
   let hoveredEdge = null;
+  let hoveredNodeName = null;
+  let hoveredNodeStartedAt = 0;
   let disconnectHover = false;
   let suppressClickUntil = 0;
   let loadedMode = layoutMode();
@@ -273,10 +275,12 @@
     });
   }
 
-  function appendPath(points, className, edgeKey, dashOffset) {
+  function appendPath(points, className, edgeKey, dashOffset, hotOverride = false, extraClass = '') {
     const el = document.createElementNS(ns, 'path');
+    const hot = hotOverride || hoveredEdge?.key === edgeKey;
     el.setAttribute('d', curvePath(points));
-    el.setAttribute('class', `${className}${hoveredEdge?.key === edgeKey ? ' is-hovered' : ''}`);
+    el.setAttribute('class', `${className}${hot ? ' is-hovered' : ''}${extraClass ? ` ${extraClass}` : ''}`);
+    if (className === 'hero-node-line') el.setAttribute('pathLength', '1');
     if (dashOffset !== undefined) el.setAttribute('stroke-dashoffset', dashOffset.toFixed(2));
     svg.appendChild(el);
     return el;
@@ -286,27 +290,42 @@
     const halo = document.createElementNS(ns, 'ellipse');
     halo.setAttribute('cx', point.x.toFixed(2));
     halo.setAttribute('cy', point.y.toFixed(2));
-    halo.setAttribute('rx', '2.4');
-    halo.setAttribute('ry', '12.5');
+    halo.setAttribute('rx', '1.8');
+    halo.setAttribute('ry', '11');
     halo.setAttribute('class', `hero-node-line-flare hero-node-line-flare--halo${hot ? ' is-hovered' : ''}`);
     svg.appendChild(halo);
 
     const core = document.createElementNS(ns, 'ellipse');
     core.setAttribute('cx', point.x.toFixed(2));
     core.setAttribute('cy', point.y.toFixed(2));
-    core.setAttribute('rx', '1.05');
-    core.setAttribute('ry', '7.2');
+    core.setAttribute('rx', '0.9');
+    core.setAttribute('ry', '9');
     core.setAttribute('class', `hero-node-line-flare hero-node-line-flare--core${hot ? ' is-hovered' : ''}`);
     svg.appendChild(core);
   }
 
-  function line(x1, y1, x2, y2, edgeKey, glintOffset = 0) {
-    const hot = hoveredEdge?.key === edgeKey;
+  function line(x1, y1, x2, y2, edgeKey, glintOffset = 0, nodeHot = false) {
+    const edgeHot = hoveredEdge?.key === edgeKey;
+    const hot = edgeHot || nodeHot;
+    const pulseAge = hoveredNodeName ? performance.now() - hoveredNodeStartedAt : 9999;
+    const pulseActive = nodeHot && pulseAge <= 700;
+    const pulseOffset = pulseActive ? -(pulseAge / 700) * 220 : glintOffset;
     const points = curveFor({ from: { x: x1, y: y1 }, to: { x: x2, y: y2 } });
-    if (!mobilePerformance) appendPath(points, 'hero-node-line--halo', edgeKey);
-    appendPath(points, 'hero-node-line', edgeKey);
-    if (mobilePerformance) return;
-    appendPath(points, 'hero-node-line--glint', edgeKey, glintOffset);
+    if (!mobilePerformance) appendPath(points, 'hero-node-line--halo', edgeKey, undefined, hot);
+    appendPath(points, 'hero-node-line', edgeKey, undefined, hot);
+    if (mobilePerformance) {
+      appendFlare(points.from, hot);
+      appendFlare(points.to, hot);
+      return;
+    }
+    appendPath(
+      points,
+      'hero-node-line--glint',
+      edgeKey,
+      pulseOffset,
+      hot,
+      pulseActive ? 'is-pulse-active' : ''
+    );
     appendFlare(points.from, hot);
     appendFlare(points.to, hot);
   }
@@ -330,7 +349,16 @@
       if (!fromNode || !toNode) return;
       const points = connectionPoints(fromNode, toNode);
       const edgeKey = pairKey(from, to);
-      line(points.from.x, points.from.y, points.to.x, points.to.y, edgeKey, -(elapsed * 34 + index * 19) % 108);
+      const nodeHot = hoveredNodeName === from || hoveredNodeName === to;
+      line(
+        points.from.x,
+        points.from.y,
+        points.to.x,
+        points.to.y,
+        edgeKey,
+        -(elapsed * 34 + index * 19) % 108,
+        nodeHot
+      );
       if (hoveredEdge?.key === edgeKey) positionDisconnectButton(points, hoveredEdge.t);
     });
 
@@ -549,12 +577,29 @@
       port.classList.remove('is-near');
       port.style.setProperty('--port-proximity', '0');
     }));
+    hoveredNodeName = null;
+    hoveredNodeStartedAt = 0;
     disconnectHover = false;
     hideDisconnect();
   });
 
   nodes.forEach((node) => {
     node.draggable = false;
+
+    node.addEventListener('pointerenter', () => {
+      if (coarsePointer) return;
+      hoveredNodeName = node.dataset.heroNode || null;
+      hoveredNodeStartedAt = performance.now();
+      queueDraw();
+    });
+
+    node.addEventListener('pointerleave', () => {
+      if (hoveredNodeName === node.dataset.heroNode) {
+        hoveredNodeName = null;
+        hoveredNodeStartedAt = 0;
+        queueDraw();
+      }
+    });
     node.addEventListener('dragstart', event => event.preventDefault());
     node.addEventListener('pointerdown', (event) => beginNodeDrag(event, node));
     node.addEventListener('click', (event) => {
