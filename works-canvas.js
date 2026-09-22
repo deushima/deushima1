@@ -9,6 +9,7 @@
   const svg = panel?.querySelector('[data-work-links]');
   const gridCanvas = panel?.querySelector('[data-work-grid]');
   const backgroundVideo = panel?.querySelector('[data-work-background]');
+  const BACKGROUND_VIDEO_ENABLED = false;
   const rootEl = panel?.querySelector('[data-work-root]');
   const categories = panel ? [...panel.querySelectorAll('[data-work-trigger]')] : [];
   const fitButton = panel?.querySelector('[data-work-fit]');
@@ -18,6 +19,16 @@
   const breadcrumbCurrent = panel?.querySelector('[data-work-breadcrumb-current]');
 
   if (!panel || !canvasRoot || !surface || !viewport || !world || !svg || !gridCanvas || !rootEl || categories.length !== 4) return;
+
+  if (backgroundVideo && !BACKGROUND_VIDEO_ENABLED) {
+    backgroundVideo.pause();
+    backgroundVideo.preload = 'none';
+    backgroundVideo.removeAttribute('src');
+    backgroundVideo.querySelectorAll('source').forEach((sourceNode) => {
+      sourceNode.removeAttribute('src');
+    });
+    backgroundVideo.load();
+  }
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const mobileLayout = window.matchMedia('(max-width: 640px)');
@@ -462,7 +473,7 @@
       else video.pause();
     });
 
-    if (!backgroundVideo) return;
+    if (!BACKGROUND_VIDEO_ENABLED || !backgroundVideo) return;
     if (open && !reducedMotion.matches) playVideo(backgroundVideo);
     else backgroundVideo.pause();
   }

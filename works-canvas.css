@@ -34,7 +34,7 @@
   inset: 0;
   z-index: 1;
   overflow: hidden;
-  background: var(--work-bg);
+  background: #030303;
   color: rgba(255,255,255,.94);
   font-family: "Inter", sans-serif;
 }
@@ -50,14 +50,8 @@
 }
 
 .work-canvas__background {
-  z-index: 0;
-  object-fit: cover;
-  opacity: var(--BG_OPACITY, .11);
-  filter:
-    grayscale(1)
-    saturate(0)
-    brightness(var(--BG_BRIGHTNESS, .48))
-    contrast(.86);
+  display: none;
+  pointer-events: none;
 }
 
 .work-canvas__vignette {

@@ -330,7 +330,7 @@ a {
   min-height: 100svh;
   overflow: hidden;
   isolation: isolate;
-  background: #0f0f0f;
+  background: #030303;
   --video-x: 0px;
   --video-y: 0px;
   --hero-scroll-y: 0px;
@@ -362,6 +362,10 @@ a {
   --shadow-blur: 12px;
   --shadow-opacity: 0.14;
   --noise-opacity: 0.42;
+}
+
+.hero.hero--node-canvas {
+  background: #030303;
 }
 
 .hero::before {
@@ -400,19 +404,8 @@ a {
 }
 
 .hero__video {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center center;
-  filter: brightness(0.9) contrast(1.08) saturate(1.06);
-  transform: translate3d(var(--video-x), calc(var(--video-y) + var(--hero-scroll-y)), 0) scale(var(--video-scroll-scale));
-  transform-origin: center;
+  display: none;
   pointer-events: none;
-  user-select: none;
-  will-change: transform, filter;
 }
 
 .hero__veil {

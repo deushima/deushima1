@@ -4,6 +4,7 @@ const preloaderSharedLogoSource = document.querySelector("[data-preloader-shared
 const sharedLogoTarget = document.querySelector("[data-shared-logo-target]");
 const timeNode = document.querySelector("[data-current-time]");
 const video = document.querySelector("[data-hero-video]");
+const HERO_BACKGROUND_VIDEO_ENABLED = false;
 const asciiTrailCanvas = document.querySelector("[data-ascii-trail]");
 const floatingSection = document.querySelector(".floating-section");
 const logoBridge = document.querySelector(".logo-bridge");
@@ -388,6 +389,18 @@ function requestScrollParallax() {
 function initVideo() {
   if (!video) return;
 
+  if (!HERO_BACKGROUND_VIDEO_ENABLED) {
+    video.autoplay = false;
+    video.pause();
+    video.preload = "none";
+    video.removeAttribute("src");
+    video.querySelectorAll("source").forEach((sourceNode) => {
+      sourceNode.removeAttribute("src");
+    });
+    video.load();
+    return;
+  }
+
   const selectedSource = getHeroVideoSource();
   if (selectedSource && !video.currentSrc.endsWith(selectedSource) && video.getAttribute("src") !== selectedSource) {
     video.querySelectorAll("source").forEach((sourceNode) => {
@@ -414,7 +427,7 @@ function initVideo() {
 }
 
 function syncHeroVideoPlayback() {
-  if (!video) return;
+  if (!video || !HERO_BACKGROUND_VIDEO_ENABLED) return;
 
   const shouldPlay = !isMobilePerformanceMode() || (
     !document.hidden &&
