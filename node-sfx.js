@@ -32,6 +32,13 @@
   const counters = new Map();
   const stats = Object.create(null);
 
+  // Deliberately keep the interaction sound palette minimal.
+  // Ambient music is handled separately in script.js and is not affected here.
+  const ENABLED_SOUND_NAMES = new Set([
+    'chatType',
+    'drag'
+  ]);
+
   const MENU_SOUND_NAMES = new Set([
     'nodeAppearance',
     'nodeHover',
@@ -316,6 +323,8 @@
     const dynamicNodeSounds = ['nodeAppearance'];
 
     Object.entries(CONFIG.sounds).forEach(([soundName, sound]) => {
+      if (!ENABLED_SOUND_NAMES.has(soundName)) return;
+
       if (soundName === 'chatType') {
         sound.variantDegrees.forEach((degree, index) => {
           buffers.set(
@@ -691,6 +700,8 @@
     when = null,
     bypassMenuGate = false
   } = {}) {
+    if (!ENABLED_SOUND_NAMES.has(soundName)) return false;
+
     const sound = CONFIG.sounds[soundName];
     if (!sound) return false;
 
