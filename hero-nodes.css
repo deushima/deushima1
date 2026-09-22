@@ -792,6 +792,22 @@
   background: var(--node-canvas-bg);
 }
 
+.hero--node-canvas > .hero__video,
+.hero--node-canvas > .hero__veil,
+.hero--node-canvas > .ascii-trail,
+.hero--node-canvas > .cursor-distortion,
+.hero--node-canvas > .hero__grain,
+.hero--node-canvas > .hero__vignette,
+.hero--node-canvas > .hero-node-grid {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.hero--node-canvas > .hero__video {
+  -webkit-user-drag: none;
+}
+
 .hero--node-canvas::before,
 .hero--node-canvas::after {
   z-index: 6;

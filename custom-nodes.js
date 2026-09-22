@@ -9,6 +9,8 @@
   if (stage.dataset.customNodesReady === 'true') return;
   stage.dataset.customNodesReady = 'true';
 
+  const interactionRoot = hero;
+
   const STORAGE_KEY = 'deushima:nodes:v2';
   const LEGACY_STORAGE_KEY = 'deushima:nodes:v1';
   const HINT_KEY = 'deushima:nodes:menu-hint:v1';
@@ -50,6 +52,8 @@
   let menuMode = null;
   let menuNodeId = null;
   let menuFocusOrigin = null;
+  let menuOpen = false;
+  let menuPlacementToken = 0;
   let clearConfirmTimer = 0;
   let longPressState = null;
   let longPressOpenedUntil = 0;
@@ -83,7 +87,7 @@
   menu.className = 'hero-custom-node-context';
   menu.setAttribute('role', 'menu');
   menu.setAttribute('aria-label', 'Node canvas options');
-  document.body.appendChild(menu);
+  interactionRoot.appendChild(menu);
 
   const live = document.createElement('div');
   live.className = 'hero-custom-node-live';
@@ -238,6 +242,7 @@
     return Boolean(target.closest([
       '.nav',
       '.hero__copy',
+      '.floating-cta',
       '.deu-chat-launcher',
       '[data-hero-node]',
       '[data-custom-node]',
@@ -251,6 +256,28 @@
       'select',
       '[contenteditable="true"]'
     ].join(',')));
+  }
+
+  function eventPath(event) {
+    return typeof event?.composedPath === 'function'
+      ? event.composedPath()
+      : [event?.target];
+  }
+
+  function pathClosest(event, selector) {
+    for (const item of eventPath(event)) {
+      if (!(item instanceof Element)) continue;
+      if (item.matches(selector)) return item;
+      const closest = item.closest?.(selector);
+      if (closest) return closest;
+    }
+    return null;
+  }
+
+  function isExcludedCanvasEvent(event) {
+    return eventPath(event).some(item => (
+      item instanceof Element && isExcludedCanvasTarget(item)
+    ));
   }
 
   function canOpenCanvasMenuAt(target, clientX, clientY) {
@@ -597,13 +624,6 @@
     });
 
     el.addEventListener('focus', () => selectNode(model));
-
-    el.addEventListener('contextmenu', event => {
-      event.preventDefault();
-      event.stopPropagation();
-      selectNode(model);
-      openNodeMenu(model, event.clientX, event.clientY, el);
-    });
 
     editor.addEventListener('keydown', event => {
       if (!model.editing) return;
@@ -1652,21 +1672,24 @@
 
   function placeMenu(clientX, clientY) {
     const margin = 10;
+    const placementToken = ++menuPlacementToken;
+    menuOpen = true;
     menu.style.left = '0px';
     menu.style.top = '0px';
     menu.classList.add('is-open');
     menu.style.visibility = 'hidden';
+    const rect = menu.getBoundingClientRect();
+    if (!menuOpen || placementToken !== menuPlacementToken) return;
+    const left = clamp(clientX, margin, Math.max(margin, window.innerWidth - rect.width - margin));
+    const top = clamp(clientY, margin, Math.max(margin, window.innerHeight - rect.height - margin));
+    menu.style.setProperty('--menu-origin-x', clientX > window.innerWidth * .5 ? '100%' : '0%');
+    menu.style.setProperty('--menu-origin-y', clientY > window.innerHeight * .5 ? '100%' : '0%');
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+    menu.style.visibility = '';
 
-    requestAnimationFrame(() => {
-      const rect = menu.getBoundingClientRect();
-      const left = clamp(clientX, margin, Math.max(margin, window.innerWidth - rect.width - margin));
-      const top = clamp(clientY, margin, Math.max(margin, window.innerHeight - rect.height - margin));
-      menu.style.setProperty('--menu-origin-x', clientX > window.innerWidth * .5 ? '100%' : '0%');
-      menu.style.setProperty('--menu-origin-y', clientY > window.innerHeight * .5 ? '100%' : '0%');
-      menu.style.left = `${left}px`;
-      menu.style.top = `${top}px`;
-      menu.style.visibility = '';
-
+    queueMicrotask(() => {
+      if (!menuOpen || placementToken !== menuPlacementToken) return;
       const first = [...menu.querySelectorAll('[role="menuitem"]')]
         .find(item => item.getAttribute('aria-disabled') !== 'true');
       first?.focus({ preventScroll: true });
@@ -1705,7 +1728,10 @@
   function closeMenu(restoreFocus = true) {
     window.clearTimeout(clearConfirmTimer);
     clearConfirmTimer = 0;
-    if (!menu.classList.contains('is-open')) return;
+    menuPlacementToken += 1;
+    const closeToken = menuPlacementToken;
+    const wasOpen = menuOpen || menu.classList.contains('is-open');
+    menuOpen = false;
     menu.classList.remove('is-open');
     const focusTarget = menuFocusOrigin;
     menuMode = null;
@@ -1713,8 +1739,14 @@
     menuAnchor = null;
     menuFocusOrigin = null;
 
+    if (!wasOpen) {
+      menu.replaceChildren();
+      return;
+    }
+
     window.setTimeout(() => {
-      if (!menu.classList.contains('is-open')) menu.replaceChildren();
+      if (menuOpen || closeToken !== menuPlacementToken || menu.classList.contains('is-open')) return;
+      menu.replaceChildren();
       if (restoreFocus && focusTarget?.focus) focusTarget.focus({ preventScroll: true });
     }, reducedMotion.matches ? 0 : 150);
   }
@@ -1756,22 +1788,20 @@
     }
   });
 
-  document.addEventListener('contextmenu', event => {
+  function handleWorkspaceContextMenu(event) {
     if (performance.now() < longPressOpenedUntil) {
-      if (isPointInsideWorkspace(event.clientX, event.clientY)) event.preventDefault();
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
 
-    const target = event.target instanceof Element
-      ? event.target
-      : document.elementFromPoint(event.clientX, event.clientY);
-
-    if (target && isExcludedCanvasTarget(target) && !target.closest('[data-custom-node]')) {
-      closeMenu(false);
+    if (pathClosest(event, '.hero-custom-node-context')) {
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
 
-    const customNodeEl = target?.closest?.('[data-custom-node]');
+    const customNodeEl = pathClosest(event, '[data-custom-node]');
     if (customNodeEl) {
       const model = models.get(customNodeEl.dataset.customNode);
       if (!model || isModalOpen()) return;
@@ -1782,12 +1812,19 @@
       return;
     }
 
-    if (!canOpenCanvasMenuAt(target, event.clientX, event.clientY)) return;
+    if (isExcludedCanvasEvent(event)) {
+      closeMenu(false);
+      return;
+    }
+
+    if (isModalOpen() || !isPointInsideWorkspace(event.clientX, event.clientY)) return;
 
     event.preventDefault();
     event.stopPropagation();
     openCanvasMenu(event.clientX, event.clientY, stage);
-  }, { capture: true });
+  }
+
+  interactionRoot.addEventListener('contextmenu', handleWorkspaceContextMenu, { capture: true });
 
   function startLongPress(target, clientX, clientY, pointerId, source) {
     if (isModalOpen()) return;
@@ -1888,7 +1925,9 @@
   });
 
   document.addEventListener('pointerdown', event => {
-    if (menu.classList.contains('is-open') && !menu.contains(event.target)) {
+    // Right-click is handled only by the workspace contextmenu listener.
+    // Closing here can change the hit-test target before contextmenu fires.
+    if (menuOpen && event.button !== 2 && !menu.contains(event.target)) {
       closeMenu(false);
     }
 
