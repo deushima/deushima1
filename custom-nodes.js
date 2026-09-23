@@ -28,6 +28,7 @@
   const PORT_IDS = Object.freeze(['left', 'right']);
   const MEDIA_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp', 'apng', 'svg', 'ico']);
   const MEDIA_VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'ogv', 'ogg', 'm4v', 'mov']);
+  const MEDIA_MOUNT_TIMEOUT_MS = 10000;
 
   const NODE_TYPES = Object.freeze([
     Object.freeze({ id: 'text', label: 'Text', icon: 'T' }),
@@ -57,6 +58,7 @@
   let lineDeleteHideTimer = 0;
   let menuAnchor = null;
   let menuMode = null;
+  let menuUrlKind = null;
   let menuNodeId = null;
   let menuFocusOrigin = null;
   let menuOpen = false;
@@ -1212,7 +1214,7 @@
       image.className = 'hero-custom-node__media';
       image.alt = '';
       image.decoding = 'async';
-      image.loading = 'lazy';
+      image.loading = 'eager';
       image.draggable = false;
       image.referrerPolicy = 'no-referrer';
       image.addEventListener('load', () => {
@@ -1234,6 +1236,38 @@
     if (model.mediaType === 'video') mountVideo();
     else if (model.mediaType === 'image') mountImage(false);
     else mountImage(true);
+  }
+
+  function waitForMountedMedia(model) {
+    if (model?.el?.classList.contains('is-media-ready')) return Promise.resolve(true);
+    const media = model?.mediaElement;
+    if (!(media instanceof HTMLImageElement) && !(media instanceof HTMLVideoElement)) {
+      return Promise.resolve(false);
+    }
+
+    if (media instanceof HTMLImageElement && media.complete) {
+      return Promise.resolve(media.naturalWidth > 0 && media.naturalHeight > 0);
+    }
+    if (media instanceof HTMLVideoElement && media.readyState >= 1) return Promise.resolve(true);
+
+    return new Promise(resolve => {
+      let settled = false;
+      const finish = result => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        media.removeEventListener('load', onReady);
+        media.removeEventListener('loadedmetadata', onReady);
+        media.removeEventListener('error', onError);
+        resolve(result);
+      };
+      const onReady = () => finish(true);
+      const onError = () => finish(false);
+      const timer = window.setTimeout(() => finish(false), MEDIA_MOUNT_TIMEOUT_MS);
+      media.addEventListener('load', onReady, { once: true });
+      media.addEventListener('loadedmetadata', onReady, { once: true });
+      media.addEventListener('error', onError, { once: true });
+    });
   }
 
   function createMediaNode({
@@ -2257,6 +2291,7 @@
     const anchorSnapshot = anchor ? { ...anchor } : menuAnchor ? { ...menuAnchor } : model ? { worldX: model.x, worldY: model.y } : null;
     if (!anchorSnapshot) return;
     menuMode = 'url-form';
+    menuUrlKind = kind;
     menuNodeId = model?.id || null;
     menuAnchor = anchorSnapshot;
     menu.classList.add('is-url-form');
@@ -2298,6 +2333,8 @@
       if (model) closeMenu(false);
       else {
         menu.classList.remove('is-url-form');
+        menuMode = 'canvas';
+        menuUrlKind = null;
         buildCanvasMenu();
         queueMicrotask(() => menuItems()[0]?.focus({ preventScroll: true }));
       }
@@ -2344,6 +2381,11 @@
         }
 
         if (model?.type === 'media') {
+          const previous = {
+            url: model.url,
+            mediaType: model.mediaType,
+            aspectRatio: model.aspectRatio
+          };
           model.url = normalized;
           model.mediaType = media.mediaType;
           model.aspectRatio = clamp(media.aspectRatio || model.aspectRatio || 1.35, .35, 3.5);
@@ -2351,6 +2393,27 @@
           model.mediaDomain.textContent = displayHost(normalized);
           model.mediaOpen.href = normalized;
           mountMedia(model);
+          const loaded = await waitForMountedMedia(model);
+          const mountIsCurrent = (
+            attempt === mediaValidationAttempt
+            && form.isConnected
+            && menu.contains(form)
+            && menuMode === 'url-form'
+            && menuUrlKind === 'media'
+          );
+          if (!mountIsCurrent) return;
+          if (!loaded) {
+            model.url = previous.url;
+            model.mediaType = previous.mediaType;
+            model.aspectRatio = previous.aspectRatio;
+            model.mediaFrame?.style.setProperty('--media-aspect', model.aspectRatio.toFixed(5));
+            model.mediaDomain.textContent = displayHost(model.url);
+            model.mediaOpen.href = model.url;
+            mountMedia(model);
+            message.textContent = 'Could not load this media URL.';
+            input.focus({ preventScroll: true });
+            return;
+          }
           saveState();
           closeMenu(false);
           return;
@@ -2363,7 +2426,7 @@
           mediaType: media.mediaType,
           aspectRatio: media.aspectRatio,
           animate: true,
-          persist: true,
+          persist: false,
           sound: true,
           select: true
         });
@@ -2371,6 +2434,22 @@
           message.textContent = 'Unable to create this node.';
           return;
         }
+        const loaded = await waitForMountedMedia(created);
+        const mountIsCurrent = (
+          attempt === mediaValidationAttempt
+          && form.isConnected
+          && menu.contains(form)
+          && menuMode === 'url-form'
+          && menuUrlKind === 'media'
+        );
+        if (!mountIsCurrent) return;
+        if (!loaded) {
+          deleteNode(created.id, { persist: false, sound: false });
+          message.textContent = 'Could not load this media URL.';
+          input.focus({ preventScroll: true });
+          return;
+        }
+        saveState();
         closeMenu(false);
         markHintUsed();
         announce('Node created');
@@ -2394,6 +2473,7 @@
     queueMicrotask(() => input.focus({ preventScroll: true }));
   }
   function buildCanvasMenu() {
+    menuUrlKind = null;
     menu.classList.remove('is-url-form');
     menu.replaceChildren();
 
@@ -2563,6 +2643,7 @@
       worldY: point.y
     };
     menuMode = 'canvas';
+    menuUrlKind = null;
     menuNodeId = null;
     menuFocusOrigin = origin instanceof HTMLElement ? origin : stage;
     buildCanvasMenu();
@@ -2575,6 +2656,7 @@
     closeMenu(false);
     menuAnchor = { clientX, clientY, worldX: model.x, worldY: model.y };
     menuMode = 'node';
+    menuUrlKind = null;
     menuNodeId = model.id;
     menuFocusOrigin = origin;
     buildNodeMenu(model);
@@ -2593,6 +2675,7 @@
     menu.classList.remove('is-open', 'is-url-form');
     const focusTarget = menuFocusOrigin;
     menuMode = null;
+    menuUrlKind = null;
     menuNodeId = null;
     menuAnchor = null;
     menuFocusOrigin = null;
@@ -2789,7 +2872,12 @@
 
     clearLongPress();
 
-    if (['window-blur', 'visibilitychange', 'blocked-ui', 'escape', 'pointercancel', 'lostpointercapture', 'contextmenu'].includes(reason)) {
+    const preserveMediaUrlForm = (
+      menuMode === 'url-form'
+      && menuUrlKind === 'media'
+      && (reason === 'window-blur' || reason === 'visibilitychange')
+    );
+    if (!preserveMediaUrlForm && ['window-blur', 'visibilitychange', 'blocked-ui', 'escape', 'pointercancel', 'lostpointercapture', 'contextmenu'].includes(reason)) {
       closeMenu(false);
     }
   }
@@ -2895,7 +2983,7 @@
     if (document.hidden) {
       if (connectionRaf) cancelAnimationFrame(connectionRaf);
       connectionRaf = 0;
-      closeMenu(false);
+      if (!(menuMode === 'url-form' && menuUrlKind === 'media')) closeMenu(false);
       return;
     }
     drawConnections();
