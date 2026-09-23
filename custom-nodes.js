@@ -204,34 +204,72 @@
     return 'unknown';
   }
 
-  function mediaTypeFromContentType(contentType) {
-    const type = String(contentType || '').toLowerCase();
-    if (type.startsWith('image/')) return 'image';
-    if (type.startsWith('video/')) return 'video';
-    if (type.includes('text/html') || type.includes('application/xhtml')) return 'html';
-    return 'unknown';
+  function probeImageUrl(url, timeoutMs = 10000) {
+    return new Promise(resolve => {
+      const image = new Image();
+      let settled = false;
+      const finish = result => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        image.onload = null;
+        image.onerror = null;
+        resolve(result);
+      };
+      const timer = window.setTimeout(() => finish(null), timeoutMs);
+      image.decoding = 'async';
+      image.referrerPolicy = 'no-referrer';
+      image.onload = () => {
+        const aspectRatio = image.naturalWidth && image.naturalHeight
+          ? image.naturalWidth / image.naturalHeight
+          : 1.35;
+        finish({ mediaType: 'image', aspectRatio });
+      };
+      image.onerror = () => finish(null);
+      image.src = url;
+    });
   }
 
-  async function inspectDirectMedia(url) {
-    const inferred = inferMediaTypeFromUrl(url);
-    if (inferred !== 'unknown') return inferred;
-    if (typeof fetch !== 'function') return 'unknown';
+  function probeVideoUrl(url, timeoutMs = 10000) {
+    return new Promise(resolve => {
+      const video = document.createElement('video');
+      let settled = false;
+      const finish = result => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timer);
+        video.removeEventListener('loadedmetadata', onReady);
+        video.removeEventListener('canplay', onReady);
+        video.removeEventListener('error', onError);
+        resolve(result);
+      };
+      const onReady = () => {
+        const aspectRatio = video.videoWidth && video.videoHeight
+          ? video.videoWidth / video.videoHeight
+          : 1.35;
+        finish({ mediaType: 'video', aspectRatio });
+      };
+      const onError = () => finish(null);
+      const timer = window.setTimeout(() => finish(null), timeoutMs);
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      video.addEventListener('loadedmetadata', onReady);
+      video.addEventListener('canplay', onReady);
+      video.addEventListener('error', onError);
+      video.src = url;
+      video.load();
+    });
+  }
 
-    const controller = typeof AbortController === 'function' ? new AbortController() : null;
-    const timer = controller ? window.setTimeout(() => controller.abort(), 2200) : 0;
-    try {
-      const response = await fetch(url, {
-        method: 'HEAD',
-        mode: 'cors',
-        redirect: 'follow',
-        signal: controller?.signal
-      });
-      return mediaTypeFromContentType(response.headers.get('content-type'));
-    } catch {
-      return 'unknown';
-    } finally {
-      if (timer) window.clearTimeout(timer);
-    }
+  async function probeDirectMedia(url) {
+    const inferred = inferMediaTypeFromUrl(url);
+    if (inferred === 'image') return probeImageUrl(url);
+    if (inferred === 'video') return probeVideoUrl(url);
+
+    const imageResult = await probeImageUrl(url);
+    if (imageResult) return imageResult;
+    return probeVideoUrl(url);
   }
 
   function normalizePortId(value) {
@@ -1156,7 +1194,6 @@
       video.autoplay = true;
       video.preload = 'metadata';
       video.controls = false;
-      video.src = model.url;
       video.addEventListener('loadedmetadata', () => {
         if (!isCurrentLoad()) return;
         const ratio = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : model.aspectRatio;
@@ -1167,6 +1204,7 @@
       video.addEventListener('error', fail, { once: true });
       model.mediaFrame.prepend(video);
       model.mediaElement = video;
+      video.src = model.url;
     };
 
     const mountImage = (fallbackToVideo = false) => {
@@ -1177,7 +1215,6 @@
       image.loading = 'lazy';
       image.draggable = false;
       image.referrerPolicy = 'no-referrer';
-      image.src = model.url;
       image.addEventListener('load', () => {
         if (!isCurrentLoad()) return;
         const ratio = image.naturalWidth && image.naturalHeight ? image.naturalWidth / image.naturalHeight : model.aspectRatio;
@@ -1191,6 +1228,7 @@
       }, { once: true });
       model.mediaFrame.prepend(image);
       model.mediaElement = image;
+      image.src = model.url;
     };
 
     if (model.mediaType === 'video') mountVideo();
@@ -2253,8 +2291,10 @@
     actions.append(cancel, confirm);
     form.append(input, message, actions);
     menu.append(heading, form);
+    let mediaValidationAttempt = 0;
     cancel.addEventListener('click', event => {
       event.preventDefault();
+      mediaValidationAttempt += 1;
       if (model) closeMenu(false);
       else {
         menu.classList.remove('is-url-form');
@@ -2262,7 +2302,7 @@
         queueMicrotask(() => menuItems()[0]?.focus({ preventScroll: true }));
       }
     });
-    form.addEventListener('submit', event => {
+    form.addEventListener('submit', async event => {
       event.preventDefault();
       const normalized = normalizeHttpUrl(input.value);
       if (!normalized) {
@@ -2275,19 +2315,69 @@
         input.focus({ preventScroll: true });
         return;
       }
-      if (model?.type === 'media') {
-        model.url = normalized;
-        model.mediaType = inferMediaTypeFromUrl(normalized);
-        model.mediaDomain.textContent = displayHost(normalized);
-        model.mediaOpen.href = normalized;
-        mountMedia(model);
-        saveState();
+
+      if (kind === 'media') {
+        const attempt = ++mediaValidationAttempt;
+        const originalConfirmText = confirm.textContent;
+        message.textContent = 'Loading media…';
+        confirm.disabled = true;
+        confirm.textContent = 'Loading…';
+        input.setAttribute('aria-busy', 'true');
+
+        const media = await probeDirectMedia(normalized);
+        const formIsCurrent = (
+          attempt === mediaValidationAttempt
+          && form.isConnected
+          && menu.contains(form)
+          && menuMode === 'url-form'
+        );
+        if (!formIsCurrent) return;
+
+        confirm.disabled = false;
+        confirm.textContent = originalConfirmText;
+        input.removeAttribute('aria-busy');
+
+        if (!media) {
+          message.textContent = 'Could not load this media URL.';
+          input.focus({ preventScroll: true });
+          return;
+        }
+
+        if (model?.type === 'media') {
+          model.url = normalized;
+          model.mediaType = media.mediaType;
+          model.aspectRatio = clamp(media.aspectRatio || model.aspectRatio || 1.35, .35, 3.5);
+          model.mediaFrame?.style.setProperty('--media-aspect', model.aspectRatio.toFixed(5));
+          model.mediaDomain.textContent = displayHost(normalized);
+          model.mediaOpen.href = normalized;
+          mountMedia(model);
+          saveState();
+          closeMenu(false);
+          return;
+        }
+
+        const created = createMediaNode({
+          x: anchorSnapshot.worldX,
+          y: anchorSnapshot.worldY,
+          url: normalized,
+          mediaType: media.mediaType,
+          aspectRatio: media.aspectRatio,
+          animate: true,
+          persist: true,
+          sound: true,
+          select: true
+        });
+        if (!created) {
+          message.textContent = 'Unable to create this node.';
+          return;
+        }
         closeMenu(false);
+        markHintUsed();
+        announce('Node created');
         return;
       }
-      const created = kind === 'media'
-        ? createMediaNode({ x: anchorSnapshot.worldX, y: anchorSnapshot.worldY, url: normalized, mediaType: inferMediaTypeFromUrl(normalized), animate: true, persist: true, sound: true, select: true })
-        : createLinkNode({ x: anchorSnapshot.worldX, y: anchorSnapshot.worldY, url: normalized, animate: true, persist: true, sound: true, select: true });
+
+      const created = createLinkNode({ x: anchorSnapshot.worldX, y: anchorSnapshot.worldY, url: normalized, animate: true, persist: true, sound: true, select: true });
       if (!created) {
         message.textContent = 'Unable to create this node.';
         return;
@@ -2295,20 +2385,6 @@
       closeMenu(false);
       markHintUsed();
       announce('Node created');
-      if (kind === 'media' && created.mediaType === 'unknown') {
-        inspectDirectMedia(normalized).then(type => {
-          if (!models.has(created.id) || created.el.classList.contains('is-media-ready')) return;
-          if (type === 'html') {
-            setMediaStatus(created, "This URL doesn't appear to be direct media.", true);
-            return;
-          }
-          if (type === 'image' || type === 'video') {
-            created.mediaType = type;
-            mountMedia(created);
-            saveState();
-          }
-        });
-      }
     });
     if (!menuOpen) {
       const screen = cameraApi()?.worldToScreen?.(anchorSnapshot.worldX, anchorSnapshot.worldY);
