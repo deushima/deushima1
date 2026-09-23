@@ -955,6 +955,12 @@ function initDesignViewer() {
 
 function openLauncherPop() {
   if (!launcherPop || !launcherPopPanel) return;
+  if (window.getComputedStyle(launcherPop).display === "none") {
+    launcherPop.classList.remove("is-open");
+    launcherPop.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("is-launcher-pop-open");
+    return;
+  }
   if (document.body.classList.contains("is-design-viewer-open") || document.body.classList.contains("is-page-leaving")) {
     window.setTimeout(openLauncherPop, 1800);
     return;
@@ -992,6 +998,12 @@ function closeLauncherPop(remember = true) {
 
 function initLauncherPop() {
   if (!launcherPop || !launcherPopPanel) return;
+
+  if (window.getComputedStyle(launcherPop).display === "none") {
+    launcherPop.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("is-launcher-pop-open");
+    return;
+  }
 
   let alreadySeen = false;
   try {
