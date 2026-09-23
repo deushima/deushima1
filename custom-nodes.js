@@ -2967,7 +2967,10 @@
     }
   });
 
-  window.addEventListener('scroll', () => closeMenu(false), { passive: true, capture: true });
+  window.addEventListener('scroll', event => {
+    if (event.target instanceof Node && menu.contains(event.target)) return;
+    closeMenu(false);
+  }, { passive: true, capture: true });
 
   window.addEventListener('resize', () => {
     closeMenu(false);
