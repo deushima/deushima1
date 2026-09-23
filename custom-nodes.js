@@ -1991,6 +1991,11 @@
 
     if (target?.endpoint) {
       createConnection(state.source, target.endpoint, { persist: true, sound: true });
+    } else if (commit) {
+      const dropTarget = document.elementFromPoint(event.clientX, event.clientY);
+      if (canOpenCanvasMenuAt(dropTarget, event.clientX, event.clientY)) {
+        openCanvasMenu(event.clientX, event.clientY, stage);
+      }
     }
     scheduleConnectionLoop();
   }
