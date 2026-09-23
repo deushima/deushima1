@@ -11,10 +11,11 @@
 
   const interactionRoot = hero;
 
-  const STORAGE_KEY = 'deushima:nodes:v2';
+  const STORAGE_KEY = 'deushima:nodes:v3';
+  const PREVIOUS_STORAGE_KEY = 'deushima:nodes:v2';
   const LEGACY_STORAGE_KEY = 'deushima:nodes:v1';
   const HINT_KEY = 'deushima:nodes:menu-hint:v1';
-  const STORAGE_VERSION = 2;
+  const STORAGE_VERSION = 3;
   const MAX_NODES = 20;
   const MAX_CONNECTIONS = 60;
   const MAX_TEXT_LENGTH = 280;
@@ -23,9 +24,14 @@
   const LONG_PRESS_TOLERANCE = 8;
   const DRAG_THRESHOLD = 5;
   const PORT_RADIUS = 46;
+  const PORT_IDS = Object.freeze(['left', 'right']);
+  const MEDIA_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp', 'apng', 'svg', 'ico']);
+  const MEDIA_VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'ogv', 'ogg', 'm4v', 'mov']);
 
   const NODE_TYPES = Object.freeze([
-    Object.freeze({ id: 'text', label: 'Text', icon: 'T' })
+    Object.freeze({ id: 'text', label: 'Text', icon: 'T' }),
+    Object.freeze({ id: 'media', label: 'Link image', icon: '▧' }),
+    Object.freeze({ id: 'link', label: 'Link', icon: '↗' })
   ]);
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -60,6 +66,20 @@
   let typingVariant = 0;
   let lastTypingAt = 0;
   let resizeSaveTimer = 0;
+
+  const mediaVisibilityObserver = typeof IntersectionObserver === 'function'
+    ? new IntersectionObserver(entries => {
+        entries.forEach(entry => {
+          const video = entry.target;
+          if (!(video instanceof HTMLVideoElement)) return;
+          if (entry.isIntersecting && entry.intersectionRatio > 0.02) {
+            video.play().catch(() => {});
+          } else {
+            video.pause();
+          }
+        });
+      }, { root: hero, rootMargin: '160px', threshold: [0, .02] })
+    : null;
 
   const customMesh = document.createElementNS(ns, 'svg');
   customMesh.classList.add('hero-custom-node-mesh');
@@ -149,6 +169,80 @@
       .slice(0, MAX_TEXT_LENGTH);
   }
 
+  function normalizeHttpUrl(value) {
+    try {
+      const url = new URL(String(value || '').trim());
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+      return url.href;
+    } catch {
+      return null;
+    }
+  }
+
+  function displayHost(url) {
+    try {
+      return new URL(url).hostname.replace(/^www\./i, '') || url;
+    } catch {
+      return url;
+    }
+  }
+
+  function shortUrl(url, max = 58) {
+    const value = String(url || '');
+    return value.length > max ? `${value.slice(0, max - 1)}…` : value;
+  }
+
+  function inferMediaTypeFromUrl(url) {
+    try {
+      const pathname = new URL(url).pathname.toLowerCase();
+      const name = pathname.split('/').pop() || '';
+      const extension = name.includes('.') ? name.split('.').pop() : '';
+      if (MEDIA_IMAGE_EXTENSIONS.has(extension)) return 'image';
+      if (MEDIA_VIDEO_EXTENSIONS.has(extension)) return 'video';
+    } catch {}
+    return 'unknown';
+  }
+
+  function mediaTypeFromContentType(contentType) {
+    const type = String(contentType || '').toLowerCase();
+    if (type.startsWith('image/')) return 'image';
+    if (type.startsWith('video/')) return 'video';
+    if (type.includes('text/html') || type.includes('application/xhtml')) return 'html';
+    return 'unknown';
+  }
+
+  async function inspectDirectMedia(url) {
+    const inferred = inferMediaTypeFromUrl(url);
+    if (inferred !== 'unknown') return inferred;
+    if (typeof fetch !== 'function') return 'unknown';
+
+    const controller = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = controller ? window.setTimeout(() => controller.abort(), 2200) : 0;
+    try {
+      const response = await fetch(url, {
+        method: 'HEAD',
+        mode: 'cors',
+        redirect: 'follow',
+        signal: controller?.signal
+      });
+      return mediaTypeFromContentType(response.headers.get('content-type'));
+    } catch {
+      return 'unknown';
+    } finally {
+      if (timer) window.clearTimeout(timer);
+    }
+  }
+
+  function normalizePortId(value) {
+    if (value === 'left' || value === 'in') return 'left';
+    if (value === 'right' || value === 'out') return 'right';
+    return null;
+  }
+
+  function domPortToken(portId) {
+    return normalizePortId(portId) === 'left' ? 'in' : 'out';
+  }
+
   function endpointRefForOriginal(name) {
     return `orig:${name}`;
   }
@@ -177,14 +271,38 @@
     return stage.querySelector(`[data-hero-node="${CSS.escape(parsed.name)}"]`);
   }
 
-  function endpointPort(ref, direction) {
+  function endpointPort(ref, portId) {
     const parsed = parseEndpoint(ref);
     const el = endpointElement(ref);
     if (!parsed || !el) return null;
+    const token = domPortToken(portId);
     if (parsed.kind === 'user') {
-      return el.querySelector(`[data-custom-port="${direction}"]`);
+      return el.querySelector(`[data-custom-port="${token}"]`);
     }
-    return el.querySelector(`[data-node-port="${direction}"]`);
+    return el.querySelector(`[data-node-port="${token}"]`);
+  }
+
+  function endpointFromPort(port) {
+    if (!(port instanceof Element)) return null;
+    const token = port.dataset.customPort || port.dataset.nodePort;
+    const portId = normalizePortId(token);
+    if (!portId) return null;
+
+    const customNode = port.closest('[data-custom-node]');
+    if (customNode?.dataset.customNode) {
+      return { ref: endpointRefForUser(customNode.dataset.customNode), port: portId };
+    }
+
+    const originalNode = port.closest('[data-hero-node]');
+    if (originalNode?.dataset.heroNode) {
+      return { ref: endpointRefForOriginal(originalNode.dataset.heroNode), port: portId };
+    }
+
+    return null;
+  }
+
+  function endpointKey(endpoint) {
+    return endpoint ? `${endpoint.ref}@${endpoint.port}` : '';
   }
 
   function cameraApi() {
@@ -761,7 +879,6 @@
       }
     });
 
-    portOut.addEventListener('pointerdown', event => beginConnection(event, model));
     [portIn, portOut].forEach(port => {
       port.addEventListener('pointerenter', event => {
         if (coarsePointer.matches || event.pointerType === 'touch') return;
@@ -831,10 +948,335 @@
     return model;
   }
 
+  function nextSerialForType(type) {
+    let highest = 0;
+    models.forEach(model => {
+      if (model.type === type) highest = Math.max(highest, Number(model.note) || 0);
+    });
+    return highest + 1;
+  }
+
+  function nodeTypeLabel(model) {
+    const prefix = model.type === 'media' ? 'MEDIA' : model.type === 'link' ? 'LINK' : 'NOTE';
+    return `${prefix} ${String(model.note).padStart(2, '0')}`;
+  }
+
+  function createSafeAnchor(url, label, className) {
+    const anchor = document.createElement('a');
+    anchor.className = className;
+    anchor.href = url;
+    anchor.target = '_blank';
+    anchor.rel = 'noopener noreferrer';
+    anchor.draggable = false;
+    anchor.textContent = label;
+    anchor.addEventListener('pointerdown', event => event.stopPropagation());
+    return anchor;
+  }
+
+  function bindStaticNodeDrag(model, el) {
+    el.addEventListener('pointerdown', event => {
+      if (event.button !== undefined && event.button !== 0) return;
+      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, a, button, input')) return;
+      selectNode(model);
+      const rect = el.getBoundingClientRect();
+      const scale = cameraScale();
+      dragState = {
+        id: model.id,
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        offsetX: (event.clientX - (rect.left + rect.width * 0.5)) / scale,
+        offsetY: (event.clientY - (rect.top + rect.height * 0.5)) / scale,
+        moved: false,
+        lastX: event.clientX,
+        lastY: event.clientY,
+        lastTime: performance.now(),
+        lastSoundAt: 0
+      };
+      try { el.setPointerCapture?.(event.pointerId); } catch {}
+    });
+    el.addEventListener('focus', () => selectNode(model));
+  }
+
+  function appendStaticNodePorts(model, el) {
+    const portIn = document.createElement('span');
+    portIn.className = 'hero-custom-node__port hero-custom-node__port--in';
+    portIn.dataset.customPort = 'in';
+    portIn.setAttribute('aria-hidden', 'true');
+    const portOut = document.createElement('span');
+    portOut.className = 'hero-custom-node__port hero-custom-node__port--out';
+    portOut.dataset.customPort = 'out';
+    portOut.setAttribute('aria-hidden', 'true');
+    el.append(portIn, portOut);
+    model.portIn = portIn;
+    model.portOut = portOut;
+    [portIn, portOut].forEach(port => {
+      port.addEventListener('pointerenter', event => {
+        if (coarsePointer.matches || event.pointerType === 'touch') return;
+        playSfx('port', { element: port, eventTimestamp: event.timeStamp, gainScale: .8 });
+      }, { passive: true });
+    });
+  }
+
+  function createStaticNodeShell(model) {
+    const el = document.createElement('article');
+    el.className = `hero-custom-node hero-custom-node--${model.type}`;
+    el.dataset.customNode = model.id;
+    el.dataset.gridNode = 'dynamic';
+    el.tabIndex = 0;
+    el.setAttribute('role', 'group');
+    el.setAttribute('aria-label', `${model.type} node ${nodeTypeLabel(model)}`);
+    const meta = document.createElement('div');
+    meta.className = 'hero-custom-node__meta';
+    meta.dataset.customDragHandle = '';
+    const label = document.createElement('span');
+    label.className = 'hero-custom-node__label';
+    label.textContent = nodeTypeLabel(model);
+    meta.append(label);
+    const del = document.createElement('button');
+    del.className = 'hero-custom-node__delete';
+    del.type = 'button';
+    del.setAttribute('aria-label', 'Delete node');
+    del.textContent = '×';
+    el.append(meta, del);
+    nodeLayer.appendChild(el);
+    model.el = el;
+    del.addEventListener('pointerdown', event => event.stopPropagation());
+    del.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      markHintUsed();
+      deleteNode(model.id, { announceChange: true, sound: true });
+    });
+    bindStaticNodeDrag(model, el);
+    appendStaticNodePorts(model, el);
+    return { el, meta };
+  }
+
+  function finishStaticNodeCreation(model, { animate, persist, sound, select }) {
+    renderModel(model);
+    if (select) selectNode(model);
+    if (animate && !reducedMotion.matches) {
+      model.el.classList.add('is-materializing');
+      requestAnimationFrame(() => requestAnimationFrame(() => model.el.classList.remove('is-materializing')));
+    }
+    if (persist) saveState();
+    window.DeushimaGrid?.refreshDynamicNodes?.();
+    window.DeushimaGrid?.wake?.(520);
+    scheduleConnectionLoop();
+    if (sound) playSfx('chatSend', { element: model.el, gainScale: .88 });
+    return model;
+  }
+
+  function createLinkNode({
+    id = uid('link'), note = null, x = null, y = null, url = '', z = ++zCounter,
+    animate = true, persist = true, sound = true, select = true
+  } = {}) {
+    if (models.size >= MAX_NODES || models.has(id)) return null;
+    const normalizedUrl = normalizeHttpUrl(url);
+    if (!normalizedUrl) return null;
+    const heroRect = hero.getBoundingClientRect();
+    const fallback = worldPointFromClient(heroRect.left + heroRect.width * .5, heroRect.top + heroRect.height * .5);
+    const model = {
+      id,
+      note: clamp(Math.trunc(Number(note)) || nextSerialForType('link'), 1, 999),
+      type: 'link',
+      x: Number.isFinite(Number(x)) ? Number(x) : fallback.x,
+      y: Number.isFinite(Number(y)) ? Number(y) : fallback.y,
+      url: normalizedUrl,
+      z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
+      el: null,
+      portIn: null,
+      portOut: null
+    };
+    zCounter = Math.max(zCounter, model.z);
+    models.set(id, model);
+    const { el } = createStaticNodeShell(model);
+    const body = document.createElement('div');
+    body.className = 'hero-custom-node__link-body';
+    const host = document.createElement('strong');
+    host.className = 'hero-custom-node__domain';
+    host.textContent = displayHost(model.url);
+    const path = document.createElement('span');
+    path.className = 'hero-custom-node__url';
+    path.textContent = shortUrl(model.url, 72);
+    const open = createSafeAnchor(model.url, 'Open link ↗', 'hero-custom-node__open-link');
+    body.append(host, path, open);
+    el.insertBefore(body, model.portIn);
+    return finishStaticNodeCreation(model, { animate, persist, sound, select });
+  }
+
+  function setMediaStatus(model, message, failed = false) {
+    if (!model.mediaStatus) return;
+    model.mediaStatus.textContent = message;
+    model.el?.classList.toggle('is-media-error', failed);
+  }
+
+  function commitMediaReady(model, mediaType, element, aspectRatio) {
+    model.mediaType = mediaType;
+    if (Number.isFinite(aspectRatio) && aspectRatio > 0) {
+      model.aspectRatio = clamp(aspectRatio, .35, 3.5);
+      model.mediaFrame?.style.setProperty('--media-aspect', model.aspectRatio.toFixed(5));
+    }
+    model.el?.classList.remove('is-media-error');
+    model.el?.classList.add('is-media-ready');
+    if (model.mediaStatus) model.mediaStatus.textContent = '';
+    element.classList.add('is-ready');
+    model.height = model.el?.offsetHeight || model.height || null;
+    saveState();
+    drawConnections();
+    window.DeushimaGrid?.wake?.(240);
+  }
+
+  function mountMedia(model) {
+    if (!model.mediaFrame) return;
+    model.mediaLoadToken = (model.mediaLoadToken || 0) + 1;
+    const loadToken = model.mediaLoadToken;
+    const isCurrentLoad = () => (
+      models.get(model.id) === model
+      && model.mediaLoadToken === loadToken
+    );
+    model.mediaFrame.querySelectorAll('img, video').forEach(node => {
+      if (node instanceof HTMLVideoElement) mediaVisibilityObserver?.unobserve(node);
+      node.remove();
+    });
+    model.el.classList.remove('is-media-ready', 'is-media-error');
+    setMediaStatus(model, 'Loading media…');
+
+    const fail = () => {
+      if (!isCurrentLoad()) return;
+      setMediaStatus(model, `Media unavailable · ${shortUrl(model.url, 46)}`, true);
+    };
+
+    const mountVideo = () => {
+      const video = document.createElement('video');
+      video.className = 'hero-custom-node__media';
+      video.muted = true;
+      video.loop = true;
+      video.playsInline = true;
+      video.autoplay = true;
+      video.preload = 'metadata';
+      video.controls = false;
+      video.src = model.url;
+      video.addEventListener('loadedmetadata', () => {
+        if (!isCurrentLoad()) return;
+        const ratio = video.videoWidth && video.videoHeight ? video.videoWidth / video.videoHeight : model.aspectRatio;
+        commitMediaReady(model, 'video', video, ratio);
+        if (mediaVisibilityObserver) mediaVisibilityObserver.observe(video);
+        else video.play().catch(() => {});
+      }, { once: true });
+      video.addEventListener('error', fail, { once: true });
+      model.mediaFrame.prepend(video);
+      model.mediaElement = video;
+    };
+
+    const mountImage = (fallbackToVideo = false) => {
+      const image = document.createElement('img');
+      image.className = 'hero-custom-node__media';
+      image.alt = '';
+      image.decoding = 'async';
+      image.loading = 'lazy';
+      image.draggable = false;
+      image.referrerPolicy = 'no-referrer';
+      image.src = model.url;
+      image.addEventListener('load', () => {
+        if (!isCurrentLoad()) return;
+        const ratio = image.naturalWidth && image.naturalHeight ? image.naturalWidth / image.naturalHeight : model.aspectRatio;
+        commitMediaReady(model, 'image', image, ratio);
+      }, { once: true });
+      image.addEventListener('error', () => {
+        if (!isCurrentLoad()) return;
+        image.remove();
+        if (fallbackToVideo) mountVideo();
+        else fail();
+      }, { once: true });
+      model.mediaFrame.prepend(image);
+      model.mediaElement = image;
+    };
+
+    if (model.mediaType === 'video') mountVideo();
+    else if (model.mediaType === 'image') mountImage(false);
+    else mountImage(true);
+  }
+
+  function createMediaNode({
+    id = uid('media'), note = null, x = null, y = null, url = '', mediaType = 'unknown',
+    width = 300, height = null, aspectRatio = 1.35, z = ++zCounter,
+    animate = true, persist = true, sound = true, select = true
+  } = {}) {
+    if (models.size >= MAX_NODES || models.has(id)) return null;
+    const normalizedUrl = normalizeHttpUrl(url);
+    if (!normalizedUrl) return null;
+    const heroRect = hero.getBoundingClientRect();
+    const fallback = worldPointFromClient(heroRect.left + heroRect.width * .5, heroRect.top + heroRect.height * .5);
+    const model = {
+      id,
+      note: clamp(Math.trunc(Number(note)) || nextSerialForType('media'), 1, 999),
+      type: 'media',
+      x: Number.isFinite(Number(x)) ? Number(x) : fallback.x,
+      y: Number.isFinite(Number(y)) ? Number(y) : fallback.y,
+      url: normalizedUrl,
+      mediaType: ['image', 'video'].includes(mediaType) ? mediaType : inferMediaTypeFromUrl(normalizedUrl),
+      width: clamp(Number(width) || 300, 220, 420),
+      height: Number.isFinite(Number(height)) ? Number(height) : null,
+      aspectRatio: clamp(Number(aspectRatio) || 1.35, .35, 3.5),
+      z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
+      el: null,
+      portIn: null,
+      portOut: null,
+      mediaFrame: null,
+      mediaStatus: null,
+      mediaElement: null
+    };
+    zCounter = Math.max(zCounter, model.z);
+    models.set(id, model);
+    const { el } = createStaticNodeShell(model);
+    el.style.setProperty('--custom-media-width', `${model.width}px`);
+
+    const frame = document.createElement('div');
+    frame.className = 'hero-custom-node__media-frame';
+    frame.style.setProperty('--media-aspect', model.aspectRatio.toFixed(5));
+    const status = document.createElement('span');
+    status.className = 'hero-custom-node__media-status';
+    status.textContent = 'Loading media…';
+    frame.append(status);
+
+    const footer = document.createElement('div');
+    footer.className = 'hero-custom-node__media-footer';
+    const domain = document.createElement('span');
+    domain.className = 'hero-custom-node__domain';
+    domain.textContent = displayHost(model.url);
+    const actions = document.createElement('span');
+    actions.className = 'hero-custom-node__media-actions';
+    const edit = document.createElement('button');
+    edit.className = 'hero-custom-node__edit-url';
+    edit.type = 'button';
+    edit.textContent = 'Edit URL';
+    edit.addEventListener('pointerdown', event => event.stopPropagation());
+    edit.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openUrlForm('media', { anchor: { worldX: model.x, worldY: model.y }, model });
+    });
+    const open = createSafeAnchor(model.url, '↗', 'hero-custom-node__media-open');
+    open.setAttribute('aria-label', 'Open media in new tab');
+    actions.append(edit, open);
+    footer.append(domain, actions);
+
+    model.mediaFrame = frame;
+    model.mediaStatus = status;
+    model.mediaDomain = domain;
+    model.mediaOpen = open;
+    el.insertBefore(frame, model.portIn);
+    el.insertBefore(footer, model.portIn);
+    mountMedia(model);
+    return finishStaticNodeCreation(model, { animate, persist, sound, select });
+  }
+
   function deleteIncidentConnections(id) {
     const ref = endpointRefForUser(id);
     const ids = connections
-      .filter(connection => connection.from === ref || connection.to === ref)
+      .filter(connection => connection.from?.ref === ref || connection.to?.ref === ref)
       .map(connection => connection.id);
     ids.forEach(connectionId => removeConnection(connectionId, { persist: false, sound: false }));
   }
@@ -843,11 +1285,17 @@
     const model = models.get(id);
     if (!model) return false;
 
+    if (model.type === 'media') model.mediaLoadToken = (model.mediaLoadToken || 0) + 1;
+
     deleteIncidentConnections(id);
     if (editingNodeId === id) editingNodeId = null;
     if (selectedNodeId === id) selectedNodeId = null;
 
     const remove = () => {
+      if (model.mediaElement instanceof HTMLVideoElement) {
+        mediaVisibilityObserver?.unobserve(model.mediaElement);
+        model.mediaElement.pause();
+      }
       model.el.remove();
       models.delete(id);
       if (persist) saveState();
@@ -872,6 +1320,30 @@
   function duplicateNode(id) {
     const source = models.get(id);
     if (!source || models.size >= MAX_NODES) return null;
+    if (source.type === 'link') {
+      return createLinkNode({
+        x: source.x + 28,
+        y: source.y + 24,
+        url: source.url,
+        animate: true,
+        persist: true,
+        sound: true
+      });
+    }
+    if (source.type === 'media') {
+      return createMediaNode({
+        x: source.x + 28,
+        y: source.y + 24,
+        url: source.url,
+        mediaType: source.mediaType,
+        width: source.width,
+        height: source.height,
+        aspectRatio: source.aspectRatio,
+        animate: true,
+        persist: true,
+        sound: true
+      });
+    }
     return createTextNode({
       x: source.x + 28,
       y: source.y + 24,
@@ -900,6 +1372,7 @@
 
     try {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(PREVIOUS_STORAGE_KEY);
       localStorage.removeItem(LEGACY_STORAGE_KEY);
     } catch {}
     window.setTimeout(() => {
@@ -909,17 +1382,41 @@
     }, reducedMotion.matches ? 0 : 170);
   }
 
-  function connectionKey(from, to) {
-    return `${from}=>${to}`;
+  function connectionRouteKey(from, to) {
+    return [endpointKey(from), endpointKey(to)].sort().join('::');
   }
 
-  function hasConnection(from, to) {
-    const key = connectionKey(from, to);
-    return connections.some(connection => connectionKey(connection.from, connection.to) === key);
+  function nextConnectionLane(from, to) {
+    const key = connectionRouteKey(from, to);
+    const used = new Set(
+      connections
+        .filter(connection => connectionRouteKey(connection.from, connection.to) === key)
+        .map(connection => Number(connection.lane) || 0)
+    );
+    const candidates = [0];
+    for (let index = 1; index <= 12; index += 1) candidates.push(index, -index);
+    return candidates.find(lane => !used.has(lane)) ?? (used.size + 1);
   }
 
-  function portCenter(ref, direction) {
-    const port = endpointPort(ref, direction);
+  function laneOffset(lane) {
+    return (Number(lane) || 0) * 8;
+  }
+
+  function portCenter(endpointOrRef, portId = null) {
+    const endpoint = typeof endpointOrRef === 'string'
+      ? { ref: endpointOrRef, port: normalizePortId(portId) }
+      : endpointOrRef;
+    if (!endpoint?.ref || !normalizePortId(endpoint.port)) return null;
+    const parsed = parseEndpoint(endpoint.ref);
+    if (!parsed) return null;
+    if (parsed.kind === 'user') {
+      const model = models.get(parsed.id);
+      if (!model?.el) return null;
+      const halfWidth = Math.max(1, model.el.offsetWidth || 180) * 0.5;
+      const worldX = model.x + (endpoint.port === 'left' ? -halfWidth : halfWidth);
+      return worldToStageLocal(worldX, model.y);
+    }
+    const port = endpointPort(endpoint.ref, endpoint.port);
     if (!port) return null;
     const stageRect = stage.getBoundingClientRect();
     const rect = port.getBoundingClientRect();
@@ -930,16 +1427,40 @@
     };
   }
 
-  function curvePoints(from, to) {
+  function portClientCenter(endpoint) {
+    const parsed = parseEndpoint(endpoint?.ref);
+    if (!parsed || !normalizePortId(endpoint?.port)) return null;
+    if (parsed.kind === 'user') {
+      const model = models.get(parsed.id);
+      const camera = cameraApi();
+      if (!model?.el || !camera?.worldToScreen) return null;
+      const halfWidth = Math.max(1, model.el.offsetWidth || 180) * 0.5;
+      return camera.worldToScreen(
+        model.x + (endpoint.port === 'left' ? -halfWidth : halfWidth),
+        model.y
+      );
+    }
+    const port = endpointPort(endpoint.ref, endpoint.port);
+    if (!port) return null;
+    const rect = port.getBoundingClientRect();
+    return { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 };
+  }
+
+  function curvePoints(from, to, fromPort = 'right', toPort = 'left', lane = 0) {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
-    const direction = dx >= 0 ? 1 : -1;
-    const tension = Math.max(40, Math.min(180, Math.abs(dx) * .46 + Math.abs(dy) * .08));
+    const distance = Math.max(1, Math.hypot(dx, dy));
+    const tension = Math.max(42, Math.min(190, Math.abs(dx) * .42 + Math.abs(dy) * .12));
+    const nx = -dy / distance;
+    const ny = dx / distance;
+    const offset = laneOffset(lane);
+    const fromDirection = fromPort === 'left' ? -1 : 1;
+    const toDirection = toPort === 'left' ? -1 : 1;
     return {
       from,
       to,
-      c1: { x: from.x + tension * direction, y: from.y },
-      c2: { x: to.x - tension * direction, y: to.y }
+      c1: { x: from.x + tension * fromDirection + nx * offset, y: from.y + ny * offset },
+      c2: { x: to.x + tension * toDirection + nx * offset, y: to.y + ny * offset }
     };
   }
 
@@ -1024,10 +1545,10 @@
     customMesh.setAttribute('viewBox', `0 0 ${width} ${height}`);
 
     connections.forEach(connection => {
-      const from = portCenter(connection.from, 'out');
-      const to = portCenter(connection.to, 'in');
+      const from = portCenter(connection.from);
+      const to = portCenter(connection.to);
       if (!from || !to) return;
-      const points = curvePoints(from, to);
+      const points = curvePoints(from, to, connection.from.port, connection.to.port, connection.lane);
       const d = curvePath(points);
       const record = ensureConnectionElement(connection);
       record.visible.setAttribute('d', d);
@@ -1053,7 +1574,7 @@
     if (connectionState || dragState?.moved) return true;
     if (reducedMotion.matches || window.matchMedia('(max-width: 760px)').matches) return false;
     return connections.some(connection => (
-      connection.from.startsWith('orig:') || connection.to.startsWith('orig:')
+      connection.from.ref.startsWith('orig:') || connection.to.ref.startsWith('orig:')
     ));
   }
 
@@ -1070,18 +1591,46 @@
     connectionRaf = requestAnimationFrame(connectionLoop);
   }
 
-  function createConnection(from, to, { persist = true, sound = true } = {}) {
-    if (!parseEndpoint(from) || !parseEndpoint(to)) return null;
-    if (!from.startsWith('user:')) return null;
-    if (from === to || hasConnection(from, to) || connections.length >= MAX_CONNECTIONS) return null;
+  function pulseConnectionPort(endpoint) {
+    const port = endpointPort(endpoint.ref, endpoint.port);
+    if (!port || reducedMotion.matches) return;
+    port.classList.remove('is-connect-pulse');
+    void port.offsetWidth;
+    port.classList.add('is-connect-pulse');
+    window.setTimeout(() => port.classList.remove('is-connect-pulse'), 420);
+  }
 
-    const connection = { id: uid('conn'), from, to };
+  function createConnection(from, to, { persist = true, sound = true, lane = null } = {}) {
+    if (!from || !to || !parseEndpoint(from.ref) || !parseEndpoint(to.ref)) return null;
+    if (!normalizePortId(from.port) || !normalizePortId(to.port)) return null;
+    if (from.ref === to.ref || connections.length >= MAX_CONNECTIONS) return null;
+
+    const requestedLane = lane === null || lane === undefined ? NaN : Number(lane);
+
+    const connection = {
+      id: uid('conn'),
+      from: { ref: from.ref, port: normalizePortId(from.port) },
+      to: { ref: to.ref, port: normalizePortId(to.port) },
+      lane: Number.isFinite(requestedLane) ? requestedLane : nextConnectionLane(from, to)
+    };
     connections.push(connection);
-    ensureConnectionElement(connection);
+    const record = ensureConnectionElement(connection);
     drawConnections();
     scheduleConnectionLoop();
     if (persist) saveState();
-    if (sound) playSfx('link', { element: endpointElement(to), gainScale: .9 });
+    if (!reducedMotion.matches) {
+      record.visible.animate(
+        [
+          { strokeDasharray: '1', strokeDashoffset: '1', opacity: .42 },
+          { strokeDasharray: '1', strokeDashoffset: '0', opacity: 1 }
+        ],
+        { duration: 360, easing: 'cubic-bezier(.22,1,.36,1)' }
+      );
+    }
+    pulseConnectionPort(connection.from);
+    pulseConnectionPort(connection.to);
+    window.DeushimaGrid?.wake?.(220);
+    if (sound) playSfx('link', { element: endpointElement(to.ref), gainScale: .9 });
     return connection;
   }
 
@@ -1089,7 +1638,7 @@
     const index = connections.findIndex(connection => connection.id === id);
     if (index < 0) return false;
     const connection = connections[index];
-    const soundElement = endpointElement(connection.to);
+    const soundElement = endpointElement(connection.to.ref);
     connections.splice(index, 1);
     connectionEls.get(id)?.group.remove();
     connectionEls.delete(id);
@@ -1102,31 +1651,23 @@
     return true;
   }
 
-  function nearestCompatibleInput(clientX, clientY, sourceId) {
+  function nearestCompatiblePort(clientX, clientY, sourceEndpoint) {
     let best = null;
     const ports = [
-      ...stage.querySelectorAll('[data-custom-port="in"]'),
-      ...stage.querySelectorAll('[data-node-port="in"]')
+      ...stage.querySelectorAll('[data-custom-port]'),
+      ...stage.querySelectorAll('[data-node-port]')
     ];
 
     ports.forEach(port => {
-      const customNode = port.closest('[data-custom-node]');
-      const originalNode = port.closest('[data-hero-node]');
-      const ref = customNode
-        ? endpointRefForUser(customNode.dataset.customNode)
-        : originalNode
-          ? endpointRefForOriginal(originalNode.dataset.heroNode)
-          : null;
-      if (!ref || ref === endpointRefForUser(sourceId)) return;
-
-      const rect = port.getBoundingClientRect();
-      const x = rect.left + rect.width * .5;
-      const y = rect.top + rect.height * .5;
-      const distance = Math.hypot(clientX - x, clientY - y);
+      const endpoint = endpointFromPort(port);
+      if (!endpoint || endpoint.ref === sourceEndpoint.ref) return;
+      const point = portClientCenter(endpoint);
+      if (!point) return;
+      const distance = Math.hypot(clientX - point.x, clientY - point.y);
       port.classList.toggle('is-near', distance <= PORT_RADIUS);
 
       if (distance <= PORT_RADIUS && (!best || distance < best.distance)) {
-        best = { port, ref, distance };
+        best = { port, endpoint, distance };
       }
     });
 
@@ -1134,31 +1675,36 @@
   }
 
   function clearCompatiblePorts() {
-    stage.querySelectorAll('[data-custom-port="in"].is-near, [data-node-port="in"].is-near')
+    stage.querySelectorAll('[data-custom-port].is-near, [data-node-port].is-near')
       .forEach(port => port.classList.remove('is-near'));
   }
 
-  function beginConnection(event, model) {
+  function beginConnection(event, sourcePort) {
     if (event.button !== undefined && event.button !== 0) return;
+    const source = endpointFromPort(sourcePort);
+    if (!source || !parseEndpoint(source.ref)) return;
     event.preventDefault();
     event.stopPropagation();
-    selectNode(model);
+    const parsed = parseEndpoint(source.ref);
+    if (parsed?.kind === 'user') {
+      const model = models.get(parsed.id);
+      if (model) selectNode(model);
+    }
 
-    const point = portCenter(endpointRefForUser(model.id), 'out');
+    const point = portCenter(source);
     if (!point) return;
 
     connectionState = {
       pointerId: event.pointerId,
-      sourceId: model.id,
-      sourceRef: endpointRefForUser(model.id),
-      sourcePort: model.portOut,
+      source,
+      sourcePort,
       pointerX: point.x,
       pointerY: point.y,
       target: null
     };
-    model.portOut.classList.add('is-active');
+    sourcePort.classList.add('is-active');
     stage.classList.add('is-editing');
-    model.portOut.setPointerCapture?.(event.pointerId);
+    try { sourcePort.setPointerCapture?.(event.pointerId); } catch {}
     drawConnectionPreview();
     scheduleConnectionLoop();
   }
@@ -1168,10 +1714,15 @@
       previewPath.setAttribute('d', '');
       return;
     }
-    const from = portCenter(connectionState.sourceRef, 'out');
+    const from = portCenter(connectionState.source);
     if (!from) return;
-    const to = { x: connectionState.pointerX, y: connectionState.pointerY };
-    previewPath.setAttribute('d', curvePath(curvePoints(from, to)));
+    const targetEndpoint = connectionState.target?.endpoint || null;
+    const to = targetEndpoint
+      ? portCenter(targetEndpoint)
+      : { x: connectionState.pointerX, y: connectionState.pointerY };
+    if (!to) return;
+    const toPort = targetEndpoint?.port || (to.x >= from.x ? 'left' : 'right');
+    previewPath.setAttribute('d', curvePath(curvePoints(from, to, connectionState.source.port, toPort, 0)));
   }
 
   function moveConnection(event) {
@@ -1180,26 +1731,46 @@
     const point = stageLocalPointFromClient(event.clientX, event.clientY);
     connectionState.pointerX = point.x;
     connectionState.pointerY = point.y;
-    connectionState.target = nearestCompatibleInput(event.clientX, event.clientY, connectionState.sourceId);
+    connectionState.target = nearestCompatiblePort(event.clientX, event.clientY, connectionState.source);
     drawConnectionPreview();
   }
 
-  function endConnection(event) {
+  function endConnection(event, { commit = true } = {}) {
     if (!connectionState || event.pointerId !== connectionState.pointerId) return;
 
     const state = connectionState;
-    const target = nearestCompatibleInput(event.clientX, event.clientY, state.sourceId) || state.target;
+    const target = commit
+      ? nearestCompatiblePort(event.clientX, event.clientY, state.source) || state.target
+      : null;
 
-    state.sourcePort.releasePointerCapture?.(event.pointerId);
+    connectionState = null;
+    try {
+      if (state.sourcePort.hasPointerCapture?.(event.pointerId)) state.sourcePort.releasePointerCapture(event.pointerId);
+    } catch {}
     state.sourcePort.classList.remove('is-active');
     stage.classList.remove('is-editing');
     clearCompatiblePorts();
-    connectionState = null;
     previewPath.setAttribute('d', '');
 
-    if (target?.ref) {
-      createConnection(state.sourceRef, target.ref, { persist: true, sound: true });
+    if (target?.endpoint) {
+      createConnection(state.source, target.endpoint, { persist: true, sound: true });
     }
+    scheduleConnectionLoop();
+  }
+
+  function cancelConnectionGesture() {
+    if (!connectionState) return;
+    const state = connectionState;
+    connectionState = null;
+    try {
+      if (state.sourcePort.hasPointerCapture?.(state.pointerId)) {
+        state.sourcePort.releasePointerCapture(state.pointerId);
+      }
+    } catch {}
+    state.sourcePort.classList.remove('is-active');
+    stage.classList.remove('is-editing');
+    clearCompatiblePorts();
+    previewPath.setAttribute('d', '');
     scheduleConnectionLoop();
   }
 
@@ -1213,10 +1784,16 @@
     const connection = connections.find(item => item.id === id);
     if (!connection) return;
     window.clearTimeout(lineDeleteHideTimer);
-    const from = portCenter(connection.from, 'out');
-    const to = portCenter(connection.to, 'in');
+    const from = portCenter(connection.from);
+    const to = portCenter(connection.to);
     if (!from || !to) return;
-    positionLineDeleteButton(cubicPoint(curvePoints(from, to), .5));
+    positionLineDeleteButton(cubicPoint(curvePoints(
+      from,
+      to,
+      connection.from.port,
+      connection.to.port,
+      connection.lane
+    ), .5));
     lineDeleteButton.dataset.connectionId = id;
   }
 
@@ -1313,30 +1890,93 @@
     ]);
 
     const restoredConnections = [];
-    const seen = new Set();
+    const ids = new Set();
 
     for (const rawConnection of (Array.isArray(rawConnections) ? rawConnections : []).slice(0, MAX_CONNECTIONS)) {
       if (!rawConnection) continue;
-      const from = String(rawConnection.from || '');
-      const to = String(rawConnection.to || '');
-      if (!from.startsWith('user:') || !validRefs.has(from) || !validRefs.has(to) || from === to) continue;
-      const key = connectionKey(from, to);
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const from = typeof rawConnection.from === 'string'
+        ? { ref: rawConnection.from, port: 'right' }
+        : { ref: String(rawConnection.from?.ref || ''), port: normalizePortId(rawConnection.from?.port) };
+      const to = typeof rawConnection.to === 'string'
+        ? { ref: rawConnection.to, port: 'left' }
+        : { ref: String(rawConnection.to?.ref || ''), port: normalizePortId(rawConnection.to?.port) };
+      if (!validRefs.has(from.ref) || !validRefs.has(to.ref) || from.ref === to.ref || !from.port || !to.port) continue;
+      let id = typeof rawConnection.id === 'string' && rawConnection.id.length <= 100
+        ? rawConnection.id
+        : uid('conn');
+      if (ids.has(id)) id = uid('conn');
+      ids.add(id);
       restoredConnections.push({
-        id: typeof rawConnection.id === 'string' && rawConnection.id.length <= 100
-          ? rawConnection.id
-          : uid('conn'),
+        id,
         from,
-        to
+        to,
+        lane: clamp(Math.trunc(Number(rawConnection.lane)) || 0, -24, 24)
       });
     }
 
     return restoredConnections;
   }
 
-  function validateV2State(parsed) {
-    if (!parsed || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.nodes)) return null;
+  function validateV3State(parsed) {
+    if (!parsed || parsed.version !== 3 || !Array.isArray(parsed.nodes)) return null;
+    const nodes = [];
+    const ids = new Set();
+    const bounds = cameraApi()?.getWorldBounds?.();
+
+    for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
+      if (!rawNode || !['text', 'link', 'media'].includes(rawNode.type)) continue;
+      const id = typeof rawNode.id === 'string' && rawNode.id.length <= 90 ? rawNode.id : null;
+      if (!id || ids.has(id)) continue;
+      let x = Number(rawNode.x);
+      let y = Number(rawNode.y);
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      if (bounds) {
+        x = clamp(x, bounds.minX, bounds.maxX);
+        y = clamp(y, bounds.minY, bounds.maxY);
+      }
+      ids.add(id);
+      const base = {
+        id,
+        type: rawNode.type,
+        note: clamp(Math.trunc(Number(rawNode.note)) || nodes.length + 1, 1, 999),
+        x,
+        y,
+        z: clamp(Math.trunc(Number(rawNode.z)) || nodes.length + 1, 1, 9999)
+      };
+
+      if (rawNode.type === 'text') {
+        nodes.push({ ...base, text: safeText(rawNode.text) });
+        continue;
+      }
+
+      const url = normalizeHttpUrl(rawNode.url);
+      if (!url) continue;
+      if (rawNode.type === 'link') {
+        nodes.push({ ...base, url });
+        continue;
+      }
+
+      nodes.push({
+        ...base,
+        url,
+        mediaType: ['image', 'video'].includes(rawNode.mediaType) ? rawNode.mediaType : inferMediaTypeFromUrl(url),
+        width: clamp(Number(rawNode.width) || 300, 220, 420),
+        height: Number.isFinite(Number(rawNode.height)) ? Number(rawNode.height) : null,
+        aspectRatio: clamp(Number(rawNode.aspectRatio) || 1.35, .35, 3.5)
+      });
+    }
+
+    return {
+      nodes,
+      connections: validateConnections(parsed.connections, nodes),
+      nextNote: clamp(Math.trunc(Number(parsed.nextNote)) || nodes.length + 1, 1, 9999),
+      zCounter: clamp(Math.trunc(Number(parsed.zCounter)) || nodes.length + 1, 1, 9999),
+      migrated: false
+    };
+  }
+
+  function migrateV2State(parsed) {
+    if (!parsed || parsed.version !== 2 || !Array.isArray(parsed.nodes)) return null;
     const nodes = [];
     const ids = new Set();
     const bounds = cameraApi()?.getWorldBounds?.();
@@ -1369,7 +2009,8 @@
       connections: validateConnections(parsed.connections, nodes),
       nextNote: clamp(Math.trunc(Number(parsed.nextNote)) || nodes.length + 1, 1, 9999),
       zCounter: clamp(Math.trunc(Number(parsed.zCounter)) || nodes.length + 1, 1, 9999),
-      migrated: false
+      migrated: true,
+      migratedFrom: 2
     };
   }
 
@@ -1405,7 +2046,8 @@
       connections: validateConnections(parsed.connections, nodes),
       nextNote: clamp(Math.trunc(Number(parsed.nextNote)) || nodes.length + 1, 1, 9999),
       zCounter: clamp(Math.trunc(Number(parsed.zCounter)) || nodes.length + 1, 1, 9999),
-      migrated: true
+      migrated: true,
+      migratedFrom: 1
     };
   }
 
@@ -1414,8 +2056,17 @@
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw);
-        const valid = validateV2State(parsed);
+        const valid = validateV3State(parsed);
         if (valid) return valid;
+      }
+    } catch {}
+
+    try {
+      const previousRaw = localStorage.getItem(PREVIOUS_STORAGE_KEY);
+      if (previousRaw) {
+        const previous = JSON.parse(previousRaw);
+        const migrated = migrateV2State(previous);
+        if (migrated) return migrated;
       }
     } catch {}
 
@@ -1436,19 +2087,31 @@
       viewport: cameraState ? { width: cameraState.width, height: cameraState.height } : null,
       nextNote: nextNoteNumber,
       zCounter,
-      nodes: [...models.values()].map(model => ({
-        id: model.id,
-        type: 'text',
-        note: model.note,
-        text: safeText(model.text),
-        x: Number(model.x.toFixed(6)),
-        y: Number(model.y.toFixed(6)),
-        z: model.z
-      })),
+      nodes: [...models.values()].map(model => {
+        const base = {
+          id: model.id,
+          type: model.type,
+          note: model.note,
+          x: Number(model.x.toFixed(6)),
+          y: Number(model.y.toFixed(6)),
+          z: model.z
+        };
+        if (model.type === 'text') return { ...base, text: safeText(model.text) };
+        if (model.type === 'link') return { ...base, url: model.url };
+        return {
+          ...base,
+          url: model.url,
+          mediaType: model.mediaType,
+          width: Number(model.width) || 300,
+          height: Number.isFinite(Number(model.height)) ? Number(model.height) : null,
+          aspectRatio: Number(model.aspectRatio) || 1.35
+        };
+      }),
       connections: connections.map(connection => ({
         id: connection.id,
-        from: connection.from,
-        to: connection.to
+        from: { ...connection.from },
+        to: { ...connection.to },
+        lane: connection.lane
       }))
     };
 
@@ -1468,14 +2131,15 @@
     zCounter = saved.zCounter;
 
     saved.nodes.forEach(data => {
-      createTextNode({
-        ...data,
-        animate: false,
-        focusEditor: false,
-        persist: false,
-        sound: false,
-        select: false
-      });
+      if (data.type === 'link') {
+        createLinkNode({ ...data, animate: false, persist: false, sound: false, select: false });
+        return;
+      }
+      if (data.type === 'media') {
+        createMediaNode({ ...data, animate: false, persist: false, sound: false, select: false });
+        return;
+      }
+      createTextNode({ ...data, animate: false, focusEditor: false, persist: false, sound: false, select: false });
     });
 
     connections = saved.connections;
@@ -1483,7 +2147,10 @@
 
     if (saved.migrated) {
       saveState();
-      try { localStorage.removeItem(LEGACY_STORAGE_KEY); } catch {}
+      try {
+        if (saved.migratedFrom === 2) localStorage.removeItem(PREVIOUS_STORAGE_KEY);
+        if (saved.migratedFrom === 1) localStorage.removeItem(LEGACY_STORAGE_KEY);
+      } catch {}
     }
 
     restoreHintState();
@@ -1542,7 +2209,118 @@
     return el;
   }
 
+  function looksLikeWebPageUrl(url) {
+    try {
+      return /\.(?:html?|php|aspx?|jsp)$/i.test(new URL(url).pathname);
+    } catch {
+      return false;
+    }
+  }
+
+  function openUrlForm(kind, { anchor = null, model = null } = {}) {
+    const anchorSnapshot = anchor ? { ...anchor } : menuAnchor ? { ...menuAnchor } : model ? { worldX: model.x, worldY: model.y } : null;
+    if (!anchorSnapshot) return;
+    menuMode = 'url-form';
+    menuNodeId = model?.id || null;
+    menuAnchor = anchorSnapshot;
+    menu.classList.add('is-url-form');
+    menu.replaceChildren();
+    const heading = document.createElement('div');
+    heading.className = 'hero-custom-node-context__heading';
+    heading.textContent = kind === 'media' ? 'Link image' : 'Link';
+    const form = document.createElement('form');
+    form.className = 'hero-custom-node-context__url-form';
+    const input = document.createElement('input');
+    input.className = 'hero-custom-node-context__url-input';
+    input.type = 'url';
+    input.inputMode = 'url';
+    input.autocomplete = 'off';
+    input.spellcheck = false;
+    input.placeholder = 'https://…';
+    input.value = model?.url || '';
+    input.setAttribute('aria-label', kind === 'media' ? 'Direct media URL' : 'Link URL');
+    const message = document.createElement('div');
+    message.className = 'hero-custom-node-context__url-message';
+    message.setAttribute('aria-live', 'polite');
+    const actions = document.createElement('div');
+    actions.className = 'hero-custom-node-context__url-actions';
+    const cancel = document.createElement('button');
+    cancel.type = 'button';
+    cancel.className = 'hero-custom-node-context__url-button';
+    cancel.textContent = 'Cancel';
+    const confirm = document.createElement('button');
+    confirm.type = 'submit';
+    confirm.className = 'hero-custom-node-context__url-button is-primary';
+    confirm.textContent = model ? 'Update' : 'Create';
+    actions.append(cancel, confirm);
+    form.append(input, message, actions);
+    menu.append(heading, form);
+    cancel.addEventListener('click', event => {
+      event.preventDefault();
+      if (model) closeMenu(false);
+      else {
+        menu.classList.remove('is-url-form');
+        buildCanvasMenu();
+        queueMicrotask(() => menuItems()[0]?.focus({ preventScroll: true }));
+      }
+    });
+    form.addEventListener('submit', event => {
+      event.preventDefault();
+      const normalized = normalizeHttpUrl(input.value);
+      if (!normalized) {
+        message.textContent = 'Use a valid http:// or https:// URL.';
+        input.focus({ preventScroll: true });
+        return;
+      }
+      if (kind === 'media' && looksLikeWebPageUrl(normalized)) {
+        message.textContent = "This URL doesn't appear to be direct media.";
+        input.focus({ preventScroll: true });
+        return;
+      }
+      if (model?.type === 'media') {
+        model.url = normalized;
+        model.mediaType = inferMediaTypeFromUrl(normalized);
+        model.mediaDomain.textContent = displayHost(normalized);
+        model.mediaOpen.href = normalized;
+        mountMedia(model);
+        saveState();
+        closeMenu(false);
+        return;
+      }
+      const created = kind === 'media'
+        ? createMediaNode({ x: anchorSnapshot.worldX, y: anchorSnapshot.worldY, url: normalized, mediaType: inferMediaTypeFromUrl(normalized), animate: true, persist: true, sound: true, select: true })
+        : createLinkNode({ x: anchorSnapshot.worldX, y: anchorSnapshot.worldY, url: normalized, animate: true, persist: true, sound: true, select: true });
+      if (!created) {
+        message.textContent = 'Unable to create this node.';
+        return;
+      }
+      closeMenu(false);
+      markHintUsed();
+      announce('Node created');
+      if (kind === 'media' && created.mediaType === 'unknown') {
+        inspectDirectMedia(normalized).then(type => {
+          if (!models.has(created.id) || created.el.classList.contains('is-media-ready')) return;
+          if (type === 'html') {
+            setMediaStatus(created, "This URL doesn't appear to be direct media.", true);
+            return;
+          }
+          if (type === 'image' || type === 'video') {
+            created.mediaType = type;
+            mountMedia(created);
+            saveState();
+          }
+        });
+      }
+    });
+    if (!menuOpen) {
+      const screen = cameraApi()?.worldToScreen?.(anchorSnapshot.worldX, anchorSnapshot.worldY);
+      const heroRect = hero.getBoundingClientRect();
+      placeMenu(screen?.x ?? heroRect.left + heroRect.width * .5, screen?.y ?? heroRect.top + heroRect.height * .5);
+    }
+    queueMicrotask(() => input.focus({ preventScroll: true }));
+  }
   function buildCanvasMenu() {
+    menu.classList.remove('is-url-form');
     menu.replaceChildren();
 
     const heading = document.createElement('div');
@@ -1559,6 +2337,10 @@
         action: () => {
           if (!menuAnchor) return;
           const anchor = { ...menuAnchor };
+          if (type.id === 'media' || type.id === 'link') {
+            openUrlForm(type.id, { anchor });
+            return;
+          }
           closeMenu(false);
           markHintUsed();
           const model = createTextNode({
@@ -1643,7 +2425,7 @@
 
     const heading = document.createElement('div');
     heading.className = 'hero-custom-node-context__heading';
-    heading.textContent = `NOTE ${String(model.note).padStart(2, '0')}`;
+    heading.textContent = nodeTypeLabel(model);
     menu.appendChild(heading);
 
     menu.appendChild(menuItem({
@@ -1732,7 +2514,7 @@
     const closeToken = menuPlacementToken;
     const wasOpen = menuOpen || menu.classList.contains('is-open');
     menuOpen = false;
-    menu.classList.remove('is-open');
+    menu.classList.remove('is-open', 'is-url-form');
     const focusTarget = menuFocusOrigin;
     menuMode = null;
     menuNodeId = null;
@@ -1906,21 +2688,38 @@
     longPressState = null;
   }
 
+  stage.addEventListener('pointerdown', event => {
+    const port = event.target instanceof Element
+      ? event.target.closest('[data-custom-port], [data-node-port]')
+      : null;
+    if (!port || !stage.contains(port)) return;
+    beginConnection(event, port);
+  }, { capture: true });
+
+  stage.addEventListener('lostpointercapture', event => {
+    if (!connectionState || event.pointerId !== connectionState.pointerId) return;
+    if (event.target !== connectionState.sourcePort) return;
+    endConnection(event, { commit: false });
+  }, { capture: true });
+
   window.addEventListener('pointermove', event => {
     moveNodeDrag(event);
     moveConnection(event);
     moveLongPress(event);
+    if (connections.length && stage.querySelector('[data-hero-node].is-dragging')) {
+      drawConnections();
+    }
   }, { passive: false });
 
   window.addEventListener('pointerup', event => {
     endNodeDrag(event);
-    endConnection(event);
+    endConnection(event, { commit: true });
     clearLongPress(event);
   });
 
   window.addEventListener('pointercancel', event => {
     endNodeDrag(event);
-    endConnection(event);
+    endConnection(event, { commit: false });
     clearLongPress(event);
   });
 
@@ -2016,9 +2815,10 @@
         model.x = point.x - dragState.offsetX;
         model.y = point.y - dragState.offsetY;
         renderModel(model);
-        drawConnections();
       }
     }
+
+    if (connections.length) drawConnections();
 
     if (menuMode === 'canvas' && menu.classList.contains('is-open')) {
       buildCanvasMenu();
@@ -2031,6 +2831,8 @@
 
   stage.addEventListener('deushima:hero-layout-change', () => {
     if (menuMode === 'canvas' && menu.classList.contains('is-open')) buildCanvasMenu();
+    drawConnections();
+    scheduleConnectionLoop();
   });
 
   const resizeObserver = new ResizeObserver(() => {
@@ -2054,23 +2856,33 @@
 
   window.DeushimaCustomNodes = Object.freeze({
     storageKey: STORAGE_KEY,
+    previousStorageKey: PREVIOUS_STORAGE_KEY,
     legacyStorageKey: LEGACY_STORAGE_KEY,
     storageVersion: STORAGE_VERSION,
     hintKey: HINT_KEY,
     maxNodes: MAX_NODES,
     nodeTypes: NODE_TYPES,
     createText: (x = null, y = null, text = '') => createTextNode({ x, y, text }),
+    createLink: (x = null, y = null, url = '') => createLinkNode({ x, y, url }),
+    createMedia: (x = null, y = null, url = '') => createMediaNode({ x, y, url }),
     clear: clearAllNodes,
     getState: () => ({
       nodes: [...models.values()].map(model => ({
         id: model.id,
+        type: model.type,
         note: model.note,
-        text: model.text,
+        text: model.type === 'text' ? model.text : undefined,
+        url: model.type !== 'text' ? model.url : undefined,
+        mediaType: model.type === 'media' ? model.mediaType : undefined,
         x: model.x,
         y: model.y,
         z: model.z
       })),
-      connections: connections.map(connection => ({ ...connection })),
+      connections: connections.map(connection => ({
+        ...connection,
+        from: { ...connection.from },
+        to: { ...connection.to }
+      })),
       editingNodeId,
       selectedNodeId,
       selectedConnectionId,
