@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const hero = document.querySelector('.hero--node-canvas');
+  const hero = document.querySelector('[data-workspace-interaction-root]') || document.querySelector('.hero--node-canvas');
   const stage = hero?.querySelector('[data-hero-node-stage]');
   const originalMesh = stage?.querySelector('[data-hero-node-mesh]');
   const originalNodes = stage ? [...stage.querySelectorAll('[data-hero-node]')] : [];
@@ -9,7 +9,8 @@
   if (stage.dataset.customNodesReady === 'true') return;
   stage.dataset.customNodesReady = 'true';
 
-  const interactionRoot = hero;
+  const workspaceInteraction = window.DeushimaWorkspaceInteraction || null;
+  const interactionRoot = workspaceInteraction?.root || hero;
 
   const STORAGE_KEY = 'deushima:nodes:v3';
   const PREVIOUS_STORAGE_KEY = 'deushima:nodes:v2';
@@ -377,9 +378,8 @@
   }
 
   function eventPath(event) {
-    return typeof event?.composedPath === 'function'
-      ? event.composedPath()
-      : [event?.target];
+    return workspaceInteraction?.eventPath?.(event)
+      || (typeof event?.composedPath === 'function' ? event.composedPath() : [event?.target]);
   }
 
   function pathClosest(event, selector) {
@@ -392,10 +392,9 @@
     return null;
   }
 
-  function isExcludedCanvasEvent(event) {
-    return eventPath(event).some(item => (
-      item instanceof Element && isExcludedCanvasTarget(item)
-    ));
+  function isScreenUiEvent(event) {
+    if (workspaceInteraction?.isFixedUiEvent?.(event)) return true;
+    return Boolean(pathClosest(event, '.hero-custom-node-context, input, textarea, select, [contenteditable="true"]'));
   }
 
   function canOpenCanvasMenuAt(target, clientX, clientY) {
@@ -1834,22 +1833,22 @@
     }
 
     event.preventDefault();
+    const now = performance.now();
+    const dt = Math.max(8, now - dragState.lastTime);
+    const deltaX = event.clientX - dragState.lastX;
+    const deltaY = event.clientY - dragState.lastY;
     dragState.lastX = event.clientX;
     dragState.lastY = event.clientY;
+    dragState.lastTime = now;
     const worldPoint = worldPointFromClient(event.clientX, event.clientY);
     model.x = worldPoint.x - dragState.offsetX;
     model.y = worldPoint.y - dragState.offsetY;
     renderModel(model);
     window.DeushimaHeroCamera?.setAutoPanPointer?.(event.clientX, event.clientY, true);
 
-    const now = performance.now();
     const step = window.DeushimaSFX?.config?.performance?.dragStepMs || 70;
     if (now - dragState.lastSoundAt >= step) {
-      const dt = Math.max(8, now - dragState.lastTime);
-      const speed = Math.hypot(
-        event.clientX - dragState.lastX,
-        event.clientY - dragState.lastY
-      ) / dt * 1000;
+      const speed = Math.hypot(deltaX, deltaY) / dt * 1000;
       const degree = -5 + clamp(Math.round((speed / 1650) * 4), 0, 4);
       playSfx('drag', {
         element: model.el,
@@ -1858,7 +1857,6 @@
         gainScale: .88
       });
       dragState.lastSoundAt = now;
-      dragState.lastTime = now;
     }
 
     drawConnections();
@@ -2494,6 +2492,7 @@
     buildCanvasMenu();
     playSfx('chatOpen', { element: stage, gainScale: .76 });
     placeMenu(clientX, clientY);
+    workspaceInteraction?.debug?.('menu open', null, { menuOpen: true, mode: 'canvas' });
   }
 
   function openNodeMenu(model, clientX, clientY, origin = model.el) {
@@ -2505,6 +2504,7 @@
     buildNodeMenu(model);
     playSfx('chatOpen', { element: model.el, gainScale: .72 });
     placeMenu(clientX, clientY);
+    workspaceInteraction?.debug?.('menu open', null, { menuOpen: true, mode: 'node', nodeId: model.id });
   }
 
   function closeMenu(restoreFocus = true) {
@@ -2521,6 +2521,7 @@
     menuAnchor = null;
     menuFocusOrigin = null;
 
+    workspaceInteraction?.debug?.('menu close', null, { menuOpen: false });
     if (!wasOpen) {
       menu.replaceChildren();
       return;
@@ -2574,36 +2575,42 @@
     if (performance.now() < longPressOpenedUntil) {
       event.preventDefault();
       event.stopPropagation();
+      workspaceInteraction?.debug?.('contextmenu', event, { prevented: true, menuOpen });
       return;
     }
 
-    if (pathClosest(event, '.hero-custom-node-context')) {
+    const menuTarget = pathClosest(event, '.hero-custom-node-context');
+    if (menuTarget) {
       event.preventDefault();
       event.stopPropagation();
+      workspaceInteraction?.debug?.('contextmenu', event, { prevented: true, menuOpen: true, targetRole: 'context-menu' });
       return;
     }
 
-    const customNodeEl = pathClosest(event, '[data-custom-node]');
-    if (customNodeEl) {
-      const model = models.get(customNodeEl.dataset.customNode);
-      if (!model || isModalOpen()) return;
-      event.preventDefault();
-      event.stopPropagation();
-      selectNode(model);
-      openNodeMenu(model, event.clientX, event.clientY, customNodeEl);
-      return;
-    }
-
-    if (isExcludedCanvasEvent(event)) {
+    if (isScreenUiEvent(event)) {
       closeMenu(false);
+      workspaceInteraction?.debug?.('contextmenu', event, { prevented: false, menuOpen: false, targetRole: 'screen-ui' });
       return;
     }
 
     if (isModalOpen() || !isPointInsideWorkspace(event.clientX, event.clientY)) return;
 
+    const customNodeEl = pathClosest(event, '[data-custom-node]');
     event.preventDefault();
     event.stopPropagation();
+    workspaceInteraction?.cancel?.('contextmenu');
+
+    if (customNodeEl) {
+      const model = models.get(customNodeEl.dataset.customNode);
+      if (!model) return;
+      selectNode(model);
+      openNodeMenu(model, event.clientX, event.clientY, customNodeEl);
+      workspaceInteraction?.debug?.('contextmenu', event, { prevented: true, menuOpen: true, targetRole: 'visitor-node' });
+      return;
+    }
+
     openCanvasMenu(event.clientX, event.clientY, stage);
+    workspaceInteraction?.debug?.('contextmenu', event, { prevented: true, menuOpen: true, targetRole: 'workspace' });
   }
 
   interactionRoot.addEventListener('contextmenu', handleWorkspaceContextMenu, { capture: true });
@@ -2631,39 +2638,9 @@
     };
   }
 
-  hero.addEventListener('pointerdown', event => {
+  interactionRoot.addEventListener('pointerdown', event => {
     if (event.pointerType !== 'touch') return;
     startLongPress(event.target, event.clientX, event.clientY, event.pointerId, 'pointer');
-  }, { passive: true });
-
-  hero.addEventListener('touchstart', event => {
-    if (event.touches.length > 1) {
-      clearLongPress();
-      return;
-    }
-    if (longPressState || event.touches.length !== 1) return;
-    const touch = event.touches[0];
-    startLongPress(event.target, touch.clientX, touch.clientY, touch.identifier, 'touch');
-  }, { passive: true });
-
-  hero.addEventListener('touchmove', event => {
-    if (!longPressState || longPressState.source !== 'touch' || event.touches.length !== 1) return;
-    const touch = event.touches[0];
-    const distance = Math.hypot(touch.clientX - longPressState.startX, touch.clientY - longPressState.startY);
-    if (distance > LONG_PRESS_TOLERANCE) {
-      clearLongPress();
-      return;
-    }
-    longPressState.clientX = touch.clientX;
-    longPressState.clientY = touch.clientY;
-  }, { passive: true });
-
-  hero.addEventListener('touchend', () => {
-    if (longPressState?.source === 'touch') clearLongPress();
-  }, { passive: true });
-
-  hero.addEventListener('touchcancel', () => {
-    if (longPressState?.source === 'touch') clearLongPress();
   }, { passive: true });
 
   function moveLongPress(event) {
@@ -2702,6 +2679,47 @@
     endConnection(event, { commit: false });
   }, { capture: true });
 
+  function cancelTransientInteraction({ reason = 'cancel', pointerId = null } = {}) {
+    if (dragState && (pointerId == null || dragState.pointerId === pointerId)) {
+      const state = dragState;
+      const model = models.get(state.id);
+      dragState = null;
+      if (model?.el) {
+        model.el.classList.remove('is-dragging');
+        try {
+          if (model.el.hasPointerCapture?.(state.pointerId)) model.el.releasePointerCapture(state.pointerId);
+        } catch {}
+        if (state.moved) {
+          renderModel(model);
+          saveState();
+          drawConnections();
+        }
+      }
+      window.DeushimaHeroCamera?.clearAutoPan?.();
+    }
+
+    if (connectionState && (pointerId == null || connectionState.pointerId === pointerId)) {
+      const state = connectionState;
+      connectionState = null;
+      try {
+        if (state.sourcePort?.hasPointerCapture?.(state.pointerId)) state.sourcePort.releasePointerCapture(state.pointerId);
+      } catch {}
+      state.sourcePort?.classList.remove('is-active');
+      stage.classList.remove('is-editing');
+      clearCompatiblePorts();
+      previewPath.setAttribute('d', '');
+      drawConnections();
+    }
+
+    clearLongPress();
+
+    if (['window-blur', 'visibilitychange', 'blocked-ui', 'escape', 'pointercancel', 'lostpointercapture', 'contextmenu'].includes(reason)) {
+      closeMenu(false);
+    }
+  }
+
+  workspaceInteraction?.registerCancelHandler?.(cancelTransientInteraction);
+
   window.addEventListener('pointermove', event => {
     moveNodeDrag(event);
     moveConnection(event);
@@ -2724,8 +2742,9 @@
   });
 
   document.addEventListener('pointerdown', event => {
-    // Right-click is handled only by the workspace contextmenu listener.
-    // Closing here can change the hit-test target before contextmenu fires.
+    // Right-click is owned exclusively by the workspace contextmenu handler.
+    // Closing here changes the hit-test target between pointerdown/contextmenu
+    // and produces different native-menu behaviour across browser engines.
     if (menuOpen && event.button !== 2 && !menu.contains(event.target)) {
       closeMenu(false);
     }
@@ -2749,7 +2768,7 @@
   }, { capture: true, passive: true });
 
   document.addEventListener('keydown', event => {
-    if (menu.classList.contains('is-open')) return;
+    if (menuOpen) return;
 
     if (
       (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) &&
@@ -2820,7 +2839,7 @@
 
     if (connections.length) drawConnections();
 
-    if (menuMode === 'canvas' && menu.classList.contains('is-open')) {
+    if (menuMode === 'canvas' && menuOpen) {
       buildCanvasMenu();
     }
   });
@@ -2830,7 +2849,7 @@
   });
 
   stage.addEventListener('deushima:hero-layout-change', () => {
-    if (menuMode === 'canvas' && menu.classList.contains('is-open')) buildCanvasMenu();
+    if (menuMode === 'canvas' && menuOpen) buildCanvasMenu();
     drawConnections();
     scheduleConnectionLoop();
   });
@@ -2886,7 +2905,7 @@
       editingNodeId,
       selectedNodeId,
       selectedConnectionId,
-      menuOpen: menu.classList.contains('is-open')
+      menuOpen
     })
   });
 

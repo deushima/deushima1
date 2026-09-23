@@ -549,6 +549,33 @@
     queueDraw();
   }
 
+  function cancelTransientInteraction({ pointerId = null } = {}) {
+    if (dragState && (pointerId == null || dragState.pointerId === pointerId)) {
+      const state = dragState;
+      dragState = null;
+      state.node.classList.remove('is-dragging');
+      try {
+        if (state.node.hasPointerCapture?.(state.pointerId)) state.node.releasePointerCapture(state.pointerId);
+      } catch {}
+      if (state.moved) saveCanvas();
+      window.DeushimaHeroCamera?.clearAutoPan?.();
+    }
+
+    if (connectionState && (pointerId == null || connectionState.pointerId === pointerId)) {
+      const state = connectionState;
+      connectionState = null;
+      try {
+        if (state.activePort?.hasPointerCapture?.(state.pointerId)) state.activePort.releasePointerCapture(state.pointerId);
+      } catch {}
+      state.activePort?.classList.remove('is-active');
+      stage.classList.remove('is-editing');
+      setConnectTarget(null);
+      queueDraw();
+    }
+  }
+
+  window.DeushimaWorkspaceInteraction?.registerCancelHandler?.(cancelTransientInteraction);
+
   function animate(now) {
     const elapsed = (now - startTime) / 1000;
     pointerX += (targetPointerX - pointerX) * 0.045;

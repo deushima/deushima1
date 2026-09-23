@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const hero = document.querySelector('.hero--node-canvas');
+  const hero = document.querySelector('[data-workspace-interaction-root]') || document.querySelector('.hero--node-canvas');
   const stage = hero?.querySelector('[data-hero-node-stage]');
   if (!hero || !stage) return;
   if (hero.dataset.cameraReady === 'true') return;
@@ -20,6 +20,21 @@
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const coarsePointer = window.matchMedia('(pointer: coarse)');
+  const interactionRoot = hero;
+  const interactionDebugEnabled = new URLSearchParams(window.location.search).get('interactiondebug') === '1';
+  const cancelHandlers = new Set();
+  const fixedUiSelector = [
+    '.nav',
+    '.hero__copy',
+    '.floating-cta',
+    '.deu-chat-launcher',
+    '.hero-custom-node-context',
+    '.content-panel',
+    '.design-viewer',
+    '[data-audio-control]'
+  ].join(',');
+
+  interactionRoot.dataset.interactionRoot = 'workspace';
 
   const cameraLayer = document.createElement('div');
   cameraLayer.className = 'hero-node-camera';
@@ -56,7 +71,8 @@
   let lastPointer = {
     x: window.innerWidth * 0.5,
     y: window.innerHeight * 0.5,
-    target: hero
+    target: hero,
+    inside: false
   };
   let autoPan = {
     active: false,
@@ -95,17 +111,67 @@
     return Boolean(targetEl?.closest?.('input, textarea, select, [contenteditable="true"]'));
   }
 
+  function eventPath(event) {
+    if (typeof event?.composedPath === 'function') return event.composedPath();
+    const path = [];
+    let node = event?.target || null;
+    while (node) {
+      path.push(node);
+      node = node.parentNode || node.host || null;
+    }
+    path.push(window);
+    return path;
+  }
+
+  function pathMatches(event, selector) {
+    return eventPath(event).some(item => item instanceof Element && item.matches(selector));
+  }
+
+  function describeTarget(target) {
+    if (!(target instanceof Element)) return String(target?.nodeName || target || 'unknown');
+    const id = target.id ? `#${target.id}` : '';
+    const classes = target.classList?.length ? `.${[...target.classList].join('.')}` : '';
+    return `${target.tagName.toLowerCase()}${id}${classes}`;
+  }
+
+  function debugInteraction(type, event = null, extra = {}) {
+    if (!interactionDebugEnabled) return;
+    const path = event
+      ? eventPath(event).slice(0, 10).map(describeTarget)
+      : [];
+    console.info(`[interaction] ${type}`, {
+      button: event?.button,
+      pointerId: event?.pointerId,
+      target: event ? describeTarget(event.target) : null,
+      path,
+      prevented: Boolean(event?.defaultPrevented),
+      isPanning: Boolean(panState),
+      camera: { cx: current.cx, cy: current.cy, scale: current.scale },
+      ...extra
+    });
+  }
+
+  function registerCancelHandler(handler) {
+    if (typeof handler !== 'function') return () => {};
+    cancelHandlers.add(handler);
+    return () => cancelHandlers.delete(handler);
+  }
+
+  function notifyCancelHandlers(reason, pointerId = null) {
+    cancelHandlers.forEach(handler => {
+      try { handler({ reason, pointerId }); } catch (error) {
+        if (interactionDebugEnabled) console.warn('[interaction] cancel handler failed', error);
+      }
+    });
+  }
+
   function isFixedUiTarget(targetEl) {
     if (!(targetEl instanceof Element)) return false;
-    return Boolean(targetEl.closest([
-      '.nav',
-      '.hero__copy',
-      '.deu-chat-launcher',
-      '.hero-custom-node-context',
-      '.content-panel',
-      '.design-viewer',
-      '[data-audio-control]'
-    ].join(',')));
+    return Boolean(targetEl.closest(fixedUiSelector));
+  }
+
+  function isFixedUiEvent(event) {
+    return pathMatches(event, fixedUiSelector);
   }
 
   function isInteractiveCanvasTarget(targetEl) {
@@ -447,7 +513,7 @@
   function startPointerPan(event, mode) {
     if (isBlocked()) return false;
     if (!pointInsideHero(event.clientX, event.clientY)) return false;
-    if (isFixedUiTarget(event.target)) return false;
+    if (isFixedUiEvent(event)) return false;
 
     event.preventDefault();
     event.stopPropagation();
@@ -458,8 +524,9 @@
       lastX: event.clientX,
       lastY: event.clientY
     };
-    hero.classList.add('is-camera-panning');
-    try { hero.setPointerCapture?.(event.pointerId); } catch {}
+    interactionRoot.classList.add('is-camera-panning');
+    try { interactionRoot.setPointerCapture?.(event.pointerId); } catch {}
+    debugInteraction('pointerdown', event, { mode });
     return true;
   }
 
@@ -473,21 +540,57 @@
     panByScreen(dx, dy, { immediate: true, elastic: true });
   }
 
-  function endPointerPan(event) {
-    if (!panState || event.pointerId !== panState.pointerId) return;
-    try { hero.releasePointerCapture?.(event.pointerId); } catch {}
+  function endPointerPan(event, reason = 'pointerup', releaseCapture = true) {
+    if (!panState || (event?.pointerId != null && event.pointerId !== panState.pointerId)) return false;
+    const pointerId = panState.pointerId;
     panState = null;
-    hero.classList.remove('is-camera-panning');
+    interactionRoot.classList.remove('is-camera-panning');
+    if (releaseCapture) {
+      try {
+        if (interactionRoot.hasPointerCapture?.(pointerId)) interactionRoot.releasePointerCapture(pointerId);
+      } catch {}
+    }
     settleBounds();
+    debugInteraction(reason, event, { pointerId });
+    return true;
   }
 
-  document.addEventListener('pointermove', event => {
+  function cancelInteraction(reason, pointerId = null) {
+    if (panState && (pointerId == null || panState.pointerId === pointerId)) {
+      endPointerPan(null, reason, true);
+    }
+    if (reason !== 'pointerup') {
+      spaceDown = false;
+      touchState = null;
+      autoPan.active = false;
+      interactionRoot.classList.remove('is-camera-space', 'is-camera-panning');
+    }
+    notifyCancelHandlers(reason, pointerId);
+    debugInteraction(`cancel:${reason}`, null, { pointerId });
+  }
+
+  interactionRoot.addEventListener('pointerenter', () => {
+    lastPointer.inside = true;
+  }, { passive: true });
+
+  interactionRoot.addEventListener('pointerleave', () => {
+    if (!panState) lastPointer.inside = false;
+  }, { passive: true });
+
+  interactionRoot.addEventListener('pointermove', event => {
+    lastPointer.inside = true;
     lastPointer.x = event.clientX;
     lastPointer.y = event.clientY;
     lastPointer.target = event.target;
-  }, { passive: true, capture: true });
+    movePointerPan(event);
+  }, { passive: false, capture: true });
 
-  hero.addEventListener('pointerdown', event => {
+  interactionRoot.addEventListener('pointerdown', event => {
+    lastPointer.inside = true;
+    lastPointer.x = event.clientX;
+    lastPointer.y = event.clientY;
+    lastPointer.target = event.target;
+    debugInteraction('pointerdown', event);
     if (event.button === 1) {
       startPointerPan(event, 'middle');
       return;
@@ -497,20 +600,42 @@
     }
   }, { capture: true });
 
-  window.addEventListener('pointermove', movePointerPan, { passive: false });
-  window.addEventListener('pointerup', endPointerPan);
-  window.addEventListener('pointercancel', endPointerPan);
-
-  hero.addEventListener('auxclick', event => {
-    if (event.button !== 1) return;
-    if (!pointInsideHero(event.clientX, event.clientY)) return;
-    if (isFixedUiTarget(event.target)) return;
-    event.preventDefault();
-    event.stopPropagation();
+  interactionRoot.addEventListener('pointerup', event => {
+    endPointerPan(event, 'pointerup', true);
+    debugInteraction('pointerup', event);
+    window.setTimeout(() => notifyCancelHandlers('pointerup', event.pointerId), 0);
   }, { capture: true });
 
-  hero.addEventListener('wheel', event => {
-    if (isBlocked() || isFixedUiTarget(event.target)) return;
+  interactionRoot.addEventListener('pointercancel', event => {
+    endPointerPan(event, 'pointercancel', false);
+    debugInteraction('pointercancel', event);
+    window.setTimeout(() => cancelInteraction('pointercancel', event.pointerId), 0);
+  }, { capture: true });
+
+  interactionRoot.addEventListener('lostpointercapture', event => {
+    debugInteraction('lostpointercapture', event);
+    if (event.target === interactionRoot || panState?.pointerId === event.pointerId) {
+      if (panState?.pointerId === event.pointerId) endPointerPan(event, 'lostpointercapture', false);
+      cancelInteraction('lostpointercapture', event.pointerId);
+      return;
+    }
+
+    // Child nodes and ports legitimately release their own capture during pointerup.
+    // Defer cleanup so their normal pointerup finalizer can commit drag/connection first.
+    window.setTimeout(() => notifyCancelHandlers('lostpointercapture', event.pointerId), 0);
+  }, { capture: true });
+
+  interactionRoot.addEventListener('auxclick', event => {
+    if (event.button !== 1) return;
+    if (!pointInsideHero(event.clientX, event.clientY)) return;
+    if (isFixedUiEvent(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    debugInteraction('auxclick', event);
+  }, { capture: true });
+
+  interactionRoot.addEventListener('wheel', event => {
+    if (isBlocked() || isFixedUiEvent(event)) return;
     if (!pointInsideHero(event.clientX, event.clientY)) return;
 
     event.preventDefault();
@@ -519,6 +644,7 @@
     const factor = Math.exp(-event.deltaY * sensitivity);
     const baseScale = target.scale;
     zoomAt(event.clientX, event.clientY, baseScale * factor, { immediate: false });
+    debugInteraction('wheel', event, { ctrlKey: event.ctrlKey, nextScale: target.scale });
   }, { passive: false, capture: true });
 
   function touchPoint(touch) {
@@ -536,7 +662,7 @@
     };
   }
 
-  hero.addEventListener('touchstart', event => {
+  interactionRoot.addEventListener('touchstart', event => {
     if (isBlocked() || isFixedUiTarget(event.target)) return;
 
     if (event.touches.length === 2) {
@@ -567,7 +693,7 @@
     };
   }, { passive: false, capture: true });
 
-  hero.addEventListener('touchmove', event => {
+  interactionRoot.addEventListener('touchmove', event => {
     if (!touchState || isBlocked()) return;
 
     if (event.touches.length === 2) {
@@ -622,22 +748,25 @@
     if (wasActive) settleBounds();
   }
 
-  hero.addEventListener('touchend', endTouch, { passive: true, capture: true });
-  hero.addEventListener('touchcancel', endTouch, { passive: true, capture: true });
+  interactionRoot.addEventListener('touchend', endTouch, { passive: true, capture: true });
+  interactionRoot.addEventListener('touchcancel', endTouch, { passive: true, capture: true });
 
   document.addEventListener('keydown', event => {
     if (event.code === 'Space' && !event.repeat && !isTextInput(event.target)) {
       const canvasFocused = document.activeElement === stage;
       const pointerInCanvas = (
-        pointInsideHero(lastPointer.x, lastPointer.y)
+        lastPointer.inside
+        && pointInsideHero(lastPointer.x, lastPointer.y)
         && !isFixedUiTarget(lastPointer.target)
       );
       if (!isBlocked() && (canvasFocused || pointerInCanvas)) {
         event.preventDefault();
         spaceDown = true;
-        hero.classList.add('is-camera-space');
+        interactionRoot.classList.add('is-camera-space');
       }
     }
+
+    if (event.key === 'Escape' && !isTextInput(event.target)) cancelInteraction('escape');
 
     if (document.activeElement !== stage || isBlocked()) return;
 
@@ -670,14 +799,13 @@
   document.addEventListener('keyup', event => {
     if (event.code !== 'Space') return;
     spaceDown = false;
-    hero.classList.remove('is-camera-space');
+    interactionRoot.classList.remove('is-camera-space');
+    if (panState?.mode === 'space') endPointerPan(null, 'space-keyup', true);
   });
 
   window.addEventListener('blur', () => {
-    spaceDown = false;
-    panState = null;
-    touchState = null;
-    hero.classList.remove('is-camera-space', 'is-camera-panning');
+    lastPointer.inside = false;
+    cancelInteraction('window-blur');
   });
 
   function refreshGeometry({ recenterView = true } = {}) {
@@ -704,7 +832,7 @@
   }
 
   const resizeObserver = new ResizeObserver(() => {
-    refreshGeometry({ recenterView: true });
+    refreshGeometry({ recenterView: false });
   });
   resizeObserver.observe(hero);
 
@@ -712,10 +840,17 @@
     if (document.hidden) {
       if (raf) cancelAnimationFrame(raf);
       raf = 0;
+      lastPointer.inside = false;
+      cancelInteraction('visibilitychange');
       return;
     }
     applyTransform();
   });
+
+  const blockedUiObserver = new MutationObserver(() => {
+    if (isBlocked()) cancelInteraction('blocked-ui');
+  });
+  blockedUiObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
   function getState() {
     return {
@@ -733,6 +868,35 @@
       autoPanning: autoPan.active,
       isDefault: isDefaultView()
     };
+  }
+
+  window.DeushimaWorkspaceInteraction = Object.freeze({
+    root: interactionRoot,
+    debugEnabled: interactionDebugEnabled,
+    eventPath,
+    pathMatches,
+    isFixedUiEvent,
+    isFixedUiTarget,
+    pointInside: pointInsideHero,
+    debug: debugInteraction,
+    registerCancelHandler,
+    cancel: cancelInteraction,
+    getState: () => ({
+      isPanning: Boolean(panState),
+      pointerId: panState?.pointerId ?? null,
+      mode: panState?.mode ?? null,
+      spaceDown,
+      blocked: isBlocked()
+    })
+  });
+
+  if (interactionDebugEnabled) {
+    console.info('[interaction] init', {
+      userAgent: navigator.userAgent,
+      root: describeTarget(interactionRoot),
+      rootFound: Boolean(interactionRoot),
+      state: window.DeushimaWorkspaceInteraction.getState()
+    });
   }
 
   window.DeushimaHeroCamera = Object.freeze({
