@@ -33,6 +33,8 @@
   const NODE_TYPES = Object.freeze([
     Object.freeze({ id: 'text', label: 'Text', icon: 'T' }),
     Object.freeze({ id: 'media', label: 'Link image', icon: '▧' }),
+    Object.freeze({ id: 'instagram', label: 'Instagram', icon: '◎' }),
+    Object.freeze({ id: 'youtube', label: 'YouTube', icon: '▶' }),
     Object.freeze({ id: 'link', label: 'Link', icon: '↗' })
   ]);
 
@@ -230,6 +232,74 @@
       image.onerror = () => finish(null);
       image.src = url;
     });
+  }
+
+  function parseInstagramUrl(value) {
+    const normalized = normalizeHttpUrl(value);
+    if (!normalized) return null;
+    try {
+      const url = new URL(normalized);
+      const host = url.hostname.toLowerCase().replace(/^www\./, '');
+      if (host !== 'instagram.com' && !host.endsWith('.instagram.com')) return null;
+      const parts = url.pathname.split('/').filter(Boolean);
+      if (parts.length < 2) return null;
+      const rawKind = parts[0].toLowerCase();
+      if (!['p', 'reel', 'reels'].includes(rawKind)) return null;
+      const code = String(parts[1] || '').replace(/[^A-Za-z0-9_-]/g, '');
+      if (!code) return null;
+      const kind = rawKind === 'p' ? 'p' : 'reel';
+      const canonicalUrl = `https://www.instagram.com/${kind}/${code}/`;
+      return {
+        url: canonicalUrl,
+        embedUrl: `${canonicalUrl}embed/`,
+        variant: kind,
+        aspectRatio: kind === 'reel' ? 9 / 16 : 4 / 5
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function parseYouTubeUrl(value) {
+    const normalized = normalizeHttpUrl(value);
+    if (!normalized) return null;
+    try {
+      const url = new URL(normalized);
+      const host = url.hostname.toLowerCase().replace(/^www\./, '');
+      let id = '';
+      let variant = 'video';
+
+      if (host === 'youtu.be') {
+        id = url.pathname.split('/').filter(Boolean)[0] || '';
+      } else if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+        const parts = url.pathname.split('/').filter(Boolean);
+        if (parts[0] === 'watch') {
+          id = url.searchParams.get('v') || '';
+        } else if (['shorts', 'embed', 'live'].includes(parts[0])) {
+          id = parts[1] || '';
+          if (parts[0] === 'shorts') variant = 'short';
+        }
+      }
+
+      id = String(id).trim();
+      if (!/^[A-Za-z0-9_-]{6,20}$/.test(id)) return null;
+      return {
+        url: variant === 'short'
+          ? `https://www.youtube.com/shorts/${id}`
+          : `https://www.youtube.com/watch?v=${id}`,
+        embedUrl: `https://www.youtube-nocookie.com/embed/${id}?rel=0&modestbranding=1`,
+        variant,
+        aspectRatio: variant === 'short' ? 9 / 16 : 16 / 9
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function parseEmbedUrl(type, value) {
+    if (type === 'instagram') return parseInstagramUrl(value);
+    if (type === 'youtube') return parseYouTubeUrl(value);
+    return null;
   }
 
   function probeVideoUrl(url, timeoutMs = 10000) {
@@ -996,7 +1066,15 @@
   }
 
   function nodeTypeLabel(model) {
-    const prefix = model.type === 'media' ? 'MEDIA' : model.type === 'link' ? 'LINK' : 'NOTE';
+    const prefix = model.type === 'media'
+      ? 'MEDIA'
+      : model.type === 'link'
+        ? 'LINK'
+        : model.type === 'instagram'
+          ? 'INSTAGRAM'
+          : model.type === 'youtube'
+            ? 'YOUTUBE'
+            : 'NOTE';
     return `${prefix} ${String(model.note).padStart(2, '0')}`;
   }
 
@@ -1142,6 +1220,83 @@
     const open = createSafeAnchor(model.url, 'Open link ↗', 'hero-custom-node__open-link');
     body.append(host, path, open);
     el.insertBefore(body, model.portIn);
+    return finishStaticNodeCreation(model, { animate, persist, sound, select });
+  }
+
+  function createEmbedNode({
+    id = uid('embed'), note = null, type = '', x = null, y = null, url = '', z = ++zCounter,
+    animate = true, persist = true, sound = true, select = true
+  } = {}) {
+    if (!['instagram', 'youtube'].includes(type)) return null;
+    if (models.size >= MAX_NODES || models.has(id)) return null;
+    const parsed = parseEmbedUrl(type, url);
+    if (!parsed) return null;
+    const heroRect = hero.getBoundingClientRect();
+    const fallback = worldPointFromClient(heroRect.left + heroRect.width * .5, heroRect.top + heroRect.height * .5);
+    const model = {
+      id,
+      note: clamp(Math.trunc(Number(note)) || nextSerialForType(type), 1, 999),
+      type,
+      x: Number.isFinite(Number(x)) ? Number(x) : fallback.x,
+      y: Number.isFinite(Number(y)) ? Number(y) : fallback.y,
+      url: parsed.url,
+      embedUrl: parsed.embedUrl,
+      embedVariant: parsed.variant,
+      aspectRatio: parsed.aspectRatio,
+      z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
+      el: null,
+      portIn: null,
+      portOut: null,
+      embedFrame: null,
+      embedElement: null,
+      embedDomain: null,
+      embedOpen: null
+    };
+    zCounter = Math.max(zCounter, model.z);
+    models.set(id, model);
+
+    const { el } = createStaticNodeShell(model);
+    const frame = document.createElement('div');
+    frame.className = 'hero-custom-node__embed-frame';
+    frame.style.setProperty('--embed-aspect', model.aspectRatio.toFixed(5));
+    const iframe = document.createElement('iframe');
+    iframe.className = 'hero-custom-node__embed';
+    iframe.src = model.embedUrl;
+    iframe.title = type === 'instagram' ? 'Instagram embed' : 'YouTube embed';
+    iframe.loading = 'lazy';
+    iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+    iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.allowFullscreen = true;
+    frame.appendChild(iframe);
+
+    const footer = document.createElement('div');
+    footer.className = 'hero-custom-node__media-footer';
+    const domain = document.createElement('span');
+    domain.className = 'hero-custom-node__domain';
+    domain.textContent = type === 'instagram' ? 'instagram.com' : 'youtube.com';
+    const actions = document.createElement('span');
+    actions.className = 'hero-custom-node__media-actions';
+    const edit = document.createElement('button');
+    edit.className = 'hero-custom-node__edit-url';
+    edit.type = 'button';
+    edit.textContent = 'Edit URL';
+    edit.addEventListener('pointerdown', event => event.stopPropagation());
+    edit.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      openUrlForm(type, { anchor: { worldX: model.x, worldY: model.y }, model });
+    });
+    const open = createSafeAnchor(model.url, '↗', 'hero-custom-node__media-open');
+    open.setAttribute('aria-label', type === 'instagram' ? 'Open on Instagram' : 'Open on YouTube');
+    actions.append(edit, open);
+    footer.append(domain, actions);
+
+    model.embedFrame = frame;
+    model.embedElement = iframe;
+    model.embedDomain = domain;
+    model.embedOpen = open;
+    el.insertBefore(frame, model.portIn);
+    el.insertBefore(footer, model.portIn);
     return finishStaticNodeCreation(model, { animate, persist, sound, select });
   }
 
@@ -1410,6 +1565,17 @@
         width: source.width,
         height: source.height,
         aspectRatio: source.aspectRatio,
+        animate: true,
+        persist: true,
+        sound: true
+      });
+    }
+    if (source.type === 'instagram' || source.type === 'youtube') {
+      return createEmbedNode({
+        type: source.type,
+        x: source.x + 28,
+        y: source.y + 24,
+        url: source.url,
         animate: true,
         persist: true,
         sound: true
@@ -1994,7 +2160,7 @@
     const bounds = cameraApi()?.getWorldBounds?.();
 
     for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
-      if (!rawNode || !['text', 'link', 'media'].includes(rawNode.type)) continue;
+      if (!rawNode || !['text', 'link', 'media', 'instagram', 'youtube'].includes(rawNode.type)) continue;
       const id = typeof rawNode.id === 'string' && rawNode.id.length <= 90 ? rawNode.id : null;
       if (!id || ids.has(id)) continue;
       let x = Number(rawNode.x);
@@ -2022,6 +2188,12 @@
       const url = normalizeHttpUrl(rawNode.url);
       if (!url) continue;
       if (rawNode.type === 'link') {
+        nodes.push({ ...base, url });
+        continue;
+      }
+
+      if (rawNode.type === 'instagram' || rawNode.type === 'youtube') {
+        if (!parseEmbedUrl(rawNode.type, url)) continue;
         nodes.push({ ...base, url });
         continue;
       }
@@ -2167,7 +2339,9 @@
           z: model.z
         };
         if (model.type === 'text') return { ...base, text: safeText(model.text) };
-        if (model.type === 'link') return { ...base, url: model.url };
+        if (model.type === 'link' || model.type === 'instagram' || model.type === 'youtube') {
+          return { ...base, url: model.url };
+        }
         return {
           ...base,
           url: model.url,
@@ -2207,6 +2381,10 @@
       }
       if (data.type === 'media') {
         createMediaNode({ ...data, animate: false, persist: false, sound: false, select: false });
+        return;
+      }
+      if (data.type === 'instagram' || data.type === 'youtube') {
+        createEmbedNode({ ...data, animate: false, persist: false, sound: false, select: false });
         return;
       }
       createTextNode({ ...data, animate: false, focusEditor: false, persist: false, sound: false, select: false });
@@ -2298,7 +2476,13 @@
     menu.replaceChildren();
     const heading = document.createElement('div');
     heading.className = 'hero-custom-node-context__heading';
-    heading.textContent = kind === 'media' ? 'Link image' : 'Link';
+    heading.textContent = kind === 'media'
+      ? 'Link image'
+      : kind === 'instagram'
+        ? 'Instagram'
+        : kind === 'youtube'
+          ? 'YouTube'
+          : 'Link';
     const form = document.createElement('form');
     form.className = 'hero-custom-node-context__url-form';
     const input = document.createElement('input');
@@ -2309,7 +2493,16 @@
     input.spellcheck = false;
     input.placeholder = 'https://…';
     input.value = model?.url || '';
-    input.setAttribute('aria-label', kind === 'media' ? 'Direct media URL' : 'Link URL');
+    input.setAttribute(
+      'aria-label',
+      kind === 'media'
+        ? 'Direct media URL'
+        : kind === 'instagram'
+          ? 'Instagram URL'
+          : kind === 'youtube'
+            ? 'YouTube URL'
+            : 'Link URL'
+    );
     const message = document.createElement('div');
     message.className = 'hero-custom-node-context__url-message';
     message.setAttribute('aria-live', 'polite');
@@ -2456,6 +2649,50 @@
         return;
       }
 
+      if (kind === 'instagram' || kind === 'youtube') {
+        const parsed = parseEmbedUrl(kind, normalized);
+        if (!parsed) {
+          message.textContent = kind === 'instagram'
+            ? 'Use a valid Instagram post or reel URL.'
+            : 'Use a valid YouTube video, Shorts or youtu.be URL.';
+          input.focus({ preventScroll: true });
+          return;
+        }
+
+        if (model?.type === kind) {
+          model.url = parsed.url;
+          model.embedUrl = parsed.embedUrl;
+          model.embedVariant = parsed.variant;
+          model.aspectRatio = parsed.aspectRatio;
+          model.embedFrame?.style.setProperty('--embed-aspect', model.aspectRatio.toFixed(5));
+          if (model.embedElement) model.embedElement.src = model.embedUrl;
+          if (model.embedDomain) model.embedDomain.textContent = kind === 'instagram' ? 'instagram.com' : 'youtube.com';
+          if (model.embedOpen) model.embedOpen.href = model.url;
+          saveState();
+          closeMenu(false);
+          return;
+        }
+
+        const created = createEmbedNode({
+          type: kind,
+          x: anchorSnapshot.worldX,
+          y: anchorSnapshot.worldY,
+          url: parsed.url,
+          animate: true,
+          persist: true,
+          sound: true,
+          select: true
+        });
+        if (!created) {
+          message.textContent = 'Unable to create this node.';
+          return;
+        }
+        closeMenu(false);
+        markHintUsed();
+        announce('Node created');
+        return;
+      }
+
       const created = createLinkNode({ x: anchorSnapshot.worldX, y: anchorSnapshot.worldY, url: normalized, animate: true, persist: true, sound: true, select: true });
       if (!created) {
         message.textContent = 'Unable to create this node.';
@@ -2491,7 +2728,7 @@
         action: () => {
           if (!menuAnchor) return;
           const anchor = { ...menuAnchor };
-          if (type.id === 'media' || type.id === 'link') {
+          if (type.id !== 'text') {
             openUrlForm(type.id, { anchor });
             return;
           }
@@ -2872,12 +3109,11 @@
 
     clearLongPress();
 
-    const preserveMediaUrlForm = (
+    const preserveUrlForm = (
       menuMode === 'url-form'
-      && menuUrlKind === 'media'
       && (reason === 'window-blur' || reason === 'visibilitychange')
     );
-    if (!preserveMediaUrlForm && ['window-blur', 'visibilitychange', 'blocked-ui', 'escape', 'pointercancel', 'lostpointercapture', 'contextmenu'].includes(reason)) {
+    if (!preserveUrlForm && ['window-blur', 'visibilitychange', 'blocked-ui', 'escape', 'pointercancel', 'lostpointercapture', 'contextmenu'].includes(reason)) {
       closeMenu(false);
     }
   }
@@ -2986,7 +3222,7 @@
     if (document.hidden) {
       if (connectionRaf) cancelAnimationFrame(connectionRaf);
       connectionRaf = 0;
-      if (!(menuMode === 'url-form' && menuUrlKind === 'media')) closeMenu(false);
+      if (menuMode !== 'url-form') closeMenu(false);
       return;
     }
     drawConnections();
@@ -3051,6 +3287,8 @@
     createText: (x = null, y = null, text = '') => createTextNode({ x, y, text }),
     createLink: (x = null, y = null, url = '') => createLinkNode({ x, y, url }),
     createMedia: (x = null, y = null, url = '') => createMediaNode({ x, y, url }),
+    createInstagram: (x = null, y = null, url = '') => createEmbedNode({ type: 'instagram', x, y, url }),
+    createYouTube: (x = null, y = null, url = '') => createEmbedNode({ type: 'youtube', x, y, url }),
     clear: clearAllNodes,
     getState: () => ({
       nodes: [...models.values()].map(model => ({
