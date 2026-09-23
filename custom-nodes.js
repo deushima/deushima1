@@ -17,9 +17,17 @@
   const LEGACY_STORAGE_KEY = 'deushima:nodes:v1';
   const HINT_KEY = 'deushima:nodes:menu-hint:v1';
   const STORAGE_VERSION = 3;
+  const WORKSPACE_FORMAT = 'deushima-workspace';
+  const WORKSPACE_VERSION = 1;
+  const WORKSPACE_CODE_PREFIX = 'DEUSHIMA1:';
   const MAX_NODES = 20;
   const MAX_CONNECTIONS = 60;
   const MAX_TEXT_LENGTH = 280;
+  const MAX_URL_LENGTH = 4096;
+  const MAX_ID_LENGTH = 90;
+  const MAX_CONNECTION_ID_LENGTH = 100;
+  const MAX_WORKSPACE_CODE_LENGTH = 131072;
+  const MAX_WORLD_COORDINATE = 10000000;
   const COUNTER_THRESHOLD = 220;
   const LONG_PRESS_MS = 500;
   const LONG_PRESS_TOLERANCE = 8;
@@ -71,6 +79,8 @@
   let typingVariant = 0;
   let lastTypingAt = 0;
   let resizeSaveTimer = 0;
+  let cameraSaveTimer = 0;
+  let workspaceMutationDepth = 0;
 
   const mediaVisibilityObserver = typeof IntersectionObserver === 'function'
     ? new IntersectionObserver(entries => {
@@ -176,7 +186,9 @@
 
   function normalizeHttpUrl(value) {
     try {
-      const url = new URL(String(value || '').trim());
+      const raw = String(value || '').trim();
+      if (!raw || raw.length > MAX_URL_LENGTH) return null;
+      const url = new URL(raw);
       if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
       return url.href;
     } catch {
@@ -542,6 +554,7 @@
 
   function clampModel(model) {
     if (!model?.el) return false;
+    if (model.preserveWorldPosition) return false;
     const bounds = nodeBoundsFor(model);
     const oldX = model.x;
     const oldY = model.y;
@@ -1009,7 +1022,8 @@
     focusEditor = true,
     persist = true,
     sound = true,
-    select = true
+    select = true,
+    preserveWorldPosition = false
   } = {}) {
     if (models.size >= MAX_NODES) return null;
     if (models.has(id)) return null;
@@ -1030,6 +1044,7 @@
       y: worldY,
       text: safeText(text),
       z: clamp(Math.trunc(z) || 1, 1, 9999),
+      preserveWorldPosition: Boolean(preserveWorldPosition),
       editing: false,
       logicalCaretOffset: null,
       el: null,
@@ -1187,7 +1202,7 @@
 
   function createLinkNode({
     id = uid('link'), note = null, x = null, y = null, url = '', z = ++zCounter,
-    animate = true, persist = true, sound = true, select = true
+    animate = true, persist = true, sound = true, select = true, preserveWorldPosition = false
   } = {}) {
     if (models.size >= MAX_NODES || models.has(id)) return null;
     const normalizedUrl = normalizeHttpUrl(url);
@@ -1202,6 +1217,7 @@
       y: Number.isFinite(Number(y)) ? Number(y) : fallback.y,
       url: normalizedUrl,
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
+      preserveWorldPosition: Boolean(preserveWorldPosition),
       el: null,
       portIn: null,
       portOut: null
@@ -1428,7 +1444,7 @@
   function createMediaNode({
     id = uid('media'), note = null, x = null, y = null, url = '', mediaType = 'unknown',
     width = 300, height = null, aspectRatio = 1.35, z = ++zCounter,
-    animate = true, persist = true, sound = true, select = true
+    animate = true, persist = true, sound = true, select = true, preserveWorldPosition = false
   } = {}) {
     if (models.size >= MAX_NODES || models.has(id)) return null;
     const normalizedUrl = normalizeHttpUrl(url);
@@ -1447,6 +1463,7 @@
       height: Number.isFinite(Number(height)) ? Number(height) : null,
       aspectRatio: clamp(Number(aspectRatio) || 1.35, .35, 3.5),
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
+      preserveWorldPosition: Boolean(preserveWorldPosition),
       el: null,
       portIn: null,
       portOut: null,
@@ -1608,11 +1625,11 @@
     }));
 
     try {
-      localStorage.removeItem(STORAGE_KEY);
       localStorage.removeItem(PREVIOUS_STORAGE_KEY);
       localStorage.removeItem(LEGACY_STORAGE_KEY);
     } catch {}
     window.setTimeout(() => {
+      saveState();
       announce('Nodes cleared');
       window.DeushimaGrid?.refreshDynamicNodes?.();
       window.DeushimaGrid?.wake?.(800);
@@ -2071,6 +2088,7 @@
 
     if (!dragState.moved) {
       dragState.moved = true;
+      model.preserveWorldPosition = false;
       model.el.classList.add('is-dragging');
       playSfx('pickup', { element: model.el, eventTimestamp: event.timeStamp });
     }
@@ -2124,7 +2142,154 @@
     window.DeushimaHeroCamera?.clearAutoPan?.();
   }
 
-  function validateConnections(rawConnections, nodes) {
+  function serializeNodeModel(model) {
+    const base = {
+      id: model.id,
+      type: model.type,
+      note: model.note,
+      x: Number(model.x.toFixed(6)),
+      y: Number(model.y.toFixed(6)),
+      z: model.z
+    };
+    if (model.type === 'text') return { ...base, text: safeText(model.text) };
+    if (model.type === 'link') return { ...base, url: model.url };
+    return {
+      ...base,
+      url: model.url,
+      mediaType: model.mediaType,
+      width: Number(model.width) || 300,
+      height: Number.isFinite(Number(model.height)) ? Number(model.height) : null,
+      aspectRatio: Number(model.aspectRatio) || 1.35
+    };
+  }
+
+  function serializeConnections() {
+    return connections.map(connection => ({
+      id: connection.id,
+      from: { ...connection.from },
+      to: { ...connection.to },
+      lane: connection.lane
+    }));
+  }
+
+  function serializeCameraState() {
+    const state = cameraApi()?.getState?.();
+    if (!state) return null;
+    const cx = Number(state.cx);
+    const cy = Number(state.cy);
+    const scale = Number(state.scale);
+    if (!Number.isFinite(cx) || !Number.isFinite(cy) || !Number.isFinite(scale)) return null;
+    return {
+      cx: Number(cx.toFixed(6)),
+      cy: Number(cy.toFixed(6)),
+      scale: Number(scale.toFixed(6))
+    };
+  }
+
+  function serializeOriginalWorkspaceState() {
+    const state = window.DeushimaHeroNodes?.getWorkspaceState?.();
+    if (!state) return null;
+    return {
+      positions: (Array.isArray(state.positions) ? state.positions : []).map(position => ({
+        id: String(position.id || ''),
+        x: Number(Number(position.x).toFixed(6)),
+        y: Number(Number(position.y).toFixed(6))
+      })),
+      edges: (Array.isArray(state.edges) ? state.edges : []).map(edge => [String(edge?.[0] || ''), String(edge?.[1] || '')])
+    };
+  }
+
+  function serializeStatePayload() {
+    const cameraState = cameraApi()?.getState?.();
+    return {
+      version: STORAGE_VERSION,
+      viewport: cameraState ? {
+        width: Number(cameraState.width) || 0,
+        height: Number(cameraState.height) || 0
+      } : null,
+      nextNote: nextNoteNumber,
+      zCounter,
+      nodes: [...models.values()].map(serializeNodeModel),
+      connections: serializeConnections(),
+      originalNodes: serializeOriginalWorkspaceState(),
+      camera: serializeCameraState()
+    };
+  }
+
+  function validWorkspaceId(value, maxLength = MAX_ID_LENGTH) {
+    return typeof value === 'string'
+      && value.length >= 1
+      && value.length <= maxLength
+      && /^[A-Za-z0-9_-]+$/.test(value);
+  }
+
+  function validWorldCoordinate(value) {
+    const number = Number(value);
+    return Number.isFinite(number) && Math.abs(number) <= MAX_WORLD_COORDINATE;
+  }
+
+  function validateCameraState(rawCamera, { strict = false } = {}) {
+    if (rawCamera == null) return strict ? null : undefined;
+    if (typeof rawCamera !== 'object' || Array.isArray(rawCamera)) return null;
+    if (strict && (typeof rawCamera.cx !== 'number' || typeof rawCamera.cy !== 'number' || typeof rawCamera.scale !== 'number')) return null;
+    const cx = Number(rawCamera.cx);
+    const cy = Number(rawCamera.cy);
+    const scale = Number(rawCamera.scale);
+    const config = cameraApi()?.config || {};
+    const minScale = Number.isFinite(Number(config.minScale)) ? Number(config.minScale) : .4;
+    const maxScale = Number.isFinite(Number(config.maxScale)) ? Number(config.maxScale) : 2.5;
+    if (!validWorldCoordinate(cx) || !validWorldCoordinate(cy) || !Number.isFinite(scale)) return null;
+    if (scale < minScale || scale > maxScale) return null;
+    return { cx, cy, scale };
+  }
+
+  function validateOriginalWorkspaceState(rawOriginals, { strict = false } = {}) {
+    if (rawOriginals == null) return strict ? null : undefined;
+    if (typeof rawOriginals !== 'object' || Array.isArray(rawOriginals)) return null;
+    if (!Array.isArray(rawOriginals.positions) || !Array.isArray(rawOriginals.edges)) return null;
+    if (rawOriginals.positions.length > originalNames.size || rawOriginals.edges.length > 32) return null;
+
+    const positions = [];
+    const seenPositions = new Set();
+    for (const rawPosition of rawOriginals.positions) {
+      if (strict && (!rawPosition || typeof rawPosition !== 'object' || typeof rawPosition.x !== 'number' || typeof rawPosition.y !== 'number')) return null;
+      const id = rawPosition?.id;
+      const x = Number(rawPosition?.x);
+      const y = Number(rawPosition?.y);
+      if (!originalNames.has(id) || seenPositions.has(id) || !validWorldCoordinate(x) || !validWorldCoordinate(y)) {
+        if (strict) return null;
+        continue;
+      }
+      seenPositions.add(id);
+      positions.push({ id, x, y });
+    }
+
+    const edges = [];
+    const seenEdges = new Set();
+    for (const rawEdge of rawOriginals.edges) {
+      if (!Array.isArray(rawEdge) || rawEdge.length !== 2) {
+        if (strict) return null;
+        continue;
+      }
+      const [from, to] = rawEdge;
+      if (!originalNames.has(from) || !originalNames.has(to) || from === to) {
+        if (strict) return null;
+        continue;
+      }
+      const key = [from, to].sort().join('::');
+      if (seenEdges.has(key)) {
+        if (strict) return null;
+        continue;
+      }
+      seenEdges.add(key);
+      edges.push([from, to]);
+    }
+    return { positions, edges };
+  }
+
+  function validateConnections(rawConnections, nodes, { strict = false } = {}) {
+    if (!Array.isArray(rawConnections)) return strict ? null : [];
+    if (strict && rawConnections.length > MAX_CONNECTIONS) return null;
     const validRefs = new Set([
       ...nodes.map(node => endpointRefForUser(node.id)),
       ...[...originalNames].map(endpointRefForOriginal)
@@ -2133,36 +2298,81 @@
     const restoredConnections = [];
     const ids = new Set();
 
-    for (const rawConnection of (Array.isArray(rawConnections) ? rawConnections : []).slice(0, MAX_CONNECTIONS)) {
-      if (!rawConnection) continue;
+    for (const rawConnection of rawConnections.slice(0, MAX_CONNECTIONS)) {
+      if (!rawConnection || typeof rawConnection !== 'object' || Array.isArray(rawConnection)) {
+        if (strict) return null;
+        continue;
+      }
+      if (strict && (
+        typeof rawConnection.id !== 'string'
+        || typeof rawConnection.from !== 'object'
+        || rawConnection.from === null
+        || Array.isArray(rawConnection.from)
+        || typeof rawConnection.from.ref !== 'string'
+        || typeof rawConnection.to !== 'object'
+        || rawConnection.to === null
+        || Array.isArray(rawConnection.to)
+        || typeof rawConnection.to.ref !== 'string'
+      )) return null;
       const from = typeof rawConnection.from === 'string'
         ? { ref: rawConnection.from, port: 'right' }
         : { ref: String(rawConnection.from?.ref || ''), port: normalizePortId(rawConnection.from?.port) };
       const to = typeof rawConnection.to === 'string'
         ? { ref: rawConnection.to, port: 'left' }
         : { ref: String(rawConnection.to?.ref || ''), port: normalizePortId(rawConnection.to?.port) };
-      if (!validRefs.has(from.ref) || !validRefs.has(to.ref) || from.ref === to.ref || !from.port || !to.port) continue;
-      let id = typeof rawConnection.id === 'string' && rawConnection.id.length <= 100
+      if (strict && (!PORT_IDS.includes(rawConnection.from?.port) || !PORT_IDS.includes(rawConnection.to?.port))) return null;
+      const laneNumber = Number(rawConnection.lane);
+      if (strict && typeof rawConnection.lane !== 'number') return null;
+      const validLane = Number.isInteger(laneNumber) && laneNumber >= -MAX_CONNECTIONS && laneNumber <= MAX_CONNECTIONS;
+      if (
+        !validRefs.has(from.ref)
+        || !validRefs.has(to.ref)
+        || from.ref === to.ref
+        || !from.port
+        || !to.port
+        || (strict && !validLane)
+      ) {
+        if (strict) return null;
+        continue;
+      }
+      if (strict && !validWorkspaceId(rawConnection.id, MAX_CONNECTION_ID_LENGTH)) return null;
+      let id = typeof rawConnection.id === 'string' && rawConnection.id.length <= MAX_CONNECTION_ID_LENGTH
         ? rawConnection.id
         : uid('conn');
-      if (ids.has(id)) id = uid('conn');
+      if (ids.has(id)) {
+        if (strict) return null;
+        id = uid('conn');
+      }
       ids.add(id);
       restoredConnections.push({
         id,
         from,
         to,
-        lane: clamp(Math.trunc(Number(rawConnection.lane)) || 0, -24, 24)
+        lane: validLane ? laneNumber : clamp(Math.trunc(laneNumber) || 0, -MAX_CONNECTIONS, MAX_CONNECTIONS)
       });
     }
 
     return restoredConnections;
   }
 
-  function validateV3State(parsed) {
-    if (!parsed || parsed.version !== 3 || !Array.isArray(parsed.nodes)) return null;
+  function validateViewport(rawViewport, { strict = false } = {}) {
+    if (rawViewport == null) return strict ? null : undefined;
+    if (typeof rawViewport !== 'object' || Array.isArray(rawViewport)) return null;
+    if (strict && (typeof rawViewport.width !== 'number' || typeof rawViewport.height !== 'number')) return null;
+    const width = Number(rawViewport.width);
+    const height = Number(rawViewport.height);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0 || width > 100000 || height > 100000) {
+      return null;
+    }
+    return { width, height };
+  }
+
+  function validateV3State(parsed, { strict = false } = {}) {
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) || parsed.version !== STORAGE_VERSION || !Array.isArray(parsed.nodes)) return null;
+    if (strict && parsed.nodes.length > MAX_NODES) return null;
+    if (strict && !Array.isArray(parsed.connections)) return null;
     const nodes = [];
     const ids = new Set();
-    const bounds = cameraApi()?.getWorldBounds?.();
 
     for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
       if (!rawNode || !['text', 'link', 'media', 'instagram', 'youtube'].includes(rawNode.type)) continue;
@@ -2179,19 +2389,24 @@
       const base = {
         id,
         type: rawNode.type,
-        note: clamp(Math.trunc(Number(rawNode.note)) || nodes.length + 1, 1, 999),
+        note: strict ? noteNumber : clamp(Math.trunc(noteNumber) || nodes.length + 1, 1, 999),
         x,
         y,
-        z: clamp(Math.trunc(Number(rawNode.z)) || nodes.length + 1, 1, 9999)
+        z: strict ? zNumber : clamp(Math.trunc(zNumber) || nodes.length + 1, 1, 9999)
       };
 
       if (rawNode.type === 'text') {
+        if (strict && (typeof rawNode.text !== 'string' || rawNode.text.length > MAX_TEXT_LENGTH)) return null;
         nodes.push({ ...base, text: safeText(rawNode.text) });
         continue;
       }
 
+      if (strict && (typeof rawNode.url !== 'string' || rawNode.url.length < 1 || rawNode.url.length > MAX_URL_LENGTH)) return null;
       const url = normalizeHttpUrl(rawNode.url);
-      if (!url) continue;
+      if (!url) {
+        if (strict) return null;
+        continue;
+      }
       if (rawNode.type === 'link') {
         nodes.push({ ...base, url });
         continue;
@@ -2206,18 +2421,39 @@
       nodes.push({
         ...base,
         url,
-        mediaType: ['image', 'video'].includes(rawNode.mediaType) ? rawNode.mediaType : inferMediaTypeFromUrl(url),
-        width: clamp(Number(rawNode.width) || 300, 220, 420),
-        height: Number.isFinite(Number(rawNode.height)) ? Number(rawNode.height) : null,
-        aspectRatio: clamp(Number(rawNode.aspectRatio) || 1.35, .35, 3.5)
+        mediaType,
+        width: strict ? widthNumber : clamp(widthNumber || 300, 220, 420),
+        height: strict ? heightNumber : (Number.isFinite(heightNumber) ? heightNumber : null),
+        aspectRatio: strict ? aspectNumber : clamp(aspectNumber || 1.35, .35, 3.5)
       });
     }
 
+    const restoredConnections = validateConnections(parsed.connections, nodes, { strict });
+    if (restoredConnections === null) return null;
+    const camera = validateCameraState(parsed.camera, { strict });
+    if (camera === null) return null;
+    const originalNodesState = validateOriginalWorkspaceState(parsed.originalNodes, { strict });
+    if (originalNodesState === null) return null;
+    const viewport = validateViewport(parsed.viewport, { strict });
+    if (viewport === null) return null;
+    const nextNoteValue = Number(parsed.nextNote);
+    const zCounterValue = Number(parsed.zCounter);
+    if (strict && (typeof parsed.nextNote !== 'number' || typeof parsed.zCounter !== 'number')) return null;
+    if (strict && (
+      !Number.isInteger(nextNoteValue) || nextNoteValue < 1 || nextNoteValue > 9999
+      || !Number.isInteger(zCounterValue) || zCounterValue < 1 || zCounterValue > 9999
+      || nextNoteValue <= Math.max(0, ...nodes.filter(node => node.type === 'text').map(node => node.note))
+      || zCounterValue < Math.max(0, ...nodes.map(node => node.z))
+    )) return null;
+
     return {
       nodes,
-      connections: validateConnections(parsed.connections, nodes),
-      nextNote: clamp(Math.trunc(Number(parsed.nextNote)) || nodes.length + 1, 1, 9999),
-      zCounter: clamp(Math.trunc(Number(parsed.zCounter)) || nodes.length + 1, 1, 9999),
+      connections: restoredConnections,
+      nextNote: strict ? nextNoteValue : clamp(Math.trunc(nextNoteValue) || nodes.length + 1, 1, 9999),
+      zCounter: strict ? zCounterValue : clamp(Math.trunc(zCounterValue) || nodes.length + 1, 1, 9999),
+      viewport,
+      camera,
+      originalNodes: originalNodesState,
       migrated: false
     };
   }
@@ -2226,19 +2462,13 @@
     if (!parsed || parsed.version !== 2 || !Array.isArray(parsed.nodes)) return null;
     const nodes = [];
     const ids = new Set();
-    const bounds = cameraApi()?.getWorldBounds?.();
-
     for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
       if (!rawNode || rawNode.type !== 'text') continue;
       const id = typeof rawNode.id === 'string' && rawNode.id.length <= 90 ? rawNode.id : null;
       if (!id || ids.has(id)) continue;
-      let x = Number(rawNode.x);
-      let y = Number(rawNode.y);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-      if (bounds) {
-        x = clamp(x, bounds.minX, bounds.maxX);
-        y = clamp(y, bounds.minY, bounds.maxY);
-      }
+      const x = Number(rawNode.x);
+      const y = Number(rawNode.y);
+      if (!validWorldCoordinate(x) || !validWorldCoordinate(y)) continue;
       ids.add(id);
       nodes.push({
         id,
@@ -2366,14 +2596,200 @@
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch {}
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function scheduleWorkspaceSave(delay = 160) {
+    if (workspaceMutationDepth > 0) return;
+    window.clearTimeout(cameraSaveTimer);
+    cameraSaveTimer = window.setTimeout(() => {
+      cameraSaveTimer = 0;
+      if (workspaceMutationDepth === 0) saveState();
+    }, delay);
+  }
+
+  function encodeBase64UrlUtf8(value) {
+    const bytes = new TextEncoder().encode(String(value));
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+    }
+    return btoa(binary)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/g, '');
+  }
+
+  function decodeBase64UrlUtf8(value) {
+    const encoded = String(value || '');
+    if (!encoded || !/^[A-Za-z0-9_-]+$/.test(encoded)) throw new Error('Invalid workspace code.');
+    const padding = '='.repeat((4 - encoded.length % 4) % 4);
+    const binary = atob(encoded.replace(/-/g, '+').replace(/_/g, '/') + padding);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch {
+      throw new Error('Workspace code is not valid UTF-8.');
+    }
+  }
+
+  function workspaceEnvelopeFromState(state = serializeStatePayload()) {
+    return {
+      format: WORKSPACE_FORMAT,
+      version: WORKSPACE_VERSION,
+      state
+    };
+  }
+
+  function exportWorkspaceCode() {
+    const state = serializeStatePayload();
+    if (!validateV3State(state, { strict: true })) {
+      throw new Error('Workspace is not ready to export.');
+    }
+    const json = JSON.stringify(workspaceEnvelopeFromState(state));
+    const code = `${WORKSPACE_CODE_PREFIX}${encodeBase64UrlUtf8(json)}`;
+    if (code.length > MAX_WORKSPACE_CODE_LENGTH) throw new Error('Workspace is too large to export.');
+    return code;
+  }
+
+  function decodeWorkspaceCode(rawCode) {
+    const code = String(rawCode || '').trim();
+    if (!code || code.length > MAX_WORKSPACE_CODE_LENGTH || !code.startsWith(WORKSPACE_CODE_PREFIX)) {
+      throw new Error('Use a valid DEUSHIMA1 workspace code.');
+    }
+    let envelope;
+    try {
+      envelope = JSON.parse(decodeBase64UrlUtf8(code.slice(WORKSPACE_CODE_PREFIX.length)));
+    } catch (error) {
+      if (error instanceof Error && /workspace|UTF-8/i.test(error.message)) throw error;
+      throw new Error('Workspace code contains invalid JSON.');
+    }
+    if (
+      !envelope
+      || typeof envelope !== 'object'
+      || Array.isArray(envelope)
+      || envelope.format !== WORKSPACE_FORMAT
+      || envelope.version !== WORKSPACE_VERSION
+    ) {
+      throw new Error('Unsupported workspace format or version.');
+    }
+    const validated = validateV3State(envelope.state, { strict: true });
+    if (!validated) throw new Error('Workspace data failed validation.');
+    return validated;
+  }
+
+  function clearWorkspaceRuntimeImmediate() {
+    connectionState = null;
+    dragState = null;
+    editingNodeId = null;
+    selectedNodeId = null;
+    selectedConnectionId = null;
+    hoverConnectionId = null;
+    window.DeushimaHeroCamera?.clearAutoPan?.();
+    previewPath.setAttribute('d', '');
+    hideLineDeleteButton();
+    originalNodes.forEach(node => {
+      node.classList.remove('is-connect-target');
+      node.querySelectorAll('.hero-node__port').forEach(port => {
+        port.classList.remove('is-active', 'is-near', 'is-connect-pulse');
+      });
+    });
+    connectionEls.forEach(record => record.group?.remove());
+    connectionEls.clear();
+    connections = [];
+    models.forEach(model => {
+      if (model.type === 'media') model.mediaLoadToken = (model.mediaLoadToken || 0) + 1;
+      if (model.mediaElement instanceof HTMLVideoElement) {
+        mediaVisibilityObserver?.unobserve(model.mediaElement);
+        model.mediaElement.pause();
+      }
+      model.el?.remove();
+    });
+    models.clear();
+  }
+
+  function applyWorkspaceStatePayload(payload, { persist = true } = {}) {
+    workspaceMutationDepth += 1;
+    try {
+      clearWorkspaceRuntimeImmediate();
+
+      if (payload.camera) {
+        const camera = cameraApi();
+        if (!camera?.setState?.(payload.camera, { immediate: true, preserveOnResize: true })) {
+          throw new Error('Unable to restore camera state.');
+        }
+      }
+
+      if (payload.originalNodes) {
+        const originalApi = window.DeushimaHeroNodes;
+        if (!originalApi?.applyWorkspaceState || originalApi.applyWorkspaceState(payload.originalNodes, { persist: false }) === false) {
+          throw new Error('Unable to restore original node layout.');
+        }
+      }
+
+      nextNoteNumber = payload.nextNote;
+      zCounter = payload.zCounter;
+
+      for (const data of payload.nodes) {
+        const shared = {
+          ...data,
+          animate: false,
+          persist: false,
+          sound: false,
+          select: false,
+          preserveWorldPosition: true
+        };
+        let created = null;
+        if (data.type === 'link') created = createLinkNode(shared);
+        else if (data.type === 'media') created = createMediaNode(shared);
+        else created = createTextNode({ ...shared, focusEditor: false });
+        if (!created) throw new Error(`Unable to restore node ${data.id}.`);
+      }
+
+      nextNoteNumber = payload.nextNote;
+      zCounter = payload.zCounter;
+      connections = payload.connections.map(connection => ({
+        ...connection,
+        from: { ...connection.from },
+        to: { ...connection.to }
+      }));
+      connections.forEach(ensureConnectionElement);
+      drawConnections();
+      scheduleConnectionLoop();
+      window.DeushimaGrid?.refreshDynamicNodes?.();
+      window.DeushimaGrid?.wake?.(700);
+    } finally {
+      workspaceMutationDepth = Math.max(0, workspaceMutationDepth - 1);
+    }
+
+    if (persist && !saveState()) throw new Error('Unable to persist workspace.');
+    return true;
+  }
+
+  function importWorkspaceCode(rawCode) {
+    const incoming = decodeWorkspaceCode(rawCode);
+    const backup = serializeStatePayload();
+    try {
+      applyWorkspaceStatePayload(incoming, { persist: true });
+    } catch (error) {
+      try {
+        applyWorkspaceStatePayload(backup, { persist: true });
+      } catch {}
+      throw error;
+    }
+    return true;
   }
 
   function restoreState() {
     const saved = readState();
     if (!saved) {
       restoreHintState();
-      return;
+      return null;
     }
 
     nextNoteNumber = saved.nextNote;
@@ -2408,12 +2824,13 @@
 
     restoreHintState();
     requestAnimationFrame(() => {
-      clampAllNodesAndSave(false);
+      models.forEach(renderModel);
       drawConnections();
       scheduleConnectionLoop();
       window.DeushimaGrid?.refreshDynamicNodes?.();
       window.DeushimaGrid?.wake?.(800);
     });
+    return saved;
   }
 
   function clampAllNodesAndSave(persist = true) {
@@ -2477,6 +2894,7 @@
     menuUrlKind = kind;
     menuNodeId = model?.id || null;
     menuAnchor = anchorSnapshot;
+    menu.classList.remove('is-workspace-form');
     menu.classList.add('is-url-form');
     menu.replaceChildren();
     const heading = document.createElement('div');
@@ -2539,6 +2957,7 @@
     });
     form.addEventListener('submit', async event => {
       event.preventDefault();
+      if (formSubmitting) return;
       const normalized = normalizeHttpUrl(input.value);
       if (!normalized) {
         message.textContent = 'Use a valid http:// or https:// URL.';
@@ -2717,6 +3136,136 @@
   function buildCanvasMenu() {
     menuUrlKind = null;
     menu.classList.remove('is-url-form');
+    menu.classList.add('is-workspace-form');
+    menu.replaceChildren();
+
+    const heading = document.createElement('div');
+    heading.className = 'hero-custom-node-context__heading';
+    heading.textContent = isSave ? 'SAVE WORKSPACE' : 'IMPORT WORKSPACE';
+
+    const form = document.createElement('form');
+    form.className = 'hero-custom-node-context__workspace-form';
+    const textarea = document.createElement('textarea');
+    textarea.className = 'hero-custom-node-context__workspace-code';
+    textarea.spellcheck = false;
+    textarea.autocomplete = 'off';
+    textarea.wrap = 'off';
+    textarea.maxLength = MAX_WORKSPACE_CODE_LENGTH;
+    textarea.setAttribute('aria-label', isSave ? 'Workspace export code' : 'Workspace import code');
+    const message = document.createElement('div');
+    message.className = 'hero-custom-node-context__workspace-message';
+    message.setAttribute('aria-live', 'polite');
+
+    let exportReady = true;
+    if (isSave) {
+      textarea.readOnly = true;
+      try {
+        textarea.value = exportWorkspaceCode();
+        message.textContent = 'Copy this code to restore the full workspace.';
+      } catch (error) {
+        exportReady = false;
+        message.textContent = error instanceof Error ? error.message : 'Unable to export workspace.';
+      }
+    } else {
+      textarea.placeholder = 'Paste workspace code...';
+      message.textContent = '';
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'hero-custom-node-context__workspace-actions';
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'hero-custom-node-context__url-button';
+    back.textContent = isSave ? 'Back' : 'Cancel';
+    const primary = document.createElement('button');
+    primary.type = isSave ? 'button' : 'submit';
+    primary.className = 'hero-custom-node-context__url-button is-primary';
+    primary.textContent = isSave ? 'Copy code' : 'Import';
+    primary.disabled = isSave && !exportReady;
+    actions.append(back, primary);
+    form.append(textarea, message, actions);
+    menu.append(heading, form);
+
+    const returnToCanvasMenu = () => {
+      menu.classList.remove('is-workspace-form');
+      menuMode = 'canvas';
+      if (anchorSnapshot) menuAnchor = { ...anchorSnapshot };
+      buildCanvasMenu();
+      queueMicrotask(() => menuItems()[0]?.focus({ preventScroll: true }));
+    };
+
+    back.addEventListener('click', event => {
+      event.preventDefault();
+      returnToCanvasMenu();
+    });
+
+    if (isSave) {
+      const copyCode = async ({ selectOnFailure = true } = {}) => {
+        let copied = false;
+        try {
+          await navigator.clipboard.writeText(textarea.value);
+          copied = true;
+        } catch {
+          if (selectOnFailure) {
+            textarea.focus({ preventScroll: true });
+            textarea.select();
+          }
+        }
+        message.textContent = copied ? 'Workspace code copied' : 'Select the code and copy it manually.';
+        return copied;
+      };
+      primary.addEventListener('click', async event => {
+        event.preventDefault();
+        await copyCode();
+      });
+      queueMicrotask(() => { void copyCode({ selectOnFailure: false }); });
+    } else {
+      let pendingImport = null;
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        if (pendingImport) {
+          const backup = serializeStatePayload();
+          try {
+            applyWorkspaceStatePayload(pendingImport, { persist: true });
+          } catch {
+            try { applyWorkspaceStatePayload(backup, { persist: true }); } catch {}
+            pendingImport = null;
+            textarea.disabled = false;
+            message.textContent = 'Invalid workspace code';
+            textarea.focus({ preventScroll: true });
+            return;
+          }
+          markHintUsed();
+          closeMenu(false);
+          announce('Workspace imported');
+          stage.focus({ preventScroll: true });
+          return;
+        }
+        try {
+          pendingImport = decodeWorkspaceCode(textarea.value);
+          textarea.disabled = true;
+          message.textContent = 'Importing will replace your current workspace.';
+          back.textContent = 'Cancel';
+          primary.textContent = 'Import';
+          primary.focus({ preventScroll: true });
+        } catch (error) {
+          pendingImport = null;
+          const unsupported = error instanceof Error && /unsupported workspace/i.test(error.message);
+          message.textContent = unsupported ? 'Unsupported workspace version' : 'Invalid workspace code';
+          textarea.focus({ preventScroll: true });
+        }
+      });
+    }
+
+    if (!menuOpen) {
+      const heroRect = hero.getBoundingClientRect();
+      placeMenu(anchorSnapshot?.clientX ?? heroRect.left + heroRect.width * .5, anchorSnapshot?.clientY ?? heroRect.top + heroRect.height * .5);
+    }
+    queueMicrotask(() => textarea.focus({ preventScroll: true }));
+  }
+
+  function buildCanvasMenu() {
+    menu.classList.remove('is-url-form', 'is-workspace-form');
     menu.replaceChildren();
 
     const heading = document.createElement('div');
@@ -2754,6 +3303,20 @@
 
     menu.appendChild(separator());
 
+    menu.appendChild(menuItem({
+      label: 'Save Node',
+      icon: '↓',
+      action: () => openWorkspacePanel('save')
+    }));
+
+    menu.appendChild(menuItem({
+      label: 'Import Node',
+      icon: '↑',
+      action: () => openWorkspacePanel('import')
+    }));
+
+    menu.appendChild(separator());
+
     const resetDisabled = (
       window.DeushimaHeroNodes?.isDefaultLayout?.() !== false
       && window.DeushimaHeroCamera?.isDefaultView?.() !== false
@@ -2768,6 +3331,7 @@
         playSfx('reset', { element: stage });
         window.DeushimaHeroNodes?.resetOriginals?.();
         window.DeushimaHeroCamera?.recenter?.({ animate: !reducedMotion.matches });
+        scheduleWorkspaceSave(reducedMotion.matches ? 0 : 360);
         announce('Layout reset');
         window.DeushimaGrid?.wake?.(850);
         window.setTimeout(() => stage.focus({ preventScroll: true }), reducedMotion.matches ? 0 : 300);
@@ -2781,6 +3345,7 @@
         closeMenu(false);
         markHintUsed();
         window.DeushimaHeroCamera?.recenter?.({ animate: !reducedMotion.matches });
+        scheduleWorkspaceSave(reducedMotion.matches ? 0 : 240);
         announce('View recentered');
         window.setTimeout(() => stage.focus({ preventScroll: true }), reducedMotion.matches ? 0 : 180);
       }
@@ -2817,6 +3382,7 @@
   }
 
   function buildNodeMenu(model) {
+    menu.classList.remove('is-url-form', 'is-workspace-form');
     menu.replaceChildren();
 
     const heading = document.createElement('div');
@@ -2914,7 +3480,7 @@
     const closeToken = menuPlacementToken;
     const wasOpen = menuOpen || menu.classList.contains('is-open');
     menuOpen = false;
-    menu.classList.remove('is-open', 'is-url-form');
+    menu.classList.remove('is-open', 'is-url-form', 'is-workspace-form');
     const focusTarget = menuFocusOrigin;
     menuMode = null;
     menuUrlKind = null;
@@ -3217,7 +3783,9 @@
     closeMenu(false);
     window.clearTimeout(resizeSaveTimer);
     resizeSaveTimer = window.setTimeout(() => {
-      clampAllNodesAndSave(true);
+      models.forEach(renderModel);
+      drawConnections();
+      scheduleWorkspaceSave(0);
       window.DeushimaGrid?.refreshDynamicNodes?.();
       window.DeushimaGrid?.wake?.(600);
     }, 180);
@@ -3250,6 +3818,7 @@
     if (menuMode === 'canvas' && menuOpen) {
       buildCanvasMenu();
     }
+    scheduleWorkspaceSave(180);
   });
 
   coarsePointer.addEventListener?.('change', () => {
@@ -3260,20 +3829,31 @@
     if (menuMode === 'canvas' && menuOpen) buildCanvasMenu();
     drawConnections();
     scheduleConnectionLoop();
+    scheduleWorkspaceSave(80);
   });
 
   const resizeObserver = new ResizeObserver(() => {
-    clampAllNodesAndSave(false);
+    models.forEach(renderModel);
     drawConnections();
     window.DeushimaGrid?.wake?.(360);
   });
   resizeObserver.observe(stage);
 
   function initialRestore() {
-    restoreState();
+    const restored = restoreState();
     window.setTimeout(() => window.DeushimaGrid?.refreshDynamicNodes?.(), 120);
     window.setTimeout(() => {
-      clampAllNodesAndSave(true);
+      if (restored?.originalNodes) {
+        workspaceMutationDepth += 1;
+        try {
+          const camera = cameraApi();
+          camera?.refreshGeometry?.({ recenterView: false });
+          window.DeushimaHeroNodes?.applyWorkspaceState?.(restored.originalNodes, { persist: false });
+        } finally {
+          workspaceMutationDepth = Math.max(0, workspaceMutationDepth - 1);
+        }
+      }
+      models.forEach(renderModel);
       drawConnections();
       scheduleConnectionLoop();
       window.DeushimaGrid?.refreshDynamicNodes?.();
@@ -3295,6 +3875,9 @@
     createInstagram: (x = null, y = null, url = '') => createEmbedNode({ type: 'instagram', x, y, url }),
     createYouTube: (x = null, y = null, url = '') => createEmbedNode({ type: 'youtube', x, y, url }),
     clear: clearAllNodes,
+    exportWorkspace: exportWorkspaceCode,
+    importWorkspace: importWorkspaceCode,
+    getWorkspacePayload: serializeStatePayload,
     getState: () => ({
       nodes: [...models.values()].map(model => ({
         id: model.id,

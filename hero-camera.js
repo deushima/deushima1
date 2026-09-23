@@ -79,6 +79,7 @@
     clientX: 0,
     clientY: 0
   };
+  let preserveViewOnResize = false;
 
   function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -424,6 +425,7 @@
   }
 
   function panByScreen(dx, dy, { immediate = true, elastic = true } = {}) {
+    preserveViewOnResize = true;
     const base = immediate ? current : target;
     const next = {
       ...base,
@@ -460,6 +462,7 @@
 
   function zoomAt(clientX, clientY, scaleValue, { immediate = false } = {}) {
     if (isBlocked()) return;
+    preserveViewOnResize = true;
     const nextScale = clamp(scaleValue, CONFIG.minScale, CONFIG.maxScale);
     const anchorWorld = screenToWorld(clientX, clientY, current);
     const rect = hero.getBoundingClientRect();
@@ -484,6 +487,7 @@
   }
 
   function recenter({ animate = true } = {}) {
+    preserveViewOnResize = false;
     target = {
       cx: width * 0.5,
       cy: height * 0.5,
@@ -496,6 +500,20 @@
       ensureFrame();
     }
     showZoomIndicator();
+  }
+
+  function setState(state, { immediate = true, preserveOnResize = true } = {}) {
+    const next = {
+      cx: Number(state?.cx),
+      cy: Number(state?.cy),
+      scale: Number(state?.scale)
+    };
+    if (!Number.isFinite(next.cx) || !Number.isFinite(next.cy) || !Number.isFinite(next.scale)) {
+      return false;
+    }
+    preserveViewOnResize = Boolean(preserveOnResize);
+    setTarget(next, { immediate, elastic: false });
+    return true;
   }
 
   function setAutoPanPointer(clientX, clientY, active = true) {
@@ -910,6 +928,7 @@
     stageToWorld,
     panByScreen,
     zoomAt,
+    setState,
     recenter,
     isDefaultView,
     setAutoPanPointer,

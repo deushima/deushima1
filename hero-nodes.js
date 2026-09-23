@@ -108,6 +108,64 @@
     setCustomizedState();
   }
 
+  function getWorkspaceState() {
+    const stageWidth = Math.max(1, stage.clientWidth);
+    const stageHeight = Math.max(1, stage.clientHeight);
+    const camera = window.DeushimaHeroCamera;
+    const positions = [];
+
+    nodes.forEach(node => {
+      const xValue = node.style.getPropertyValue('--node-x');
+      const yValue = node.style.getPropertyValue('--node-y');
+      if (!xValue || !yValue) return;
+      const normalizedX = parseFloat(xValue) / 100;
+      const normalizedY = parseFloat(yValue) / 100;
+      if (!Number.isFinite(normalizedX) || !Number.isFinite(normalizedY)) return;
+      const localX = normalizedX * stageWidth;
+      const localY = normalizedY * stageHeight;
+      const world = camera?.stageToWorld?.(localX, localY) || { x: localX, y: localY };
+      positions.push({
+        id: node.dataset.heroNode,
+        x: Number(world.x.toFixed(6)),
+        y: Number(world.y.toFixed(6))
+      });
+    });
+
+    return {
+      positions,
+      edges: edges.map(edge => [...edge])
+    };
+  }
+
+  function applyWorkspaceState(state, { persist = true } = {}) {
+    const stageWidth = Math.max(1, stage.clientWidth);
+    const stageHeight = Math.max(1, stage.clientHeight);
+    const camera = window.DeushimaHeroCamera;
+
+    nodes.forEach(node => {
+      node.style.removeProperty('--node-x');
+      node.style.removeProperty('--node-y');
+      node.classList.remove('is-dragging', 'is-connect-target');
+    });
+
+    const positions = Array.isArray(state?.positions) ? state.positions : [];
+    positions.forEach(position => {
+      const node = nodeByName[position?.id];
+      const worldX = Number(position?.x);
+      const worldY = Number(position?.y);
+      if (!node || !Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+      const local = camera?.worldToStage?.(worldX, worldY) || { x: worldX, y: worldY };
+      node.style.setProperty('--node-x', `${(local.x / stageWidth * 100).toFixed(6)}%`);
+      node.style.setProperty('--node-y', `${(local.y / stageHeight * 100).toFixed(6)}%`);
+    });
+
+    edges = normalizeEdges(state?.edges);
+    if (persist) saveCanvas();
+    else setCustomizedState();
+    queueDraw();
+    return true;
+  }
+
   function resetCanvas() {
     nodes.forEach(node => {
       node.style.removeProperty('--node-x');
@@ -765,7 +823,9 @@
     resetOriginals: resetCanvas,
     isDefaultLayout: isDefaultCanvas,
     requestDraw: queueDraw,
-    getOriginalNodes: () => [...nodes]
+    getOriginalNodes: () => [...nodes],
+    getWorkspaceState,
+    applyWorkspaceState
   });
 
   readSavedCanvas();
