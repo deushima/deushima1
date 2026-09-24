@@ -1683,6 +1683,15 @@ function initAmbientAudio() {
   if (!ambientAudio || !audioToggle || !audioVolume) return;
 
   const defaultVolume = 0.22;
+  const elasticVolume = audioVolume.closest("[data-elastic-volume]");
+  const elasticRoot = elasticVolume?.querySelector("[data-elastic-volume-root]");
+  const elasticTrackWrap = elasticVolume?.querySelector("[data-elastic-volume-track-wrap]");
+  const elasticRange = elasticVolume?.querySelector("[data-elastic-volume-range]");
+  const elasticValue = elasticVolume?.querySelector("[data-elastic-volume-value]");
+  const elasticLow = elasticVolume?.querySelector("[data-elastic-volume-low]");
+  const elasticHigh = elasticVolume?.querySelector("[data-elastic-volume-high]");
+  const MAX_VOLUME_OVERFLOW = 50;
+  let elasticPointerId = null;
 
   const readSavedVolume = () => {
     try {
@@ -1712,8 +1721,116 @@ function initAmbientAudio() {
     audioToggle.setAttribute("aria-pressed", playing ? "true" : "false");
     audioToggle.setAttribute("aria-label", playing ? "Pausar sonido" : "Activar sonido");
     audioToggle.closest("[data-audio-control]")?.classList.toggle("is-playing", playing);
+    syncElasticVolume(ambientAudio.volume);
     publishAudioState();
   };
+
+  const decayVolumeOverflow = (value) => {
+    const entry = value / MAX_VOLUME_OVERFLOW;
+    const sigmoid = 2 * (1 / (1 + Math.exp(-entry)) - 0.5);
+    return sigmoid * MAX_VOLUME_OVERFLOW;
+  };
+
+  function syncElasticVolume(volume) {
+    if (!elasticRoot || !elasticRange || !elasticValue) return;
+    const normalized = Math.max(0, Math.min(1, Number(volume) || 0));
+    const percentage = normalized * 100;
+    elasticRange.style.width = `${percentage}%`;
+    elasticValue.textContent = String(Math.round(percentage));
+    elasticRoot.setAttribute("aria-valuenow", String(Math.round(percentage)));
+  }
+
+  const setVolume = (volume) => {
+    const normalized = Math.max(0, Math.min(1, volume));
+    ambientAudio.volume = normalized;
+    audioVolume.value = String(normalized);
+    syncElasticVolume(normalized);
+    try {
+      localStorage.setItem("deushimaAudioVolume", String(normalized));
+    } catch {
+      // Ignore storage restrictions in embedded previews.
+    }
+    publishAudioState();
+  };
+
+  const resetElasticOverflow = () => {
+    if (!elasticVolume || !elasticTrackWrap) return;
+    elasticVolume.classList.remove("is-dragging", "is-overflow-left", "is-overflow-right");
+    elasticTrackWrap.style.removeProperty("--elastic-overflow-scale-x");
+    elasticTrackWrap.style.removeProperty("--elastic-overflow-scale-y");
+    elasticTrackWrap.style.removeProperty("--elastic-transform-origin");
+    elasticLow?.style.removeProperty("--elastic-icon-shift");
+    elasticHigh?.style.removeProperty("--elastic-icon-shift");
+  };
+
+  const updateElasticFromPointer = (clientX) => {
+    if (!elasticRoot || !elasticTrackWrap || !elasticVolume) return;
+    const rect = elasticRoot.getBoundingClientRect();
+    if (!rect.width) return;
+
+    const rawProgress = (clientX - rect.left) / rect.width;
+    setVolume(Math.max(0, Math.min(1, rawProgress)));
+
+    let region = "middle";
+    let overflowDistance = 0;
+    if (clientX < rect.left) {
+      region = "left";
+      overflowDistance = rect.left - clientX;
+    } else if (clientX > rect.right) {
+      region = "right";
+      overflowDistance = clientX - rect.right;
+    }
+
+    const overflow = decayVolumeOverflow(overflowDistance);
+    const scaleX = 1 + overflow / rect.width;
+    const scaleY = 1 - (overflow / MAX_VOLUME_OVERFLOW) * 0.2;
+    const iconShift = overflow * 0.72;
+
+    elasticVolume.classList.toggle("is-overflow-left", region === "left");
+    elasticVolume.classList.toggle("is-overflow-right", region === "right");
+    elasticTrackWrap.style.setProperty("--elastic-overflow-scale-x", String(scaleX));
+    elasticTrackWrap.style.setProperty("--elastic-overflow-scale-y", String(scaleY));
+    elasticTrackWrap.style.setProperty("--elastic-transform-origin", clientX < rect.left + rect.width / 2 ? "right center" : "left center");
+    elasticLow?.style.setProperty("--elastic-icon-shift", `${region === "left" ? -iconShift : 0}px`);
+    elasticHigh?.style.setProperty("--elastic-icon-shift", `${region === "right" ? iconShift : 0}px`);
+  };
+
+  if (elasticRoot && elasticVolume) {
+    elasticRoot.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 && event.pointerType === "mouse") return;
+      elasticPointerId = event.pointerId;
+      elasticVolume.classList.add("is-dragging");
+      elasticRoot.setPointerCapture?.(event.pointerId);
+      updateElasticFromPointer(event.clientX);
+      event.preventDefault();
+    });
+
+    elasticRoot.addEventListener("pointermove", (event) => {
+      if (elasticPointerId !== event.pointerId) return;
+      updateElasticFromPointer(event.clientX);
+    });
+
+    const finishElasticPointer = (event) => {
+      if (elasticPointerId !== null && event?.pointerId !== undefined && elasticPointerId !== event.pointerId) return;
+      elasticPointerId = null;
+      resetElasticOverflow();
+    };
+
+    elasticRoot.addEventListener("pointerup", finishElasticPointer);
+    elasticRoot.addEventListener("pointercancel", finishElasticPointer);
+    elasticRoot.addEventListener("lostpointercapture", finishElasticPointer);
+
+    elasticRoot.addEventListener("keydown", (event) => {
+      let nextVolume = ambientAudio.volume;
+      if (event.key === "ArrowRight" || event.key === "ArrowUp") nextVolume += 0.05;
+      else if (event.key === "ArrowLeft" || event.key === "ArrowDown") nextVolume -= 0.05;
+      else if (event.key === "Home") nextVolume = 0;
+      else if (event.key === "End") nextVolume = 1;
+      else return;
+      event.preventDefault();
+      setVolume(nextVolume);
+    });
+  }
 
   const playAudio = async () => {
     try {
@@ -1732,13 +1849,7 @@ function initAmbientAudio() {
   syncAudioUi();
 
   audioVolume.addEventListener("input", () => {
-    ambientAudio.volume = Number.parseFloat(audioVolume.value);
-    try {
-      localStorage.setItem("deushimaAudioVolume", String(ambientAudio.volume));
-    } catch {
-      // Ignore storage restrictions in embedded previews.
-    }
-    publishAudioState();
+    setVolume(Number.parseFloat(audioVolume.value));
   });
 
   audioToggle.addEventListener("click", async () => {

@@ -29,7 +29,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
-  <link rel="stylesheet" href="style.css?v=20260922-bg-context1">
+  <link rel="stylesheet" href="style.css?v=20260924-elastic-volume1">
   <link rel="stylesheet" href="hero-nodes.css?v=20260922-context1">
   <link rel="stylesheet" href="hero-camera.css?v=20260921-camera1">
   <link rel="stylesheet" href="custom-nodes.css?v=20260924-importstatus1">
@@ -525,10 +525,30 @@
             <path d="M18.7 6c1.75 1.58 2.65 3.58 2.65 6s-.9 4.42-2.65 6"></path>
           </svg>
         </button>
-        <label class="audio-control__volume">
-          <span>VOL</span>
-          <input type="range" min="0" max="1" step="0.01" value="0.22" data-audio-volume aria-label="Volumen">
-        </label>
+        <div class="audio-control__volume elastic-volume" data-elastic-volume>
+          <span class="elastic-volume__value" data-elastic-volume-value aria-hidden="true">22</span>
+          <span class="elastic-volume__icon elastic-volume__icon--low" data-elastic-volume-low aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4.5 9.5h3.25L12.5 6v12l-4.75-3.5H4.5z"></path>
+              <path d="M15.5 9.4c.85.72 1.3 1.6 1.3 2.6s-.45 1.88-1.3 2.6"></path>
+            </svg>
+          </span>
+          <div class="elastic-volume__root" data-elastic-volume-root role="slider" tabindex="0" aria-label="Volumen" aria-valuemin="0" aria-valuemax="100" aria-valuenow="22">
+            <div class="elastic-volume__track-wrap" data-elastic-volume-track-wrap>
+              <div class="elastic-volume__track">
+                <span class="elastic-volume__range" data-elastic-volume-range></span>
+              </div>
+            </div>
+          </div>
+          <span class="elastic-volume__icon elastic-volume__icon--high" data-elastic-volume-high aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false">
+              <path d="M4.5 9.5h3.25L12.5 6v12l-4.75-3.5H4.5z"></path>
+              <path d="M15.2 9.1c.95.8 1.45 1.78 1.45 2.9s-.5 2.1-1.45 2.9"></path>
+              <path d="M17.8 6.7c1.55 1.4 2.35 3.15 2.35 5.3s-.8 3.9-2.35 5.3"></path>
+            </svg>
+          </span>
+          <input class="elastic-volume__native" type="range" min="0" max="1" step="0.01" value="0.22" data-audio-volume tabindex="-1" aria-hidden="true">
+        </div>
       </div>
     </footer>
   </main>
@@ -658,7 +678,7 @@
 
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="none"></audio>
 
-  <script src="script.js?v=20260923-launcherfix1"></script>
+  <script src="script.js?v=20260924-elastic-volume1"></script>
   <script src="splash.js?v=20260920-shared-logo1"></script>
   <script src="sfx-config.js?v=20260921-sfx9" defer></script>
   <script src="node-sfx.js?v=20260921-sfx11" defer></script>
