@@ -2152,7 +2152,9 @@
       z: model.z
     };
     if (model.type === 'text') return { ...base, text: safeText(model.text) };
-    if (model.type === 'link') return { ...base, url: model.url };
+    if (model.type === 'link' || model.type === 'instagram' || model.type === 'youtube') {
+      return { ...base, url: model.url };
+    }
     const mediaHeight = Number(model.height);
     return {
       ...base,
@@ -2376,16 +2378,34 @@
     const ids = new Set();
 
     for (const rawNode of parsed.nodes.slice(0, MAX_NODES)) {
-      if (!rawNode || !['text', 'link', 'media', 'instagram', 'youtube'].includes(rawNode.type)) continue;
-      const id = typeof rawNode.id === 'string' && rawNode.id.length <= 90 ? rawNode.id : null;
-      if (!id || ids.has(id)) continue;
-      let x = Number(rawNode.x);
-      let y = Number(rawNode.y);
-      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
-      if (bounds) {
-        x = clamp(x, bounds.minX, bounds.maxX);
-        y = clamp(y, bounds.minY, bounds.maxY);
+      if (
+        !rawNode
+        || typeof rawNode !== 'object'
+        || Array.isArray(rawNode)
+        || !['text', 'link', 'media', 'instagram', 'youtube'].includes(rawNode.type)
+      ) {
+        if (strict) return null;
+        continue;
       }
+      const id = typeof rawNode.id === 'string' && rawNode.id.length <= MAX_ID_LENGTH ? rawNode.id : null;
+      if (!id || ids.has(id) || (strict && !validWorkspaceId(id))) {
+        if (strict) return null;
+        continue;
+      }
+      const x = Number(rawNode.x);
+      const y = Number(rawNode.y);
+      if (strict && (typeof rawNode.x !== 'number' || typeof rawNode.y !== 'number')) return null;
+      if (!validWorldCoordinate(x) || !validWorldCoordinate(y)) {
+        if (strict) return null;
+        continue;
+      }
+      const noteNumber = Number(rawNode.note);
+      const zNumber = Number(rawNode.z);
+      if (strict && (typeof rawNode.note !== 'number' || typeof rawNode.z !== 'number')) return null;
+      if (strict && (
+        !Number.isInteger(noteNumber) || noteNumber < 1 || noteNumber > 999
+        || !Number.isInteger(zNumber) || zNumber < 1 || zNumber > 9999
+      )) return null;
       ids.add(id);
       const base = {
         id,
@@ -2414,10 +2434,30 @@
       }
 
       if (rawNode.type === 'instagram' || rawNode.type === 'youtube') {
-        if (!parseEmbedUrl(rawNode.type, url)) continue;
-        nodes.push({ ...base, url });
+        const parsedEmbed = parseEmbedUrl(rawNode.type, url);
+        if (!parsedEmbed) {
+          if (strict) return null;
+          continue;
+        }
+        nodes.push({ ...base, url: parsedEmbed.url });
         continue;
       }
+
+      const widthNumber = Number(rawNode.width);
+      const heightNumber = rawNode.height == null ? null : Number(rawNode.height);
+      const aspectNumber = Number(rawNode.aspectRatio);
+      const mediaType = ['image', 'video'].includes(rawNode.mediaType)
+        ? rawNode.mediaType
+        : inferMediaTypeFromUrl(url);
+      if (strict && (
+        typeof rawNode.mediaType !== 'string' || !['image', 'video'].includes(rawNode.mediaType)
+        || typeof rawNode.width !== 'number'
+        || (rawNode.height !== null && typeof rawNode.height !== 'number')
+        || typeof rawNode.aspectRatio !== 'number'
+        || !Number.isFinite(widthNumber) || widthNumber < 220 || widthNumber > 420
+        || (heightNumber !== null && (!Number.isFinite(heightNumber) || heightNumber <= 0 || heightNumber > 10000))
+        || !Number.isFinite(aspectNumber) || aspectNumber < .35 || aspectNumber > 3.5
+      )) return null;
 
       nodes.push({
         ...base,
@@ -2748,7 +2788,9 @@
         let created = null;
         if (data.type === 'link') created = createLinkNode(shared);
         else if (data.type === 'media') created = createMediaNode(shared);
-        else created = createTextNode({ ...shared, focusEditor: false });
+        else if (data.type === 'instagram' || data.type === 'youtube') {
+          created = createEmbedNode({ ...shared, type: data.type });
+        } else created = createTextNode({ ...shared, focusEditor: false });
         if (!created) throw new Error(`Unable to restore node ${data.id}.`);
       }
 
