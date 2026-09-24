@@ -24,6 +24,10 @@
   const MAX_CONNECTIONS = 60;
   const MAX_TEXT_LENGTH = 280;
   const MAX_RICH_TEXT_HTML_LENGTH = 24000;
+  const NODE_MIN_WIDTH = 150;
+  const NODE_MAX_WIDTH = 620;
+  const NODE_MIN_HEIGHT = 72;
+  const NODE_MAX_HEIGHT = 620;
   const MAX_URL_LENGTH = 4096;
   const MAX_ID_LENGTH = 90;
   const MAX_CONNECTION_ID_LENGTH = 100;
@@ -63,6 +67,7 @@
   let selectedConnectionId = null;
   let editingNodeId = null;
   let dragState = null;
+  let nodeResizeState = null;
   let connectionState = null;
   let connectionRaf = 0;
   let hoverConnectionId = null;
@@ -687,11 +692,116 @@
 
   function renderModel(model) {
     if (!model?.el) return;
+    const hasUserWidth = Number.isFinite(Number(model.nodeWidth));
+    const hasUserHeight = Number.isFinite(Number(model.nodeHeight));
+    if (hasUserWidth) {
+      model.el.style.width = `${Number(model.nodeWidth).toFixed(2)}px`;
+      model.el.style.minWidth = '0px';
+      model.el.style.maxWidth = 'none';
+    } else {
+      model.el.style.removeProperty('width');
+      model.el.style.removeProperty('min-width');
+      model.el.style.removeProperty('max-width');
+    }
+    if (hasUserHeight) {
+      model.el.style.height = `${Number(model.nodeHeight).toFixed(2)}px`;
+      model.el.style.minHeight = '0px';
+      model.el.style.maxHeight = 'none';
+    } else {
+      model.el.style.removeProperty('height');
+      model.el.style.removeProperty('min-height');
+      model.el.style.removeProperty('max-height');
+    }
+    model.el.classList.toggle('is-user-sized', hasUserWidth || hasUserHeight);
     clampModel(model);
     const local = worldToStageLocal(model.x, model.y);
     model.el.style.setProperty('--custom-node-x', `${local.x.toFixed(3)}px`);
     model.el.style.setProperty('--custom-node-y', `${local.y.toFixed(3)}px`);
     model.el.style.zIndex = String(20 + model.z);
+  }
+
+  function appendNodeResizeHandle(model, el) {
+    const handle = document.createElement('button');
+    handle.className = 'hero-custom-node__resize-handle';
+    handle.type = 'button';
+    handle.setAttribute('aria-label', 'Resize node');
+    handle.setAttribute('title', 'Resize node');
+    handle.addEventListener('pointerdown', event => {
+      if (event.button !== undefined && event.button !== 0) return;
+      event.preventDefault();
+      event.stopPropagation();
+      selectNode(model);
+      const style = getComputedStyle(el);
+      const startWidth = parseFloat(style.width) || el.offsetWidth;
+      const startHeight = parseFloat(style.height) || el.offsetHeight;
+      nodeResizeState = {
+        id: model.id,
+        pointerId: event.pointerId,
+        handle,
+        startClientX: event.clientX,
+        startClientY: event.clientY,
+        startWidth,
+        startHeight,
+        startNodeWidth: Number.isFinite(Number(model.nodeWidth)) ? Number(model.nodeWidth) : null,
+        startNodeHeight: Number.isFinite(Number(model.nodeHeight)) ? Number(model.nodeHeight) : null,
+        startX: model.x,
+        startY: model.y,
+        moved: false
+      };
+      el.classList.add('is-resizing');
+      try { handle.setPointerCapture?.(event.pointerId); } catch {}
+    });
+    handle.addEventListener('lostpointercapture', event => {
+      if (nodeResizeState?.pointerId === event.pointerId) endNodeResize(event, { commit: true });
+    });
+    el.appendChild(handle);
+    model.resizeHandle = handle;
+  }
+
+  function moveNodeResize(event) {
+    if (!nodeResizeState || event.pointerId !== nodeResizeState.pointerId) return;
+    const model = models.get(nodeResizeState.id);
+    if (!model?.el) return;
+    event.preventDefault();
+    const scale = Math.max(.001, cameraScale());
+    const dx = (event.clientX - nodeResizeState.startClientX) / scale;
+    const dy = (event.clientY - nodeResizeState.startClientY) / scale;
+    const width = clamp(nodeResizeState.startWidth + dx, NODE_MIN_WIDTH, NODE_MAX_WIDTH);
+    const height = clamp(nodeResizeState.startHeight + dy, NODE_MIN_HEIGHT, NODE_MAX_HEIGHT);
+    model.nodeWidth = width;
+    model.nodeHeight = height;
+    model.x = nodeResizeState.startX + (width - nodeResizeState.startWidth) * .5;
+    model.y = nodeResizeState.startY + (height - nodeResizeState.startHeight) * .5;
+    model.preserveWorldPosition = false;
+    nodeResizeState.moved = true;
+    renderModel(model);
+    drawConnections();
+    window.DeushimaGrid?.wake?.(280);
+  }
+
+  function endNodeResize(event, { commit = true } = {}) {
+    if (!nodeResizeState || event.pointerId !== nodeResizeState.pointerId) return;
+    const state = nodeResizeState;
+    const model = models.get(state.id);
+    nodeResizeState = null;
+    try {
+      if (state.handle?.hasPointerCapture?.(state.pointerId)) state.handle.releasePointerCapture(state.pointerId);
+    } catch {}
+    if (!model?.el) return;
+    model.el.classList.remove('is-resizing');
+    if (!commit) {
+      model.nodeWidth = state.startNodeWidth;
+      model.nodeHeight = state.startNodeHeight;
+      model.x = state.startX;
+      model.y = state.startY;
+    }
+    renderModel(model);
+    drawConnections();
+    if (commit && state.moved) {
+      saveState();
+      window.DeushimaGrid?.refreshDynamicNodes?.();
+      window.DeushimaGrid?.wake?.(420);
+    }
   }
 
   function updateCounter(model) {
@@ -1303,7 +1413,7 @@
 
     el.addEventListener('pointerdown', event => {
       if (event.button !== undefined && event.button !== 0) return;
-      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, .hero-custom-node__format-toolbar')) return;
+      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, .hero-custom-node__format-toolbar, .hero-custom-node__resize-handle')) return;
 
       selectNode(model);
 
@@ -1329,7 +1439,7 @@
     });
 
     el.addEventListener('dblclick', event => {
-      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, .hero-custom-node__format-toolbar')) return;
+      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, .hero-custom-node__format-toolbar, .hero-custom-node__resize-handle')) return;
       event.preventDefault();
       selectNode(model);
       setEditing(model, true);
@@ -1501,6 +1611,8 @@
       }, { passive: true });
     });
 
+    appendNodeResizeHandle(model, el);
+
     return el;
   }
 
@@ -1511,6 +1623,8 @@
     y = null,
     text = '',
     html = '',
+    nodeWidth = null,
+    nodeHeight = null,
     z = ++zCounter,
     animate = true,
     focusEditor = true,
@@ -1540,6 +1654,8 @@
       y: worldY,
       text: initialText,
       html: initialHtml,
+      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(z) || 1, 1, 9999),
       preserveWorldPosition: Boolean(preserveWorldPosition),
       editing: false,
@@ -1621,7 +1737,7 @@
   function bindStaticNodeDrag(model, el) {
     el.addEventListener('pointerdown', event => {
       if (event.button !== undefined && event.button !== 0) return;
-      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, a, button, input')) return;
+      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, .hero-custom-node__resize-handle, a, button, input')) return;
       selectNode(model);
       const rect = el.getBoundingClientRect();
       const scale = cameraScale();
@@ -1695,6 +1811,7 @@
     });
     bindStaticNodeDrag(model, el);
     appendStaticNodePorts(model, el);
+    appendNodeResizeHandle(model, el);
     return { el, meta };
   }
 
@@ -1714,7 +1831,7 @@
   }
 
   function createLinkNode({
-    id = uid('link'), note = null, x = null, y = null, url = '', z = ++zCounter,
+    id = uid('link'), note = null, x = null, y = null, url = '', nodeWidth = null, nodeHeight = null, z = ++zCounter,
     animate = true, persist = true, sound = true, select = true, preserveWorldPosition = false
   } = {}) {
     if (models.size >= MAX_NODES || models.has(id)) return null;
@@ -1729,6 +1846,8 @@
       x: Number.isFinite(Number(x)) ? Number(x) : fallback.x,
       y: Number.isFinite(Number(y)) ? Number(y) : fallback.y,
       url: normalizedUrl,
+      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
       preserveWorldPosition: Boolean(preserveWorldPosition),
       el: null,
@@ -1753,7 +1872,7 @@
   }
 
   function createEmbedNode({
-    id = uid('embed'), note = null, type = '', x = null, y = null, url = '', z = ++zCounter,
+    id = uid('embed'), note = null, type = '', x = null, y = null, url = '', nodeWidth = null, nodeHeight = null, z = ++zCounter,
     animate = true, persist = true, sound = true, select = true
   } = {}) {
     if (!['instagram', 'youtube'].includes(type)) return null;
@@ -1772,6 +1891,8 @@
       embedUrl: parsed.embedUrl,
       embedVariant: parsed.variant,
       aspectRatio: parsed.aspectRatio,
+      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
       el: null,
       portIn: null,
@@ -1956,7 +2077,7 @@
 
   function createMediaNode({
     id = uid('media'), note = null, x = null, y = null, url = '', mediaType = 'unknown',
-    width = 300, height = null, aspectRatio = 1.35, z = ++zCounter,
+    width = 300, height = null, aspectRatio = 1.35, nodeWidth = null, nodeHeight = null, z = ++zCounter,
     animate = true, persist = true, sound = true, select = true, preserveWorldPosition = false
   } = {}) {
     if (models.size >= MAX_NODES || models.has(id)) return null;
@@ -1975,6 +2096,8 @@
       width: clamp(Number(width) || 300, 220, 420),
       height: Number.isFinite(Number(height)) ? Number(height) : null,
       aspectRatio: clamp(Number(aspectRatio) || 1.35, .35, 3.5),
+      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
       preserveWorldPosition: Boolean(preserveWorldPosition),
       el: null,
@@ -2081,6 +2204,8 @@
         x: source.x + 28,
         y: source.y + 24,
         url: source.url,
+        nodeWidth: source.nodeWidth,
+        nodeHeight: source.nodeHeight,
         animate: true,
         persist: true,
         sound: true
@@ -2095,6 +2220,8 @@
         width: source.width,
         height: source.height,
         aspectRatio: source.aspectRatio,
+        nodeWidth: source.nodeWidth,
+        nodeHeight: source.nodeHeight,
         animate: true,
         persist: true,
         sound: true
@@ -2106,6 +2233,8 @@
         x: source.x + 28,
         y: source.y + 24,
         url: source.url,
+        nodeWidth: source.nodeWidth,
+        nodeHeight: source.nodeHeight,
         animate: true,
         persist: true,
         sound: true
@@ -2116,6 +2245,8 @@
       y: source.y + 24,
       text: source.text,
       html: source.html,
+      nodeWidth: source.nodeWidth,
+      nodeHeight: source.nodeHeight,
       animate: true,
       focusEditor: false,
       persist: true,
@@ -2663,7 +2794,9 @@
       note: model.note,
       x: Number(model.x.toFixed(6)),
       y: Number(model.y.toFixed(6)),
-      z: model.z
+      z: model.z,
+      ...(Number.isFinite(Number(model.nodeWidth)) ? { nodeWidth: Number(Number(model.nodeWidth).toFixed(3)) } : {}),
+      ...(Number.isFinite(Number(model.nodeHeight)) ? { nodeHeight: Number(Number(model.nodeHeight).toFixed(3)) } : {})
     };
     if (model.type === 'text') {
       return {
@@ -2921,10 +3054,14 @@
       }
       const noteNumber = Number(rawNode.note);
       const zNumber = Number(rawNode.z);
+      const nodeWidthNumber = rawNode.nodeWidth == null ? null : Number(rawNode.nodeWidth);
+      const nodeHeightNumber = rawNode.nodeHeight == null ? null : Number(rawNode.nodeHeight);
       if (strict && (typeof rawNode.note !== 'number' || typeof rawNode.z !== 'number')) return null;
       if (strict && (
         !Number.isInteger(noteNumber) || noteNumber < 1 || noteNumber > 999
         || !Number.isInteger(zNumber) || zNumber < 1 || zNumber > 9999
+        || (rawNode.nodeWidth != null && (typeof rawNode.nodeWidth !== 'number' || !Number.isFinite(nodeWidthNumber) || nodeWidthNumber < NODE_MIN_WIDTH || nodeWidthNumber > NODE_MAX_WIDTH))
+        || (rawNode.nodeHeight != null && (typeof rawNode.nodeHeight !== 'number' || !Number.isFinite(nodeHeightNumber) || nodeHeightNumber < NODE_MIN_HEIGHT || nodeHeightNumber > NODE_MAX_HEIGHT))
       )) return null;
       ids.add(id);
       const base = {
@@ -2933,7 +3070,9 @@
         note: strict ? noteNumber : clamp(Math.trunc(noteNumber) || nodes.length + 1, 1, 999),
         x,
         y,
-        z: strict ? zNumber : clamp(Math.trunc(zNumber) || nodes.length + 1, 1, 9999)
+        z: strict ? zNumber : clamp(Math.trunc(zNumber) || nodes.length + 1, 1, 9999),
+        ...(Number.isFinite(nodeWidthNumber) ? { nodeWidth: clamp(nodeWidthNumber, NODE_MIN_WIDTH, NODE_MAX_WIDTH) } : {}),
+        ...(Number.isFinite(nodeHeightNumber) ? { nodeHeight: clamp(nodeHeightNumber, NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) } : {})
       };
 
       if (rawNode.type === 'text') {
@@ -4238,6 +4377,10 @@
       window.DeushimaHeroCamera?.clearAutoPan?.();
     }
 
+    if (nodeResizeState && (pointerId == null || nodeResizeState.pointerId === pointerId)) {
+      endNodeResize({ pointerId: nodeResizeState.pointerId }, { commit: false });
+    }
+
     if (connectionState && (pointerId == null || connectionState.pointerId === pointerId)) {
       const state = connectionState;
       connectionState = null;
@@ -4265,6 +4408,7 @@
   workspaceInteraction?.registerCancelHandler?.(cancelTransientInteraction);
 
   window.addEventListener('pointermove', event => {
+    moveNodeResize(event);
     moveNodeDrag(event);
     moveConnection(event);
     moveLongPress(event);
@@ -4274,12 +4418,14 @@
   }, { passive: false });
 
   window.addEventListener('pointerup', event => {
+    endNodeResize(event, { commit: true });
     endNodeDrag(event);
     endConnection(event, { commit: true });
     clearLongPress(event);
   });
 
   window.addEventListener('pointercancel', event => {
+    endNodeResize(event, { commit: false });
     endNodeDrag(event);
     endConnection(event, { commit: false });
     clearLongPress(event);
