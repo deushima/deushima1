@@ -692,8 +692,8 @@
 
   function renderModel(model) {
     if (!model?.el) return;
-    const hasUserWidth = Number.isFinite(Number(model.nodeWidth));
-    const hasUserHeight = Number.isFinite(Number(model.nodeHeight));
+    const hasUserWidth = model.nodeWidth != null && Number.isFinite(Number(model.nodeWidth));
+    const hasUserHeight = model.nodeHeight != null && Number.isFinite(Number(model.nodeHeight));
     if (hasUserWidth) {
       model.el.style.width = `${Number(model.nodeWidth).toFixed(2)}px`;
       model.el.style.minWidth = '0px';
@@ -742,8 +742,8 @@
         startClientY: event.clientY,
         startWidth,
         startHeight,
-        startNodeWidth: Number.isFinite(Number(model.nodeWidth)) ? Number(model.nodeWidth) : null,
-        startNodeHeight: Number.isFinite(Number(model.nodeHeight)) ? Number(model.nodeHeight) : null,
+        startNodeWidth: model.nodeWidth != null && Number.isFinite(Number(model.nodeWidth)) ? Number(model.nodeWidth) : null,
+        startNodeHeight: model.nodeHeight != null && Number.isFinite(Number(model.nodeHeight)) ? Number(model.nodeHeight) : null,
         startX: model.x,
         startY: model.y,
         moved: false
@@ -1654,8 +1654,8 @@
       y: worldY,
       text: initialText,
       html: initialHtml,
-      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
-      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
+      nodeWidth: nodeWidth != null && Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: nodeHeight != null && Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(z) || 1, 1, 9999),
       preserveWorldPosition: Boolean(preserveWorldPosition),
       editing: false,
@@ -1846,8 +1846,8 @@
       x: Number.isFinite(Number(x)) ? Number(x) : fallback.x,
       y: Number.isFinite(Number(y)) ? Number(y) : fallback.y,
       url: normalizedUrl,
-      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
-      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
+      nodeWidth: nodeWidth != null && Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: nodeHeight != null && Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
       preserveWorldPosition: Boolean(preserveWorldPosition),
       el: null,
@@ -1891,8 +1891,8 @@
       embedUrl: parsed.embedUrl,
       embedVariant: parsed.variant,
       aspectRatio: parsed.aspectRatio,
-      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
-      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
+      nodeWidth: nodeWidth != null && Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: nodeHeight != null && Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
       el: null,
       portIn: null,
@@ -2096,8 +2096,8 @@
       width: clamp(Number(width) || 300, 220, 420),
       height: Number.isFinite(Number(height)) ? Number(height) : null,
       aspectRatio: clamp(Number(aspectRatio) || 1.35, .35, 3.5),
-      nodeWidth: Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
-      nodeHeight: Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
+      nodeWidth: nodeWidth != null && Number.isFinite(Number(nodeWidth)) ? clamp(Number(nodeWidth), NODE_MIN_WIDTH, NODE_MAX_WIDTH) : null,
+      nodeHeight: nodeHeight != null && Number.isFinite(Number(nodeHeight)) ? clamp(Number(nodeHeight), NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) : null,
       z: clamp(Math.trunc(Number(z)) || 1, 1, 9999),
       preserveWorldPosition: Boolean(preserveWorldPosition),
       el: null,
@@ -2795,8 +2795,8 @@
       x: Number(model.x.toFixed(6)),
       y: Number(model.y.toFixed(6)),
       z: model.z,
-      ...(Number.isFinite(Number(model.nodeWidth)) ? { nodeWidth: Number(Number(model.nodeWidth).toFixed(3)) } : {}),
-      ...(Number.isFinite(Number(model.nodeHeight)) ? { nodeHeight: Number(Number(model.nodeHeight).toFixed(3)) } : {})
+      ...(model.nodeWidth != null && Number.isFinite(Number(model.nodeWidth)) ? { nodeWidth: Number(Number(model.nodeWidth).toFixed(3)) } : {}),
+      ...(model.nodeHeight != null && Number.isFinite(Number(model.nodeHeight)) ? { nodeHeight: Number(Number(model.nodeHeight).toFixed(3)) } : {})
     };
     if (model.type === 'text') {
       return {
@@ -3064,6 +3064,10 @@
         || (rawNode.nodeHeight != null && (typeof rawNode.nodeHeight !== 'number' || !Number.isFinite(nodeHeightNumber) || nodeHeightNumber < NODE_MIN_HEIGHT || nodeHeightNumber > NODE_MAX_HEIGHT))
       )) return null;
       ids.add(id);
+      const legacyAutoSized = (
+        nodeWidthNumber === NODE_MIN_WIDTH
+        && nodeHeightNumber === NODE_MIN_HEIGHT
+      );
       const base = {
         id,
         type: rawNode.type,
@@ -3071,8 +3075,8 @@
         x,
         y,
         z: strict ? zNumber : clamp(Math.trunc(zNumber) || nodes.length + 1, 1, 9999),
-        ...(Number.isFinite(nodeWidthNumber) ? { nodeWidth: clamp(nodeWidthNumber, NODE_MIN_WIDTH, NODE_MAX_WIDTH) } : {}),
-        ...(Number.isFinite(nodeHeightNumber) ? { nodeHeight: clamp(nodeHeightNumber, NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) } : {})
+        ...(!legacyAutoSized && Number.isFinite(nodeWidthNumber) ? { nodeWidth: clamp(nodeWidthNumber, NODE_MIN_WIDTH, NODE_MAX_WIDTH) } : {}),
+        ...(!legacyAutoSized && Number.isFinite(nodeHeightNumber) ? { nodeHeight: clamp(nodeHeightNumber, NODE_MIN_HEIGHT, NODE_MAX_HEIGHT) } : {})
       };
 
       if (rawNode.type === 'text') {
