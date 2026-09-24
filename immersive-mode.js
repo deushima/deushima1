@@ -2,6 +2,7 @@
   "use strict";
 
   const hero = document.querySelector(".hero--node-canvas");
+  const fullscreenRoot = document.documentElement;
   const toggle = document.querySelector("[data-workspace-immersive-toggle]");
 
   if (!(hero instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) return;
@@ -49,13 +50,13 @@
     setImmersive(true);
 
     try {
-      if (typeof hero.requestFullscreen === "function") {
-        await hero.requestFullscreen({ navigationUI: "hide" });
+      if (typeof fullscreenRoot.requestFullscreen === "function") {
+        await fullscreenRoot.requestFullscreen({ navigationUI: "hide" });
         return;
       }
 
-      if (typeof hero.webkitRequestFullscreen === "function") {
-        hero.webkitRequestFullscreen();
+      if (typeof fullscreenRoot.webkitRequestFullscreen === "function") {
+        fullscreenRoot.webkitRequestFullscreen();
         return;
       }
 
@@ -92,7 +93,7 @@
   function syncFullscreenState() {
     const currentFullscreen = fullscreenElement();
 
-    if (currentFullscreen === hero) {
+    if (currentFullscreen === fullscreenRoot) {
       fallbackMode = false;
       if (!isImmersive()) setImmersive(true);
       return;

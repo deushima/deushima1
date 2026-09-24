@@ -67,17 +67,20 @@ body.is-workspace-immersive {
   overscroll-behavior: none;
 }
 
-body.is-workspace-immersive .site-shell > :not(.hero--node-canvas),
+body.is-workspace-immersive .site-shell > :not(.hero--node-canvas):not(.content-panel),
 body.is-workspace-immersive .section-jump-control,
-body.is-workspace-immersive .deu-chat-launcher,
-body.is-workspace-immersive .deu-chat {
+body.is-workspace-immersive .deu-chat-launcher {
   display: none !important;
+}
+
+body.is-workspace-immersive .site-shell > .content-panel.is-panel-open {
+  z-index: 10002 !important;
 }
 
 body.is-workspace-immersive .hero--node-canvas {
   position: fixed !important;
   inset: 0 !important;
-  z-index: 9998 !important;
+  z-index: 1 !important;
   width: 100vw !important;
   height: 100dvh !important;
   min-height: 100dvh !important;
@@ -85,13 +88,22 @@ body.is-workspace-immersive .hero--node-canvas {
   overflow: hidden !important;
 }
 
-.hero--node-canvas:fullscreen,
-.hero--node-canvas:-webkit-full-screen {
+html:fullscreen,
+html:-webkit-full-screen {
   width: 100vw;
   height: 100vh;
-  min-height: 100vh;
   overflow: hidden;
   background: #030303;
+}
+
+body.is-workspace-immersive .design-viewer,
+body.is-workspace-immersive .launcher-pop,
+body.is-workspace-immersive .deu-chat {
+  z-index: 10003;
+}
+
+body.is-workspace-immersive .hero--node-canvas {
+  width: 100vw;
 }
 
 body.is-workspace-immersive .hero--node-canvas .directory,
