@@ -33,7 +33,7 @@
   <link rel="stylesheet" href="hero-nodes.css?v=20260922-context1">
   <link rel="stylesheet" href="hero-camera.css?v=20260921-camera1">
   <link rel="stylesheet" href="custom-nodes.css?v=20260923-socialembed1">
-  <link rel="stylesheet" href="section-jump.css?v=20260923-scroll1">
+  <link rel="stylesheet" href="section-jump.css?v=20260924-sling1">
   <link rel="stylesheet" href="works-canvas.css?v=20260922-bg1">
   <link rel="stylesheet" href="chatbot.css?v=20260921-modal-close1">
   <link rel="stylesheet" href="splash.css?v=20260920-shared-logo1">
@@ -515,15 +515,29 @@
     </footer>
   </main>
 
-  <button class="section-jump-control" type="button" data-section-jump data-direction="down" aria-label="Bajar al footer" title="Bajar al footer">
-    <span class="section-jump-control__disc" aria-hidden="true">
-      <span class="section-jump-control__arrows">
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
+  <span class="section-jump-control sling-button" data-section-jump data-direction="down" title="Bajar al footer">
+    <svg class="sling-button__fx" viewBox="-36 -36 72 72" aria-hidden="true">
+      <g class="sling-button__tension" data-sling-tension>
+        <path class="sling-button__band" data-sling-band></path>
+        <path class="sling-button__band sling-button__band--hot" data-sling-hot></path>
+      </g>
+      <circle class="sling-button__well" r="32"></circle>
+      <circle class="sling-button__arc" data-sling-arc r="32" pathLength="1" stroke-dasharray="0 1"></circle>
+    </svg>
+    <span class="sling-button__particles" data-sling-particles aria-hidden="true"></span>
+    <span class="sling-button__move" data-sling-move>
+      <button class="sling-button__pad" type="button" data-sling-pad aria-label="Bajar al footer" title="Bajar al footer">
+        <span class="sling-button__face">
+          <span class="sling-button__icon" data-sling-icon aria-hidden="true">
+            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+              <path d="M12 5v14M6 13l6 6 6-6"></path>
+            </svg>
+          </span>
+        </span>
+      </button>
     </span>
-  </button>
+    <span class="sling-button__sr">Press Enter to navigate, or pull and release.</span>
+  </span>
 
   <div class="design-viewer" data-design-viewer aria-hidden="true">
     <button class="design-viewer__backdrop" type="button" data-design-close aria-label="Cerrar visor" tabindex="-1"></button>
@@ -631,7 +645,7 @@
   <script src="sfx-config.js?v=20260921-sfx9" defer></script>
   <script src="node-sfx.js?v=20260921-sfx11" defer></script>
   <script src="hero-camera.js?v=20260921-camera3" defer></script>
-  <script src="section-jump.js?v=20260923-scroll1" defer></script>
+  <script src="section-jump.js?v=20260924-sling1" defer></script>
   <script src="hero-grid.js?v=20260921-grid6" defer></script>
   <script src="works-canvas.js?v=20260922-bg1" defer></script>
   <script src="hero-nodes.js?v=20260921-workspace5" defer></script>
