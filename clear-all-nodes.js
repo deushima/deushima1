@@ -11,6 +11,8 @@
   const menu = document.querySelector(MENU_SELECTOR);
   if (!stage || !menu) return;
 
+  const detachedOriginals = new Map();
+
   function heroNodesApi() {
     return window.DeushimaHeroNodes || null;
   }
@@ -39,30 +41,49 @@
     return Array.isArray(nodes) ? nodes : [...stage.querySelectorAll('[data-hero-node]')];
   }
 
-  function setOriginalNodesHidden(hidden) {
+  function detachOriginalNodes() {
     originalNodes().forEach(node => {
-      node.hidden = hidden;
-      if (hidden) node.setAttribute('aria-hidden', 'true');
-      else node.removeAttribute('aria-hidden');
+      if (!node?.isConnected || detachedOriginals.has(node)) return;
+      const marker = document.createComment(`deushima-original-node:${node.dataset.heroNode || 'node'}`);
+      node.replaceWith(marker);
+      node.setAttribute('aria-hidden', 'true');
+      detachedOriginals.set(node, marker);
     });
 
-    stage.classList.toggle('is-all-nodes-cleared', hidden);
+    stage.classList.add('is-all-nodes-cleared');
 
-    if (hidden) {
-      const disconnect = stage.querySelector('[data-node-disconnect]');
-      disconnect?.classList.remove('is-visible');
-      disconnect?.setAttribute('aria-hidden', 'true');
-      if (disconnect) disconnect.tabIndex = -1;
-    }
+    const disconnect = stage.querySelector('[data-node-disconnect]');
+    disconnect?.classList.remove('is-visible');
+    disconnect?.setAttribute('aria-hidden', 'true');
+    if (disconnect) disconnect.tabIndex = -1;
+  }
+
+  function restoreOriginalNodes() {
+    originalNodes().forEach(node => {
+      const marker = detachedOriginals.get(node);
+      if (marker?.isConnected) {
+        marker.replaceWith(node);
+      } else if (!node.isConnected) {
+        stage.appendChild(node);
+      }
+      node.removeAttribute('aria-hidden');
+      detachedOriginals.delete(node);
+    });
+
+    stage.classList.remove('is-all-nodes-cleared');
   }
 
   function emptyOriginalWorkspace({ persist = true } = {}) {
-    setOriginalNodesHidden(true);
     heroNodesApi()?.applyWorkspaceState?.({
       positions: [],
       edges: []
     }, { persist });
+    detachOriginalNodes();
     heroNodesApi()?.requestDraw?.();
+  }
+
+  function removeVisitorCardsImmediately() {
+    stage.querySelectorAll('[data-custom-node]').forEach(node => node.remove());
   }
 
   function closeContextMenu() {
@@ -77,9 +98,11 @@
     writeClearedState(true);
     emptyOriginalWorkspace({ persist: true });
     customNodesApi()?.clear?.();
+    removeVisitorCardsImmediately();
 
     window.setTimeout(() => {
-      setOriginalNodesHidden(true);
+      detachOriginalNodes();
+      removeVisitorCardsImmediately();
       heroNodesApi()?.requestDraw?.();
     }, 220);
 
@@ -87,10 +110,10 @@
     stage.focus({ preventScroll: true });
   }
 
-  function restoreOriginalVisibilityBeforeReset() {
+  function restoreOriginalsBeforeReset() {
     if (!readClearedState()) return;
     writeClearedState(false);
-    setOriginalNodesHidden(false);
+    restoreOriginalNodes();
     requestAnimationFrame(() => heroNodesApi()?.requestDraw?.());
   }
 
@@ -112,7 +135,7 @@
 
     const label = document.createElement('span');
     label.className = 'hero-custom-node-context__label';
-    label.textContent = 'CLEAR ALL NODES';
+    label.textContent = 'Clear all nodes';
 
     button.append(icon, label);
 
@@ -125,12 +148,12 @@
       if (button.dataset.confirm !== 'true') {
         button.dataset.confirm = 'true';
         button.classList.add('is-confirming');
-        label.textContent = 'CONFIRM CLEAR ALL';
+        label.textContent = 'Confirm clear all';
         window.clearTimeout(confirmTimer);
         confirmTimer = window.setTimeout(() => {
           button.dataset.confirm = 'false';
           button.classList.remove('is-confirming');
-          label.textContent = 'CLEAR ALL NODES';
+          label.textContent = 'Clear all nodes';
         }, CONFIRM_MS);
         return;
       }
@@ -160,7 +183,7 @@
       : null;
     if (!button || !menu.contains(button)) return;
     if (menuLabel(button) !== 'Reset') return;
-    restoreOriginalVisibilityBeforeReset();
+    restoreOriginalsBeforeReset();
   }, true);
 
   const menuObserver = new MutationObserver(enhanceCanvasMenu);
@@ -178,6 +201,7 @@
     const customState = customNodesApi()?.getState?.();
     if (customState?.nodes?.length || customState?.connections?.length) {
       customNodesApi()?.clear?.();
+      removeVisitorCardsImmediately();
     }
   }
 
@@ -190,7 +214,7 @@
     isCleared: readClearedState,
     restoreOriginals: () => {
       writeClearedState(false);
-      setOriginalNodesHidden(false);
+      restoreOriginalNodes();
       heroNodesApi()?.resetOriginals?.();
       heroNodesApi()?.requestDraw?.();
     }
