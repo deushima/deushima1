@@ -3176,7 +3176,10 @@
     }
     queueMicrotask(() => input.focus({ preventScroll: true }));
   }
-  function buildCanvasMenu() {
+  function openWorkspacePanel(mode) {
+    const isSave = mode === 'save';
+    const anchorSnapshot = menuAnchor ? { ...menuAnchor } : null;
+    menuMode = isSave ? 'workspace-save' : 'workspace-import';
     menuUrlKind = null;
     menu.classList.remove('is-url-form');
     menu.classList.add('is-workspace-form');
