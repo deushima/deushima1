@@ -1,6 +1,8 @@
 (() => {
   'use strict';
 
+  globalThis.formSubmitting = false;
+
   const SFX_MASTER_VOLUME = 0.46;
 
   window.DeushimaSFXConfig = Object.freeze({
