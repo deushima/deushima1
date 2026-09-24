@@ -3870,6 +3870,104 @@
     message.className = 'hero-custom-node-context__workspace-message';
     message.setAttribute('aria-live', 'polite');
 
+    let importStatus = null;
+    let importStatusFill = null;
+    let importStatusArg = null;
+    let importStatusTimer = null;
+    let importStatusTimerRaf = 0;
+    let importStatusStartedAt = 0;
+
+    const formatImportElapsed = ms => (
+      ms < 10000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`
+    );
+
+    const stopImportStatusTimer = () => {
+      if (importStatusTimerRaf) cancelAnimationFrame(importStatusTimerRaf);
+      importStatusTimerRaf = 0;
+    };
+
+    const setImportStatus = (status, argument) => {
+      if (!importStatus) return;
+      stopImportStatusTimer();
+      importStatus.hidden = status === 'idle';
+      importStatus.dataset.status = status;
+      importStatusArg.textContent = argument || '';
+      importStatus.setAttribute('aria-label', `workspace ${argument || status}`);
+
+      if (status === 'idle') {
+        importStatusFill.style.transition = 'none';
+        importStatusFill.style.transform = 'scaleX(0)';
+        importStatusTimer.textContent = '—';
+        return;
+      }
+
+      if (status === 'running') {
+        importStatusFill.style.transition = 'none';
+        importStatusFill.style.transform = 'scaleX(0)';
+        void importStatusFill.offsetWidth;
+        importStatusFill.style.transition = reducedMotion.matches ? 'none' : 'transform 900ms linear';
+        requestAnimationFrame(() => {
+          if (importStatus?.dataset.status === 'running') importStatusFill.style.transform = 'scaleX(.9)';
+        });
+        importStatusStartedAt = performance.now();
+        importStatusTimer.textContent = '0 ms';
+        if (!reducedMotion.matches) {
+          const tick = () => {
+            if (!importStatus || importStatus.dataset.status !== 'running') return;
+            importStatusTimer.textContent = formatImportElapsed(performance.now() - importStatusStartedAt);
+            importStatusTimerRaf = requestAnimationFrame(tick);
+          };
+          importStatusTimerRaf = requestAnimationFrame(tick);
+        }
+        return;
+      }
+
+      if (importStatusStartedAt) {
+        importStatusTimer.textContent = formatImportElapsed(performance.now() - importStatusStartedAt);
+      }
+      importStatusFill.style.transition = reducedMotion.matches ? 'none' : 'transform 200ms cubic-bezier(.23,1,.32,1)';
+      importStatusFill.style.transform = status === 'done' ? 'scaleX(1)' : importStatusFill.style.transform;
+    };
+
+    if (!isSave) {
+      importStatus = document.createElement('div');
+      importStatus.className = 'hero-custom-node-context__import-status';
+      importStatus.hidden = true;
+      importStatus.dataset.status = 'idle';
+      importStatus.setAttribute('role', 'status');
+      importStatus.setAttribute('aria-live', 'polite');
+
+      importStatusFill = document.createElement('span');
+      importStatusFill.className = 'hero-custom-node-context__import-status-fill';
+      importStatusFill.setAttribute('aria-hidden', 'true');
+
+      const slot = document.createElement('span');
+      slot.className = 'hero-custom-node-context__import-status-slot';
+      slot.setAttribute('aria-hidden', 'true');
+
+      const toolGlyph = document.createElement('span');
+      toolGlyph.className = 'hero-custom-node-context__import-status-glyph is-tool';
+      toolGlyph.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9m0 0 3-3m-3 3L7 9M4 15.5h12" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const doneGlyph = document.createElement('span');
+      doneGlyph.className = 'hero-custom-node-context__import-status-glyph is-done';
+      doneGlyph.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5.2 10.4 3 3.1 6.6-7" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      const errorGlyph = document.createElement('span');
+      errorGlyph.className = 'hero-custom-node-context__import-status-glyph is-error';
+      errorGlyph.innerHTML = '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M15 7.2A6 6 0 1 0 15.6 12M15 4.5v2.7h-2.7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      slot.append(toolGlyph, doneGlyph, errorGlyph);
+
+      const name = document.createElement('span');
+      name.className = 'hero-custom-node-context__import-status-name';
+      name.textContent = 'workspace';
+      importStatusArg = document.createElement('span');
+      importStatusArg.className = 'hero-custom-node-context__import-status-arg';
+      importStatusTimer = document.createElement('span');
+      importStatusTimer.className = 'hero-custom-node-context__import-status-timer';
+      importStatusTimer.textContent = '0 ms';
+
+      importStatus.append(importStatusFill, slot, name, importStatusArg, importStatusTimer);
+    }
+
     let exportReady = true;
     if (isSave) {
       textarea.readOnly = true;
@@ -3897,10 +3995,14 @@
     primary.textContent = isSave ? 'Copy code' : 'Import';
     primary.disabled = isSave && !exportReady;
     actions.append(back, primary);
-    form.append(textarea, message, actions);
+    if (importStatus) form.append(textarea, importStatus, message, actions);
+    else form.append(textarea, message, actions);
     menu.append(heading, form);
 
+    let workspacePanelAlive = true;
     const returnToCanvasMenu = () => {
+      workspacePanelAlive = false;
+      stopImportStatusTimer();
       menu.classList.remove('is-workspace-form');
       menuMode = 'canvas';
       if (anchorSnapshot) menuAnchor = { ...anchorSnapshot };
@@ -3935,37 +4037,77 @@
       queueMicrotask(() => { void copyCode({ selectOnFailure: false }); });
     } else {
       let pendingImport = null;
-      form.addEventListener('submit', event => {
+      let importBusy = false;
+      const waitForImportMoment = ms => new Promise(resolve => {
+        requestAnimationFrame(() => window.setTimeout(resolve, reducedMotion.matches ? 0 : ms));
+      });
+
+      textarea.addEventListener('input', () => {
+        if (!pendingImport && !importBusy) setImportStatus('idle', '');
+      });
+
+      form.addEventListener('submit', async event => {
         event.preventDefault();
+        if (importBusy) return;
         if (pendingImport) {
+          importBusy = true;
+          primary.disabled = true;
+          back.disabled = true;
+          setImportStatus('running', 'importing workspace');
+          message.textContent = 'Applying workspace…';
+          await waitForImportMoment(240);
+          if (!workspacePanelAlive || !form.isConnected || menuMode !== 'workspace-import') return;
           const backup = serializeStatePayload();
           try {
             applyWorkspaceStatePayload(pendingImport, { persist: true });
           } catch {
             try { applyWorkspaceStatePayload(backup, { persist: true }); } catch {}
             pendingImport = null;
+            importBusy = false;
             textarea.disabled = false;
+            primary.disabled = false;
+            back.disabled = false;
             message.textContent = 'Invalid workspace code';
+            setImportStatus('error', 'import failed');
             textarea.focus({ preventScroll: true });
             return;
           }
+          importBusy = false;
+          setImportStatus('done', 'workspace imported');
+          message.textContent = 'Workspace imported successfully.';
+          await waitForImportMoment(520);
+          if (!workspacePanelAlive || !form.isConnected || menuMode !== 'workspace-import') return;
+          workspacePanelAlive = false;
+          stopImportStatusTimer();
           markHintUsed();
           closeMenu(false);
           announce('Workspace imported');
           stage.focus({ preventScroll: true });
           return;
         }
+        importBusy = true;
+        primary.disabled = true;
+        setImportStatus('running', 'validating workspace');
+        message.textContent = 'Checking workspace code…';
+        await waitForImportMoment(420);
+        if (!workspacePanelAlive || !form.isConnected || menuMode !== 'workspace-import') return;
         try {
           pendingImport = decodeWorkspaceCode(textarea.value);
+          importBusy = false;
           textarea.disabled = true;
           message.textContent = 'Importing will replace your current workspace.';
+          setImportStatus('done', 'ready to import');
           back.textContent = 'Cancel';
           primary.textContent = 'Import';
+          primary.disabled = false;
           primary.focus({ preventScroll: true });
         } catch (error) {
           pendingImport = null;
+          importBusy = false;
           const unsupported = error instanceof Error && /unsupported workspace/i.test(error.message);
           message.textContent = unsupported ? 'Unsupported workspace version' : 'Invalid workspace code';
+          setImportStatus('error', unsupported ? 'unsupported version' : 'invalid workspace');
+          primary.disabled = false;
           textarea.focus({ preventScroll: true });
         }
       });
