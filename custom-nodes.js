@@ -2153,12 +2153,13 @@
     };
     if (model.type === 'text') return { ...base, text: safeText(model.text) };
     if (model.type === 'link') return { ...base, url: model.url };
+    const mediaHeight = Number(model.height);
     return {
       ...base,
       url: model.url,
       mediaType: model.mediaType,
       width: Number(model.width) || 300,
-      height: Number.isFinite(Number(model.height)) ? Number(model.height) : null,
+      height: model.height != null && Number.isFinite(mediaHeight) && mediaHeight > 0 ? mediaHeight : null,
       aspectRatio: Number(model.aspectRatio) || 1.35
     };
   }
@@ -2192,8 +2193,8 @@
     return {
       positions: (Array.isArray(state.positions) ? state.positions : []).map(position => ({
         id: String(position.id || ''),
-        x: Number(Number(position.x).toFixed(6)),
-        y: Number(Number(position.y).toFixed(6))
+        x: Number(Number(position.x).toFixed(4)),
+        y: Number(Number(position.y).toFixed(4))
       })),
       edges: (Array.isArray(state.edges) ? state.edges : []).map(edge => [String(edge?.[0] || ''), String(edge?.[1] || '')])
     };
@@ -3414,7 +3415,7 @@
     }));
   }
 
-  function placeMenu(clientX, clientY) {
+  function placeMenu(clientX, clientY, { focusFirst = true } = {}) {
     const margin = 10;
     const placementToken = ++menuPlacementToken;
     menuOpen = true;
@@ -3432,6 +3433,8 @@
     menu.style.top = `${top}px`;
     menu.style.visibility = '';
 
+    if (!focusFirst) return;
+
     queueMicrotask(() => {
       if (!menuOpen || placementToken !== menuPlacementToken) return;
       const first = [...menu.querySelectorAll('[role="menuitem"]')]
@@ -3440,7 +3443,7 @@
     });
   }
 
-  function openCanvasMenu(clientX, clientY, origin = stage) {
+  function openCanvasMenu(clientX, clientY, origin = stage, { focusFirst = true } = {}) {
     if (isModalOpen()) return;
     closeMenu(false);
     const point = worldPointFromClient(clientX, clientY);
