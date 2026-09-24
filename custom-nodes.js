@@ -23,6 +23,7 @@
   const MAX_NODES = 20;
   const MAX_CONNECTIONS = 60;
   const MAX_TEXT_LENGTH = 280;
+  const MAX_RICH_TEXT_HTML_LENGTH = 24000;
   const MAX_URL_LENGTH = 4096;
   const MAX_ID_LENGTH = 90;
   const MAX_CONNECTION_ID_LENGTH = 100;
@@ -182,6 +183,127 @@
     return String(value ?? '')
       .replace(/\r\n?/g, '\n')
       .slice(0, MAX_TEXT_LENGTH);
+  }
+
+  function plainTextFromElement(element) {
+    if (!element) return '';
+    const clone = element.cloneNode(true);
+    clone.querySelectorAll('img').forEach(image => image.remove());
+    clone.querySelectorAll('br').forEach(br => br.replaceWith(document.createTextNode('\n')));
+    return String(clone.textContent || '').replace(/\r\n?/g, '\n');
+  }
+
+  function plainTextFromEditor(editor) {
+    return safeText(plainTextFromElement(editor));
+  }
+
+  function richHtmlText(html) {
+    const host = document.createElement('div');
+    host.innerHTML = String(html || '');
+    return safeText(plainTextFromElement(host));
+  }
+
+  function sanitizeRichTextHtml(value, fallbackText = '') {
+    const source = String(value || '').slice(0, MAX_RICH_TEXT_HTML_LENGTH);
+    const input = document.createElement('div');
+    input.innerHTML = source;
+    const output = document.createElement('div');
+    let imageCount = 0;
+
+    const appendChildren = (from, to) => {
+      [...from.childNodes].forEach(child => appendSanitized(child, to));
+    };
+
+    const appendSanitized = (node, parent) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        parent.appendChild(document.createTextNode(node.data));
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+
+      const tag = node.tagName.toUpperCase();
+      if (tag === 'BR') {
+        parent.appendChild(document.createElement('br'));
+        return;
+      }
+
+      if (tag === 'IMG') {
+        if (imageCount >= 6) return;
+        const src = normalizeHttpUrl(node.getAttribute('src'));
+        if (!src) return;
+        const image = document.createElement('img');
+        image.src = src;
+        image.alt = String(node.getAttribute('alt') || '').slice(0, 120);
+        image.loading = 'lazy';
+        image.decoding = 'async';
+        parent.appendChild(image);
+        imageCount += 1;
+        return;
+      }
+
+      if (tag === 'A') {
+        const href = normalizeHttpUrl(node.getAttribute('href'));
+        if (!href) {
+          appendChildren(node, parent);
+          return;
+        }
+        const anchor = document.createElement('a');
+        anchor.href = href;
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+        appendChildren(node, anchor);
+        parent.appendChild(anchor);
+        return;
+      }
+
+      const mappedTag = tag === 'B' || tag === 'STRONG'
+        ? 'strong'
+        : tag === 'I' || tag === 'EM'
+          ? 'em'
+          : tag === 'U'
+            ? 'u'
+            : tag === 'S' || tag === 'STRIKE'
+              ? 's'
+              : null;
+
+      if (mappedTag) {
+        const wrapper = document.createElement(mappedTag);
+        appendChildren(node, wrapper);
+        parent.appendChild(wrapper);
+        return;
+      }
+
+      if (tag === 'DIV' || tag === 'P') {
+        appendChildren(node, parent);
+        const last = parent.lastChild;
+        if (last && !(last.nodeType === Node.ELEMENT_NODE && last.tagName === 'BR')) {
+          parent.appendChild(document.createElement('br'));
+        }
+        return;
+      }
+
+      appendChildren(node, parent);
+    };
+
+    appendChildren(input, output);
+
+    const plain = plainTextFromElement(output);
+    if (plain.length > MAX_TEXT_LENGTH) {
+      const fallback = document.createElement('div');
+      fallback.textContent = safeText(plain);
+      return fallback.innerHTML;
+    }
+
+    if (!output.childNodes.length && fallbackText) {
+      output.textContent = safeText(fallbackText);
+    }
+
+    const html = output.innerHTML;
+    if (html.length <= MAX_RICH_TEXT_HTML_LENGTH) return html;
+
+    const fallback = document.createElement('div');
+    fallback.textContent = safeText(plain || fallbackText);
+    return fallback.innerHTML;
   }
 
   function normalizeHttpUrl(value) {
@@ -696,6 +818,7 @@
     const next = safeText(text);
     editor.textContent = next;
     model.text = next;
+    model.html = sanitizeRichTextHtml(editor.innerHTML, next);
     updateCounter(model);
     if (Number.isFinite(caretOffset)) setCaretOffset(editor, caretOffset);
     saveState();
@@ -703,18 +826,221 @@
     window.DeushimaGrid?.wake?.(280);
   }
 
+  function syncEditorModel(editor, model, { persist = true } = {}) {
+    const rawText = plainTextFromElement(editor);
+    if (rawText.length > MAX_TEXT_LENGTH) {
+      editor.innerHTML = model.html || sanitizeRichTextHtml('', model.text);
+      placeCaretAtEnd(editor);
+      announce('Text limit reached');
+      return false;
+    }
+
+    model.text = safeText(rawText);
+    model.html = sanitizeRichTextHtml(editor.innerHTML, model.text);
+    updateCounter(model);
+    if (persist) saveState();
+    drawConnections();
+    window.DeushimaGrid?.wake?.(380);
+    return true;
+  }
+
+  function captureEditorSelection(model) {
+    const range = selectionInside(model?.editor);
+    if (!range) return null;
+    model.savedRange = range.cloneRange();
+    return model.savedRange;
+  }
+
+  function restoreEditorSelection(model) {
+    const editor = model?.editor;
+    const selection = window.getSelection();
+    if (!editor || !selection) return false;
+
+    const range = model.savedRange;
+    if (range) {
+      const start = range.startContainer;
+      const end = range.endContainer;
+      const startInside = start === editor || editor.contains(start.nodeType === Node.ELEMENT_NODE ? start : start.parentNode);
+      const endInside = end === editor || editor.contains(end.nodeType === Node.ELEMENT_NODE ? end : end.parentNode);
+      if (startInside && endInside) {
+        try {
+          selection.removeAllRanges();
+          selection.addRange(range.cloneRange());
+          return true;
+        } catch {}
+      }
+    }
+
+    const activeRange = selectionInside(editor);
+    if (activeRange) return true;
+
+    placeCaretAtEnd(editor);
+    return true;
+  }
+
+  function ensureEditorSelection(model) {
+    if (!model?.editor) return false;
+    if (!model.editing) setEditing(model, true, false);
+    model.editor.focus({ preventScroll: true });
+    restoreEditorSelection(model);
+    return true;
+  }
+
+  function currentEditorLink(model) {
+    const selection = window.getSelection();
+    if (!selection?.rangeCount || !model?.editor) return null;
+    let node = selection.anchorNode;
+    if (!node) return null;
+    if (node.nodeType !== Node.ELEMENT_NODE) node = node.parentElement;
+    const anchor = node?.closest?.('a[href]') || null;
+    return anchor && model.editor.contains(anchor) ? anchor : null;
+  }
+
+  function updateTextToolbarState(model) {
+    if (!model?.formatButtons || !model.editor) return;
+    const hasSelection = Boolean(selectionInside(model.editor));
+    const commandState = command => {
+      if (!hasSelection) return false;
+      try { return Boolean(document.queryCommandState(command)); } catch { return false; }
+    };
+    const states = {
+      bold: commandState('bold'),
+      italic: commandState('italic'),
+      underline: commandState('underline'),
+      strike: commandState('strikeThrough'),
+      link: Boolean(hasSelection && currentEditorLink(model))
+    };
+
+    Object.entries(model.formatButtons).forEach(([key, button]) => {
+      if (!button || !(key in states)) return;
+      const active = states[key];
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function applyEditorCommand(model, command) {
+    if (!ensureEditorSelection(model)) return false;
+    try { document.execCommand(command, false, null); } catch { return false; }
+    syncEditorModel(model.editor, model);
+    captureEditorSelection(model);
+    updateTextToolbarState(model);
+    return true;
+  }
+
+  function applyEditorLink(model, rawUrl) {
+    if (!ensureEditorSelection(model)) return false;
+    const editor = model.editor;
+    const range = selectionInside(editor);
+    if (!range) return false;
+    const trimmed = String(rawUrl || '').trim();
+    const existing = currentEditorLink(model);
+
+    if (!trimmed) {
+      if (!existing) return false;
+      try { document.execCommand('unlink', false, null); } catch { return false; }
+      syncEditorModel(editor, model);
+      captureEditorSelection(model);
+      updateTextToolbarState(model);
+      return true;
+    }
+
+    const url = normalizeHttpUrl(trimmed);
+    if (!url) {
+      announce('Use a valid http or https URL');
+      return false;
+    }
+
+    if (range.collapsed && existing) {
+      existing.href = url;
+      existing.target = '_blank';
+      existing.rel = 'noopener noreferrer';
+    } else if (range.collapsed) {
+      const available = MAX_TEXT_LENGTH - plainTextFromElement(editor).length;
+      if (url.length > available) {
+        announce('Text limit reached');
+        return false;
+      }
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener noreferrer';
+      anchor.textContent = url;
+      range.insertNode(anchor);
+      range.setStartAfter(anchor);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    } else {
+      try { document.execCommand('createLink', false, url); } catch { return false; }
+      editor.querySelectorAll('a[href]').forEach(anchor => {
+        anchor.target = '_blank';
+        anchor.rel = 'noopener noreferrer';
+      });
+    }
+
+    syncEditorModel(editor, model);
+    captureEditorSelection(model);
+    updateTextToolbarState(model);
+    return true;
+  }
+
+  function insertEditorImage(model, rawUrl) {
+    if (!ensureEditorSelection(model)) return false;
+    const url = normalizeHttpUrl(rawUrl);
+    if (!url) {
+      announce('Use a valid http or https image URL');
+      return false;
+    }
+
+    const editor = model.editor;
+    const range = selectionInside(editor);
+    if (!range) return false;
+
+    const image = document.createElement('img');
+    image.src = url;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    range.deleteContents();
+    range.insertNode(image);
+    range.setStartAfter(image);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    syncEditorModel(editor, model);
+    captureEditorSelection(model);
+    updateTextToolbarState(model);
+    return true;
+  }
+
   function insertLineBreak(editor, model) {
-    const current = safeText(editor.textContent);
-    const offsets = selectionOffsets(editor);
-    const hasLogicalCaret = Number.isFinite(model.logicalCaretOffset);
-    const start = clamp(hasLogicalCaret ? model.logicalCaretOffset : offsets.start, 0, current.length);
-    const end = clamp(hasLogicalCaret ? start : offsets.end, start, current.length);
+    const current = plainTextFromElement(editor);
+    const replacement = selectedLength(editor);
+    if (current.length - replacement >= MAX_TEXT_LENGTH) return false;
 
-    if (current.length - (end - start) >= MAX_TEXT_LENGTH) return false;
+    let range = selectionInside(editor);
+    if (!range) {
+      placeCaretAtEnd(editor);
+      range = selectionInside(editor);
+    }
+    if (!range) return false;
 
-    const next = current.slice(0, start) + '\n' + current.slice(end);
-    model.logicalCaretOffset = start + 1;
-    commitEditorText(editor, model, next, model.logicalCaretOffset);
+    range.deleteContents();
+    const br = document.createElement('br');
+    range.insertNode(br);
+    range.setStartAfter(br);
+    range.collapse(true);
+    const selection = window.getSelection();
+    selection.removeAllRanges();
+    selection.addRange(range);
+    model.logicalCaretOffset = null;
+    syncEditorModel(editor, model);
+    captureEditorSelection(model);
+    updateTextToolbarState(model);
     return true;
   }
 
@@ -725,7 +1051,13 @@
     }
 
     model.editing = editing;
-    if (!editing) model.logicalCaretOffset = null;
+    if (!editing) {
+      model.logicalCaretOffset = null;
+      model.savedRange = null;
+      if (model.urlPopover) model.urlPopover.hidden = true;
+      if (model.morePanel) model.morePanel.hidden = true;
+      model.toolbar?.classList.remove('has-popover');
+    }
     model.el.classList.toggle('is-editing', editing);
     model.editor.setAttribute('contenteditable', editing ? 'true' : 'false');
     editingNodeId = editing ? model.id : (editingNodeId === model.id ? null : editingNodeId);
@@ -735,6 +1067,8 @@
       requestAnimationFrame(() => {
         model.editor.focus({ preventScroll: true });
         placeCaretAtEnd(model.editor);
+        captureEditorSelection(model);
+        updateTextToolbarState(model);
       });
     }
   }
@@ -748,6 +1082,7 @@
     selectedNodeId = model.id;
     model.el.classList.add('is-selected');
     setFront(model);
+    updateTextToolbarState(model);
     if (focus) model.el.focus({ preventScroll: true });
   }
 
@@ -780,6 +1115,58 @@
     del.setAttribute('aria-label', 'Delete node');
     del.textContent = '×';
 
+    const toolbar = document.createElement('div');
+    toolbar.className = 'hero-custom-node__format-toolbar';
+    toolbar.setAttribute('role', 'toolbar');
+    toolbar.setAttribute('aria-label', 'Text formatting');
+
+    const formatButton = ({ key, label, shortcut = '', icon = '' }) => {
+      const button = document.createElement('button');
+      button.className = 'hero-custom-node__format-button';
+      button.type = 'button';
+      button.dataset.formatAction = key;
+      button.dataset.tooltip = label;
+      if (shortcut) button.dataset.shortcut = shortcut;
+      button.setAttribute('aria-label', shortcut ? `${label} (${shortcut})` : label);
+      button.setAttribute('aria-pressed', 'false');
+      button.innerHTML = icon;
+      return button;
+    };
+
+    const shortcutPrefix = /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent) ? '⌘' : 'Ctrl+';
+    const boldButton = formatButton({ key: 'bold', label: 'Bold', shortcut: `${shortcutPrefix}B`, icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-bold">B</span>' });
+    const italicButton = formatButton({ key: 'italic', label: 'Italic', shortcut: `${shortcutPrefix}I`, icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-italic">I</span>' });
+    const underlineButton = formatButton({ key: 'underline', label: 'Underline', shortcut: `${shortcutPrefix}U`, icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-underline">U</span>' });
+    const linkButton = formatButton({ key: 'link', label: 'Add link', shortcut: `${shortcutPrefix}K`, icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-link">⌁</span>' });
+    const imageButton = formatButton({ key: 'image', label: 'Insert image', icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-image">▧</span>' });
+    const moreButton = formatButton({ key: 'more', label: 'More formatting', icon: '<span aria-hidden="true" class="hero-custom-node__format-more-glyph">•••</span>' });
+
+    const urlPopover = document.createElement('div');
+    urlPopover.className = 'hero-custom-node__format-popover';
+    urlPopover.hidden = true;
+    const urlInput = document.createElement('input');
+    urlInput.className = 'hero-custom-node__format-url';
+    urlInput.type = 'url';
+    urlInput.inputMode = 'url';
+    urlInput.autocomplete = 'off';
+    urlInput.spellcheck = false;
+    urlInput.setAttribute('aria-label', 'URL');
+    const urlApply = document.createElement('button');
+    urlApply.className = 'hero-custom-node__format-apply';
+    urlApply.type = 'button';
+    urlApply.setAttribute('aria-label', 'Apply');
+    urlApply.textContent = '↗';
+    urlPopover.append(urlInput, urlApply);
+
+    const morePanel = document.createElement('div');
+    morePanel.className = 'hero-custom-node__format-more-panel';
+    morePanel.hidden = true;
+    const strikeButton = formatButton({ key: 'strike', label: 'Strikethrough', icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-strike">S</span>' });
+    const clearFormatButton = formatButton({ key: 'clear', label: 'Clear formatting', icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-clear">Tx</span>' });
+    const unlinkButton = formatButton({ key: 'unlink', label: 'Remove link', icon: '<span aria-hidden="true" class="hero-custom-node__format-glyph is-unlink">×⌁</span>' });
+    morePanel.append(strikeButton, clearFormatButton, unlinkButton);
+    toolbar.append(boldButton, italicButton, underlineButton, linkButton, imageButton, moreButton, urlPopover, morePanel);
+
     const editor = document.createElement('div');
     editor.className = 'hero-custom-node__editor';
     editor.setAttribute('role', 'textbox');
@@ -788,7 +1175,7 @@
     editor.setAttribute('data-placeholder', 'Write something…');
     editor.setAttribute('contenteditable', 'false');
     editor.spellcheck = true;
-    editor.textContent = model.text;
+    editor.innerHTML = model.html || sanitizeRichTextHtml('', model.text);
 
     const counter = document.createElement('span');
     counter.className = 'hero-custom-node__counter';
@@ -804,7 +1191,7 @@
     portOut.setAttribute('aria-hidden', 'true');
 
     meta.append(label);
-    el.append(meta, del, editor, counter, portIn, portOut);
+    el.append(toolbar, meta, del, editor, counter, portIn, portOut);
     nodeLayer.appendChild(el);
 
     model.el = el;
@@ -812,6 +1199,91 @@
     model.counter = counter;
     model.portIn = portIn;
     model.portOut = portOut;
+    model.toolbar = toolbar;
+    model.urlPopover = urlPopover;
+    model.urlInput = urlInput;
+    model.morePanel = morePanel;
+    model.formatButtons = {
+      bold: boldButton,
+      italic: italicButton,
+      underline: underlineButton,
+      link: linkButton,
+      strike: strikeButton
+    };
+
+    const closeToolbarPanels = ({ restoreFocus = false } = {}) => {
+      urlPopover.hidden = true;
+      morePanel.hidden = true;
+      toolbar.classList.remove('has-popover');
+      if (restoreFocus) {
+        ensureEditorSelection(model);
+        captureEditorSelection(model);
+        updateTextToolbarState(model);
+      }
+    };
+
+    const openUrlPopover = mode => {
+      captureEditorSelection(model);
+      morePanel.hidden = true;
+      urlPopover.hidden = false;
+      urlPopover.dataset.mode = mode;
+      toolbar.classList.add('has-popover');
+      const currentLink = mode === 'link' ? currentEditorLink(model) : null;
+      urlInput.value = currentLink?.href || '';
+      urlInput.placeholder = mode === 'image' ? 'https://…/image.jpg' : 'https://…';
+      urlInput.setAttribute('aria-label', mode === 'image' ? 'Image URL' : 'Link URL');
+      requestAnimationFrame(() => {
+        urlInput.focus({ preventScroll: true });
+        if (urlInput.value) urlInput.select();
+      });
+    };
+
+    const submitUrlPopover = () => {
+      const mode = urlPopover.dataset.mode;
+      const value = urlInput.value;
+      const applied = mode === 'image'
+        ? insertEditorImage(model, value)
+        : applyEditorLink(model, value);
+      if (applied) closeToolbarPanels({ restoreFocus: true });
+    };
+
+    toolbar.addEventListener('pointerdown', event => {
+      event.stopPropagation();
+      if (event.target.closest('.hero-custom-node__format-button')) event.preventDefault();
+    });
+    toolbar.addEventListener('click', event => event.stopPropagation());
+
+    boldButton.addEventListener('click', () => applyEditorCommand(model, 'bold'));
+    italicButton.addEventListener('click', () => applyEditorCommand(model, 'italic'));
+    underlineButton.addEventListener('click', () => applyEditorCommand(model, 'underline'));
+    strikeButton.addEventListener('click', () => applyEditorCommand(model, 'strikeThrough'));
+    clearFormatButton.addEventListener('click', () => {
+      applyEditorCommand(model, 'removeFormat');
+      closeToolbarPanels({ restoreFocus: true });
+    });
+    unlinkButton.addEventListener('click', () => {
+      applyEditorCommand(model, 'unlink');
+      closeToolbarPanels({ restoreFocus: true });
+    });
+    linkButton.addEventListener('click', () => openUrlPopover('link'));
+    imageButton.addEventListener('click', () => openUrlPopover('image'));
+    moreButton.addEventListener('click', () => {
+      captureEditorSelection(model);
+      urlPopover.hidden = true;
+      morePanel.hidden = !morePanel.hidden;
+      toolbar.classList.toggle('has-popover', !morePanel.hidden);
+      updateTextToolbarState(model);
+    });
+    urlApply.addEventListener('click', submitUrlPopover);
+    urlInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submitUrlPopover();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        closeToolbarPanels({ restoreFocus: true });
+      }
+    });
 
     renderModel(model);
     updateCounter(model);
@@ -831,7 +1303,7 @@
 
     el.addEventListener('pointerdown', event => {
       if (event.button !== undefined && event.button !== 0) return;
-      if (event.target.closest('[data-custom-port], .hero-custom-node__delete')) return;
+      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, .hero-custom-node__format-toolbar')) return;
 
       selectNode(model);
 
@@ -857,7 +1329,7 @@
     });
 
     el.addEventListener('dblclick', event => {
-      if (event.target.closest('[data-custom-port], .hero-custom-node__delete')) return;
+      if (event.target.closest('[data-custom-port], .hero-custom-node__delete, .hero-custom-node__format-toolbar')) return;
       event.preventDefault();
       selectNode(model);
       setEditing(model, true);
@@ -867,6 +1339,21 @@
 
     editor.addEventListener('keydown', event => {
       if (!model.editing) return;
+
+      const modifier = (event.ctrlKey || event.metaKey) && !event.altKey;
+      if (modifier) {
+        const key = String(event.key || '').toLowerCase();
+        if (key === 'b' || key === 'i' || key === 'u') {
+          event.preventDefault();
+          applyEditorCommand(model, key === 'b' ? 'bold' : key === 'i' ? 'italic' : 'underline');
+          return;
+        }
+        if (key === 'k') {
+          event.preventDefault();
+          openUrlPopover('link');
+          return;
+        }
+      }
 
       const now = performance.now();
       const ignored = (
@@ -912,7 +1399,7 @@
       const inputType = String(event.inputType || '');
 
       if (Number.isFinite(model.logicalCaretOffset)) {
-        const current = safeText(editor.textContent);
+        const current = plainTextFromEditor(editor);
         let position = clamp(model.logicalCaretOffset, 0, current.length);
 
         if (inputType === 'insertText' || inputType === 'insertCompositionText') {
@@ -949,7 +1436,7 @@
 
       if (!inputType.startsWith('insert') || inputType === 'insertLineBreak' || inputType === 'insertParagraph') return;
       const incoming = String(event.data || '');
-      const current = editor.textContent.length;
+      const current = plainTextFromElement(editor).length;
       const replacement = selectedLength(editor);
       if (current - replacement + incoming.length > MAX_TEXT_LENGTH) {
         event.preventDefault();
@@ -965,7 +1452,7 @@
       event.preventDefault();
       const raw = event.clipboardData?.getData('text/plain') || '';
       if (Number.isFinite(model.logicalCaretOffset)) {
-        const current = safeText(editor.textContent);
+        const current = plainTextFromEditor(editor);
         const position = clamp(model.logicalCaretOffset, 0, current.length);
         const remaining = Math.max(0, MAX_TEXT_LENGTH - current.length);
         const chunk = safeText(raw).slice(0, remaining);
@@ -974,7 +1461,7 @@
         commitEditorText(editor, model, next, position + chunk.length);
         return;
       }
-      const current = editor.textContent.length;
+      const current = plainTextFromElement(editor).length;
       const replacement = selectedLength(editor);
       const remaining = Math.max(0, MAX_TEXT_LENGTH - (current - replacement));
       insertPlainText(editor, raw.slice(0, remaining));
@@ -983,23 +1470,29 @@
 
     editor.addEventListener('input', () => {
       model.logicalCaretOffset = null;
-      let text = safeText(editor.textContent);
-      if (editor.textContent !== text) {
-        editor.textContent = text;
-        placeCaretAtEnd(editor);
-      }
-      model.text = text;
-      updateCounter(model);
-      saveState();
-      drawConnections();
-      window.DeushimaGrid?.wake?.(380);
+      syncEditorModel(editor, model);
+      captureEditorSelection(model);
+      updateTextToolbarState(model);
     });
 
     editor.addEventListener('blur', () => {
-      if (model.editing && document.activeElement !== editor) {
-        setEditing(model, false, false);
-      }
+      requestAnimationFrame(() => {
+        const active = document.activeElement;
+        if (model.editing && active !== editor && !model.toolbar?.contains(active)) {
+          setEditing(model, false, false);
+        }
+      });
     });
+
+    editor.addEventListener('click', event => {
+      if (model.editing && event.target.closest('a')) event.preventDefault();
+    });
+
+    editor.addEventListener('load', event => {
+      if (!(event.target instanceof HTMLImageElement)) return;
+      drawConnections();
+      window.DeushimaGrid?.wake?.(300);
+    }, true);
 
     [portIn, portOut].forEach(port => {
       port.addEventListener('pointerenter', event => {
@@ -1017,6 +1510,7 @@
     x = null,
     y = null,
     text = '',
+    html = '',
     z = ++zCounter,
     animate = true,
     focusEditor = true,
@@ -1035,6 +1529,8 @@
     );
     const worldX = Number.isFinite(Number(x)) ? Number(x) : fallbackCenter.x;
     const worldY = Number.isFinite(Number(y)) ? Number(y) : fallbackCenter.y;
+    const initialHtml = sanitizeRichTextHtml(html, text);
+    const initialText = richHtmlText(initialHtml) || safeText(text);
 
     const model = {
       id,
@@ -1042,16 +1538,23 @@
       type: 'text',
       x: worldX,
       y: worldY,
-      text: safeText(text),
+      text: initialText,
+      html: initialHtml,
       z: clamp(Math.trunc(z) || 1, 1, 9999),
       preserveWorldPosition: Boolean(preserveWorldPosition),
       editing: false,
       logicalCaretOffset: null,
+      savedRange: null,
       el: null,
       editor: null,
       counter: null,
       portIn: null,
-      portOut: null
+      portOut: null,
+      toolbar: null,
+      urlPopover: null,
+      urlInput: null,
+      morePanel: null,
+      formatButtons: null
     };
 
     zCounter = Math.max(zCounter, model.z);
@@ -1071,6 +1574,16 @@
 
     return model;
   }
+
+  document.addEventListener('selectionchange', () => {
+    if (!editingNodeId) return;
+    const model = models.get(editingNodeId);
+    if (!model?.editor) return;
+    const range = selectionInside(model.editor);
+    if (!range) return;
+    model.savedRange = range.cloneRange();
+    updateTextToolbarState(model);
+  });
 
   function nextSerialForType(type) {
     let highest = 0;
@@ -1602,6 +2115,7 @@
       x: source.x + 28,
       y: source.y + 24,
       text: source.text,
+      html: source.html,
       animate: true,
       focusEditor: false,
       persist: true,
@@ -2151,7 +2665,13 @@
       y: Number(model.y.toFixed(6)),
       z: model.z
     };
-    if (model.type === 'text') return { ...base, text: safeText(model.text) };
+    if (model.type === 'text') {
+      return {
+        ...base,
+        text: safeText(model.text),
+        html: sanitizeRichTextHtml(model.html, model.text)
+      };
+    }
     if (model.type === 'link' || model.type === 'instagram' || model.type === 'youtube') {
       return { ...base, url: model.url };
     }
@@ -2417,8 +2937,13 @@
       };
 
       if (rawNode.type === 'text') {
-        if (strict && (typeof rawNode.text !== 'string' || rawNode.text.length > MAX_TEXT_LENGTH)) return null;
-        nodes.push({ ...base, text: safeText(rawNode.text) });
+        if (strict && (
+          typeof rawNode.text !== 'string'
+          || rawNode.text.length > MAX_TEXT_LENGTH
+          || (rawNode.html !== undefined && (typeof rawNode.html !== 'string' || rawNode.html.length > MAX_RICH_TEXT_HTML_LENGTH))
+        )) return null;
+        const html = sanitizeRichTextHtml(rawNode.html, rawNode.text);
+        nodes.push({ ...base, text: richHtmlText(html) || safeText(rawNode.text), html });
         continue;
       }
 
