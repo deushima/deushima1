@@ -1,6 +1,6 @@
 .section-jump-control {
-  --sl-size: 56px;
-  --sl-svg: 72px;
+  --sl-size: 46px;
+  --sl-svg: 62px;
   --sl-pad: #f5f5f5;
   --sl-icon: #18181b;
   --sl-accent: #f5f5f5;
@@ -81,18 +81,9 @@ body.is-page-leaving .section-jump-control {
 }
 
 .sling-button__arc {
-  fill: none;
-  stroke: var(--sl-accent);
-  stroke-width: var(--sl-stroke);
-  stroke-linecap: butt;
-  opacity: 0;
-  transform-origin: center;
-  transition: stroke-width 160ms var(--sl-ease-out), opacity 120ms ease;
+  display: none;
 }
 
-.sling-button[data-armed] .sling-button__arc {
-  stroke-width: calc(var(--sl-stroke) * 1.45);
-}
 
 .sling-button__move {
   position: absolute;
@@ -159,8 +150,8 @@ body.is-page-leaving .section-jump-control {
 
 .sling-button__icon {
   display: inline-flex;
-  width: 22px;
-  height: 22px;
+  width: 16px;
+  height: 16px;
   align-items: center;
   justify-content: center;
   will-change: transform;
@@ -176,7 +167,7 @@ body.is-page-leaving .section-jump-control {
   height: 100%;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.9;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -207,11 +198,11 @@ body.is-page-leaving .section-jump-control {
 
 @media (max-width: 760px) {
   .section-jump-control {
-    --sl-size: 54px;
-    --sl-svg: 70px;
+    --sl-size: 44px;
+    --sl-svg: 60px;
     bottom: calc(2rem + env(safe-area-inset-bottom));
   }
-  .sling-button__icon { width: 21px; height: 21px; }
+  .sling-button__icon { width: 15px; height: 15px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

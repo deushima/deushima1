@@ -27,9 +27,9 @@
     !footer
   ) return;
 
-  const SIZE = 56;
-  const ARM = 48;
-  const MAX_PULL = 160;
+  const SIZE = 46;
+  const ARM = 40;
+  const MAX_PULL = 140;
   const LAUNCH_SPEED = 2600;
   const RECOIL = 0.2;
   const FLIGHT = 120;
@@ -42,7 +42,7 @@
   const DOT_MS = 300;
   const EASE_OUT = 'cubic-bezier(0.23, 1, 0.32, 1)';
   const SLOP = { fine: 4, coarse: 8 };
-  const WELL_R = 32;
+  const WELL_R = 26;
   const PAD_R = SIZE / 2 - 1.5;
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -367,7 +367,6 @@
     } catch {}
 
     pad.setAttribute('data-held', '');
-    pad.focus({ preventScroll: true });
   }
 
   function onPointerMove(event) {
