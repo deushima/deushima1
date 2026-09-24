@@ -313,4 +313,18 @@
       })
     })
   });
+
+  function loadClearAllNodes() {
+    if (document.querySelector('script[data-clear-all-nodes-loader]')) return;
+    const script = document.createElement('script');
+    script.src = 'clear-all-nodes.js?v=20260924-clearall1';
+    script.dataset.clearAllNodesLoader = '';
+    document.head.appendChild(script);
+  }
+
+  if (document.readyState === 'complete') {
+    loadClearAllNodes();
+  } else {
+    document.addEventListener('DOMContentLoaded', loadClearAllNodes, { once: true });
+  }
 })();
