@@ -781,6 +781,10 @@
         event.preventDefault();
         spaceDown = true;
         interactionRoot.classList.add('is-camera-space');
+        window.DeushimaSFX?.playScoped?.('chatSpace', {
+          element: stage,
+          eventTimestamp: event.timeStamp
+        });
       }
     }
 

@@ -38,7 +38,7 @@
   const LONG_PRESS_TOLERANCE = 8;
   const DRAG_THRESHOLD = 5;
   const PORT_RADIUS = 46;
-  const PORT_IDS = Object.freeze(['left', 'right']);
+  const PORT_IDS = Object.freeze(['left', 'right', 'top', 'bottom']);
   const MEDIA_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'bmp', 'apng', 'svg', 'ico']);
   const MEDIA_VIDEO_EXTENSIONS = new Set(['mp4', 'webm', 'ogv', 'ogg', 'm4v', 'mov']);
   const MEDIA_MOUNT_TIMEOUT_MS = 10000;
@@ -86,6 +86,7 @@
   let lastTypingAt = 0;
   let resizeSaveTimer = 0;
   let cameraSaveTimer = 0;
+  let lostPointerCaptureTimer = 0;
   let workspaceMutationDepth = 0;
 
   const mediaVisibilityObserver = typeof IntersectionObserver === 'function'
@@ -121,7 +122,7 @@
   lineDeleteButton.className = 'hero-custom-connection-delete';
   lineDeleteButton.type = 'button';
   lineDeleteButton.setAttribute('aria-label', 'Delete connection');
-  lineDeleteButton.textContent = '×';
+  lineDeleteButton.innerHTML = '<svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" id="Scissors--Streamline-Radix" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" fill-rule="evenodd" d="M4.776 9.595a2.45 2.45 0 1 1-.552-.836l2.203-1.472.253-.907a1 1 0 0 1 .476-.604l3.074-1.711a10 10 0 0 1 3.819-1.207l.951-.1-4.77 4.141L15 12.241l-.951-.101a10 10 0 0 1-3.817-1.207L7.156 9.222l-2.38 1.59ZM2.5 8.95a1.55 1.55 0 1 0 0 3.099 1.55 1.55 0 0 0 0-3.1Zm0-6.916a2.45 2.45 0 0 1 2.272 3.364l.965.646-.527.853-.996-.665A2.45 2.45 0 1 1 2.5 2.035Zm0 .9a1.55 1.55 0 1 0 0 3.1 1.55 1.55 0 0 0 0-3.1Z" clip-rule="evenodd"/></svg>';
   stage.appendChild(lineDeleteButton);
 
   const menu = document.createElement('div');
@@ -486,11 +487,18 @@
   function normalizePortId(value) {
     if (value === 'left' || value === 'in') return 'left';
     if (value === 'right' || value === 'out') return 'right';
+    if (value === 'top' || value === 'up') return 'top';
+    if (value === 'bottom' || value === 'down') return 'bottom';
     return null;
   }
 
   function domPortToken(portId) {
-    return normalizePortId(portId) === 'left' ? 'in' : 'out';
+    const normalized = normalizePortId(portId);
+    if (normalized === 'left') return 'in';
+    if (normalized === 'right') return 'out';
+    if (normalized === 'top') return 'up';
+    if (normalized === 'bottom') return 'down';
+    return '';
   }
 
   function endpointRefForOriginal(name) {
@@ -1300,8 +1308,18 @@
     portOut.dataset.customPort = 'out';
     portOut.setAttribute('aria-hidden', 'true');
 
+    const portUp = document.createElement('span');
+    portUp.className = 'hero-custom-node__port hero-custom-node__port--up';
+    portUp.dataset.customPort = 'up';
+    portUp.setAttribute('aria-hidden', 'true');
+
+    const portDown = document.createElement('span');
+    portDown.className = 'hero-custom-node__port hero-custom-node__port--down';
+    portDown.dataset.customPort = 'down';
+    portDown.setAttribute('aria-hidden', 'true');
+
     meta.append(label);
-    el.append(toolbar, meta, del, editor, counter, portIn, portOut);
+    el.append(toolbar, meta, del, editor, counter, portIn, portOut, portUp, portDown);
     nodeLayer.appendChild(el);
 
     model.el = el;
@@ -1604,7 +1622,7 @@
       window.DeushimaGrid?.wake?.(300);
     }, true);
 
-    [portIn, portOut].forEach(port => {
+    [portIn, portOut, portUp, portDown].forEach(port => {
       port.addEventListener('pointerenter', event => {
         if (coarsePointer.matches || event.pointerType === 'touch') return;
         playSfx('port', { element: port, eventTimestamp: event.timeStamp, gainScale: .8 });
@@ -1768,10 +1786,20 @@
     portOut.className = 'hero-custom-node__port hero-custom-node__port--out';
     portOut.dataset.customPort = 'out';
     portOut.setAttribute('aria-hidden', 'true');
-    el.append(portIn, portOut);
+    const portUp = document.createElement('span');
+    portUp.className = 'hero-custom-node__port hero-custom-node__port--up';
+    portUp.dataset.customPort = 'up';
+    portUp.setAttribute('aria-hidden', 'true');
+    const portDown = document.createElement('span');
+    portDown.className = 'hero-custom-node__port hero-custom-node__port--down';
+    portDown.dataset.customPort = 'down';
+    portDown.setAttribute('aria-hidden', 'true');
+    el.append(portIn, portOut, portUp, portDown);
     model.portIn = portIn;
     model.portOut = portOut;
-    [portIn, portOut].forEach(port => {
+    model.portUp = portUp;
+    model.portDown = portDown;
+    [portIn, portOut, portUp, portDown].forEach(port => {
       port.addEventListener('pointerenter', event => {
         if (coarsePointer.matches || event.pointerType === 'touch') return;
         playSfx('port', { element: port, eventTimestamp: event.timeStamp, gainScale: .8 });
@@ -2306,15 +2334,6 @@
       ? { ref: endpointOrRef, port: normalizePortId(portId) }
       : endpointOrRef;
     if (!endpoint?.ref || !normalizePortId(endpoint.port)) return null;
-    const parsed = parseEndpoint(endpoint.ref);
-    if (!parsed) return null;
-    if (parsed.kind === 'user') {
-      const model = models.get(parsed.id);
-      if (!model?.el) return null;
-      const halfWidth = Math.max(1, model.el.offsetWidth || 180) * 0.5;
-      const worldX = model.x + (endpoint.port === 'left' ? -halfWidth : halfWidth);
-      return worldToStageLocal(worldX, model.y);
-    }
     const port = endpointPort(endpoint.ref, endpoint.port);
     if (!port) return null;
     const stageRect = stage.getBoundingClientRect();
@@ -2327,39 +2346,49 @@
   }
 
   function portClientCenter(endpoint) {
-    const parsed = parseEndpoint(endpoint?.ref);
-    if (!parsed || !normalizePortId(endpoint?.port)) return null;
-    if (parsed.kind === 'user') {
-      const model = models.get(parsed.id);
-      const camera = cameraApi();
-      if (!model?.el || !camera?.worldToScreen) return null;
-      const halfWidth = Math.max(1, model.el.offsetWidth || 180) * 0.5;
-      return camera.worldToScreen(
-        model.x + (endpoint.port === 'left' ? -halfWidth : halfWidth),
-        model.y
-      );
-    }
+    if (!parseEndpoint(endpoint?.ref) || !normalizePortId(endpoint?.port)) return null;
     const port = endpointPort(endpoint.ref, endpoint.port);
     if (!port) return null;
     const rect = port.getBoundingClientRect();
     return { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 };
   }
 
+  function portDirection(portId) {
+    const normalized = normalizePortId(portId);
+    if (normalized === 'left') return { x: -1, y: 0 };
+    if (normalized === 'right') return { x: 1, y: 0 };
+    if (normalized === 'top') return { x: 0, y: -1 };
+    return { x: 0, y: 1 };
+  }
+
+  function approachPortForPoint(from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? 'left' : 'right';
+    return dy >= 0 ? 'top' : 'bottom';
+  }
+
   function curvePoints(from, to, fromPort = 'right', toPort = 'left', lane = 0) {
     const dx = to.x - from.x;
     const dy = to.y - from.y;
     const distance = Math.max(1, Math.hypot(dx, dy));
-    const tension = Math.max(42, Math.min(190, Math.abs(dx) * .42 + Math.abs(dy) * .12));
+    const tension = Math.max(42, Math.min(190, distance * .38));
     const nx = -dy / distance;
     const ny = dx / distance;
     const offset = laneOffset(lane);
-    const fromDirection = fromPort === 'left' ? -1 : 1;
-    const toDirection = toPort === 'left' ? -1 : 1;
+    const fromDirection = portDirection(fromPort);
+    const toDirection = portDirection(toPort);
     return {
       from,
       to,
-      c1: { x: from.x + tension * fromDirection + nx * offset, y: from.y + ny * offset },
-      c2: { x: to.x + tension * toDirection + nx * offset, y: to.y + ny * offset }
+      c1: {
+        x: from.x + tension * fromDirection.x + nx * offset,
+        y: from.y + tension * fromDirection.y + ny * offset
+      },
+      c2: {
+        x: to.x + tension * toDirection.x + nx * offset,
+        y: to.y + tension * toDirection.y + ny * offset
+      }
     };
   }
 
@@ -2375,6 +2404,46 @@
       x: uu * u * points.from.x + 3 * uu * t * points.c1.x + 3 * u * tt * points.c2.x + tt * t * points.to.x,
       y: uu * u * points.from.y + 3 * uu * t * points.c1.y + 3 * u * tt * points.c2.y + tt * t * points.to.y
     };
+  }
+
+  function emitCutParticles(connection) {
+    if (reducedMotion.matches || !connection) return;
+    const from = portCenter(connection.from);
+    const to = portCenter(connection.to);
+    if (!from || !to) return;
+    const center = cubicPoint(curvePoints(
+      from,
+      to,
+      connection.from.port,
+      connection.to.port,
+      connection.lane
+    ), .5);
+    const particles = [
+      { x: -16, lift: -8, fall: 18, rotate: -95 },
+      { x: -9, lift: -12, fall: 24, rotate: -52 },
+      { x: -3, lift: -7, fall: 29, rotate: -18 },
+      { x: 5, lift: -11, fall: 26, rotate: 34 },
+      { x: 11, lift: -6, fall: 22, rotate: 68 },
+      { x: 17, lift: -9, fall: 28, rotate: 112 }
+    ];
+    particles.forEach((particle, index) => {
+      const shard = document.createElement('span');
+      shard.className = 'hero-custom-connection-cut-particle';
+      shard.style.left = `${center.x.toFixed(2)}px`;
+      shard.style.top = `${center.y.toFixed(2)}px`;
+      stage.appendChild(shard);
+      const animation = shard.animate([
+        { transform: 'translate(-50%, -50%) translate(0, 0) rotate(0deg)', opacity: .9 },
+        { transform: `translate(-50%, -50%) translate(${(particle.x * .55).toFixed(1)}px, ${particle.lift}px) rotate(${particle.rotate * .45}deg)`, opacity: .8, offset: .38 },
+        { transform: `translate(-50%, -50%) translate(${particle.x}px, ${particle.fall}px) rotate(${particle.rotate}deg)`, opacity: 0 }
+      ], {
+        duration: 360 + index * 18,
+        easing: 'cubic-bezier(.2,.7,.2,1)',
+        fill: 'forwards'
+      });
+      animation.addEventListener('finish', () => shard.remove(), { once: true });
+      window.setTimeout(() => shard.remove(), 560);
+    });
   }
 
   function ensureConnectionElement(connection) {
@@ -2538,6 +2607,7 @@
     if (index < 0) return false;
     const connection = connections[index];
     const soundElement = endpointElement(connection.to.ref);
+    emitCutParticles(connection);
     connections.splice(index, 1);
     connectionEls.get(id)?.group.remove();
     connectionEls.delete(id);
@@ -2593,6 +2663,9 @@
     const point = portCenter(source);
     if (!point) return;
 
+    window.clearTimeout(lostPointerCaptureTimer);
+    lostPointerCaptureTimer = 0;
+
     connectionState = {
       pointerId: event.pointerId,
       source,
@@ -2620,7 +2693,7 @@
       ? portCenter(targetEndpoint)
       : { x: connectionState.pointerX, y: connectionState.pointerY };
     if (!to) return;
-    const toPort = targetEndpoint?.port || (to.x >= from.x ? 'left' : 'right');
+    const toPort = targetEndpoint?.port || approachPortForPoint(from, to);
     previewPath.setAttribute('d', curvePath(curvePoints(from, to, connectionState.source.port, toPort, 0)));
   }
 
@@ -2637,6 +2710,8 @@
   function endConnection(event, { commit = true } = {}) {
     if (!connectionState || event.pointerId !== connectionState.pointerId) return;
 
+    window.clearTimeout(lostPointerCaptureTimer);
+    lostPointerCaptureTimer = 0;
     const state = connectionState;
     const target = commit
       ? nearestCompatiblePort(event.clientX, event.clientY, state.source) || state.target
@@ -2664,6 +2739,8 @@
 
   function cancelConnectionGesture() {
     if (!connectionState) return;
+    window.clearTimeout(lostPointerCaptureTimer);
+    lostPointerCaptureTimer = 0;
     const state = connectionState;
     connectionState = null;
     try {
@@ -2822,8 +2899,8 @@
   function serializeConnections() {
     return connections.map(connection => ({
       id: connection.id,
-      from: { ...connection.from },
-      to: { ...connection.to },
+      from: { ref: connection.from.ref, port: normalizePortId(connection.from.port) },
+      to: { ref: connection.to.ref, port: normalizePortId(connection.to.port) },
       lane: connection.lane
     }));
   }
@@ -2976,7 +3053,7 @@
       const to = typeof rawConnection.to === 'string'
         ? { ref: rawConnection.to, port: 'left' }
         : { ref: String(rawConnection.to?.ref || ''), port: normalizePortId(rawConnection.to?.port) };
-      if (strict && (!PORT_IDS.includes(rawConnection.from?.port) || !PORT_IDS.includes(rawConnection.to?.port))) return null;
+      if (strict && (!PORT_IDS.includes(from.port) || !PORT_IDS.includes(to.port))) return null;
       const laneNumber = Number(rawConnection.lane);
       if (strict && typeof rawConnection.lane !== 'number') return null;
       const validLane = Number.isInteger(laneNumber) && laneNumber >= -MAX_CONNECTIONS && laneNumber <= MAX_CONNECTIONS;
@@ -4501,7 +4578,15 @@
   stage.addEventListener('lostpointercapture', event => {
     if (!connectionState || event.pointerId !== connectionState.pointerId) return;
     if (event.target !== connectionState.sourcePort) return;
-    endConnection(event, { commit: false });
+    window.clearTimeout(lostPointerCaptureTimer);
+    const pointerId = event.pointerId;
+    const sourcePort = event.target;
+    lostPointerCaptureTimer = window.setTimeout(() => {
+      lostPointerCaptureTimer = 0;
+      if (!connectionState || connectionState.pointerId !== pointerId) return;
+      if (connectionState.sourcePort !== sourcePort) return;
+      cancelConnectionGesture();
+    }, 0);
   }, { capture: true });
 
   function cancelTransientInteraction({ reason = 'cancel', pointerId = null } = {}) {
