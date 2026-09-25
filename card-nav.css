@@ -1,4 +1,6 @@
 .hero--node-canvas .nav.card-nav {
+  --card-nav-x: 0px;
+  --card-nav-y: 0px;
   position: absolute;
   top: max(0.9rem, env(safe-area-inset-top));
   left: 50%;
@@ -8,21 +10,33 @@
   max-width: none;
   padding: 0.34rem;
   overflow: hidden;
-  border: 1px solid rgba(12, 12, 12, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.11);
   border-radius: 0.95rem;
-  background: #f3f3ef;
-  color: #090909;
-  box-shadow: 0 0.85rem 2.5rem rgba(0, 0, 0, 0.16);
-  transform: translate3d(-50%, var(--hero-nav-y), 0);
+  background: #080808;
+  color: #f5f5f1;
+  box-shadow: 0 0.85rem 2.5rem rgba(0, 0, 0, 0.28);
+  transform: translate3d(calc(-50% + var(--card-nav-x)), calc(var(--hero-nav-y) + var(--card-nav-y)), 0);
+  scale: 1;
   transition:
     border-color 0.18s ease,
-    box-shadow 0.22s ease;
-  will-change: transform;
+    box-shadow 0.22s ease,
+    scale 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform, scale;
 }
 
 .hero--node-canvas .nav.card-nav.is-card-nav-open {
-  border-color: rgba(12, 12, 12, 0.14);
-  box-shadow: 0 1.1rem 3rem rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: 0 1.1rem 3rem rgba(0, 0, 0, 0.34);
+}
+
+.hero--node-canvas .nav.card-nav.is-dragging {
+  scale: 0.972;
+  box-shadow: 0 0.62rem 1.9rem rgba(0, 0, 0, 0.28);
+  cursor: grabbing;
+}
+
+.hero--node-canvas .nav.card-nav.is-rebounding {
+  animation: cardNavRelease 0.52s cubic-bezier(0.18, 0.9, 0.24, 1.18);
 }
 
 .card-nav__bar {
@@ -34,6 +48,17 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0 0.3rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.hero--node-canvas .nav.card-nav.is-dragging .card-nav__bar {
+  cursor: grabbing;
+}
+
+.card-nav__bar a,
+.card-nav__bar button {
+  cursor: pointer;
 }
 
 .hero--node-canvas .nav.card-nav .brand-mark {
@@ -59,7 +84,7 @@
   max-height: 1.25rem;
   object-fit: contain;
   opacity: 0.95;
-  filter: none;
+  filter: brightness(0) invert(1);
   transform: none;
   transition: opacity 0.18s ease;
 }
@@ -67,7 +92,7 @@
 .hero--node-canvas .nav.card-nav .brand-mark:hover img,
 .hero--node-canvas .nav.card-nav .brand-mark:focus-visible img {
   opacity: 1;
-  filter: none;
+  filter: brightness(0) invert(1);
   transform: none;
 }
 
@@ -83,7 +108,7 @@
   border: 0;
   border-radius: 0.6rem;
   background: transparent;
-  color: #0a0a0a;
+  color: #f5f5f1;
   cursor: pointer;
   appearance: none;
   transition: background-color 0.16s ease;
@@ -91,12 +116,12 @@
 
 .card-nav__toggle:hover,
 .card-nav__toggle:focus-visible {
-  background: rgba(8, 8, 8, 0.065);
+  background: rgba(255, 255, 255, 0.08);
   outline: none;
 }
 
 .card-nav__toggle:focus-visible {
-  box-shadow: inset 0 0 0 1px rgba(8, 8, 8, 0.22);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22);
 }
 
 .card-nav__toggle-icon {
@@ -150,10 +175,10 @@
   justify-self: end;
   gap: 0.42rem;
   padding: 0 0.72rem;
-  border: 1px solid #080808;
+  border: 1px solid #f5f5f1;
   border-radius: 0.62rem;
-  background: #080808;
-  color: #f5f5f1;
+  background: #f5f5f1;
+  color: #080808;
   font-size: 0.7rem;
   font-weight: 500;
   line-height: 1;
@@ -174,9 +199,9 @@
 
 .hero--node-canvas .nav.card-nav .discover-link.card-nav__cta:hover,
 .hero--node-canvas .nav.card-nav .discover-link.card-nav__cta:focus-visible {
-  border-color: #161616;
-  background: #161616;
-  color: #fff;
+  border-color: #fff;
+  background: #fff;
+  color: #080808;
   outline: none;
   transform: translateY(-1px);
 }
@@ -191,24 +216,49 @@
 .card-nav__drawer {
   position: relative;
   z-index: 1;
-  max-height: 0;
+  height: 0;
   overflow: hidden;
   visibility: hidden;
   opacity: 0;
-  transform: translate3d(0, -0.3rem, 0);
+  transform: translate3d(0, -0.55rem, 0);
   transition:
-    max-height 0.22s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity 0.12s ease,
-    transform 0.2s cubic-bezier(0.22, 1, 0.36, 1),
-    visibility 0s linear 0.22s;
+    height 0.46s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.28s ease,
+    transform 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 0.46s;
 }
 
 .is-card-nav-open .card-nav__drawer {
-  max-height: 13.6rem;
+  height: var(--card-nav-drawer-height, 13.6rem);
   visibility: visible;
   opacity: 1;
   transform: translate3d(0, 0, 0);
   transition-delay: 0s;
+}
+
+.hero--node-canvas .nav.card-nav .directory__group {
+  opacity: 0;
+  transform: translate3d(0, 0.45rem, 0);
+  transition:
+    opacity 0.26s ease,
+    transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hero--node-canvas .nav.card-nav.is-card-nav-open .directory__group {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+}
+
+.hero--node-canvas .nav.card-nav.is-card-nav-open .directory__group:nth-child(1) {
+  transition-delay: 0.05s;
+}
+
+.hero--node-canvas .nav.card-nav.is-card-nav-open .directory__group:nth-child(2) {
+  transition-delay: 0.085s;
+}
+
+.hero--node-canvas .nav.card-nav.is-card-nav-open .directory__group:nth-child(3) {
+  transition-delay: 0.12s;
 }
 
 .hero--node-canvas .nav.card-nav .directory {
@@ -228,10 +278,10 @@
   gap: 0.24rem;
   padding: 0.85rem 0.88rem 0.78rem;
   overflow: hidden;
-  border: 1px solid #161616;
+  border: 1px solid rgba(8, 8, 8, 0.12);
   border-radius: 0.72rem;
-  background: #080808;
-  color: #f7f7f3;
+  background: #f3f3ef;
+  color: #080808;
   font-size: 0.72rem;
   font-weight: 400;
   line-height: 1.15;
@@ -246,7 +296,7 @@
   justify-content: flex-start;
   gap: 0.32rem;
   margin: 0 0 0.42rem;
-  color: #fff;
+  color: #080808;
   font-size: 0.74rem;
   font-weight: 560;
   line-height: 1;
@@ -256,7 +306,7 @@
 .hero--node-canvas .nav.card-nav .directory__title::before {
   width: 0.36rem;
   height: 0.36rem;
-  background: #f7f7f3;
+  background: #080808;
 }
 
 .hero--node-canvas .nav.card-nav .directory a {
@@ -269,7 +319,7 @@
   gap: 0.5rem;
   overflow: visible;
   padding: 0.14rem 0;
-  color: rgba(247, 247, 243, 0.68);
+  color: rgba(8, 8, 8, 0.68);
   font-size: 0.68rem;
   font-weight: 400;
   line-height: 1.2;
@@ -292,7 +342,7 @@
   height: auto;
   margin: 0;
   background: none;
-  color: rgba(247, 247, 243, 0.34);
+  color: rgba(8, 8, 8, 0.34);
   opacity: 1;
   transform: none;
   transition:
@@ -308,7 +358,7 @@
 
 .hero--node-canvas .nav.card-nav .directory a:hover,
 .hero--node-canvas .nav.card-nav .directory a:focus-visible {
-  color: #fff;
+  color: #080808;
   outline: none;
   text-decoration: none;
   transform: translateX(0.12rem);
@@ -316,7 +366,7 @@
 
 .hero--node-canvas .nav.card-nav .directory a:hover::after,
 .hero--node-canvas .nav.card-nav .directory a:focus-visible::after {
-  color: #fff;
+  color: #080808;
   transform: translate3d(0.08rem, -0.04rem, 0);
 }
 
@@ -327,7 +377,7 @@
   justify-content: flex-end;
   gap: 0.42rem;
   padding: 0.42rem 0.26rem 0.1rem;
-  color: rgba(8, 8, 8, 0.52);
+  color: rgba(245, 245, 241, 0.52);
   font-size: 0.56rem;
   font-weight: 550;
   line-height: 1;
@@ -338,7 +388,7 @@
   padding: 0;
   border: 0;
   border-radius: 0;
-  color: rgba(8, 8, 8, 0.72);
+  color: rgba(245, 245, 241, 0.72);
   font-size: inherit;
   font-weight: inherit;
   letter-spacing: inherit;
@@ -380,7 +430,7 @@
   }
 
   .is-card-nav-open .card-nav__drawer {
-    max-height: min(61svh, 25rem);
+    height: min(var(--card-nav-drawer-height, 25rem), 61svh);
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-width: none;
@@ -448,4 +498,11 @@
   .hero--node-canvas .nav.card-nav .directory a::after {
     transition-duration: 0.01ms !important;
   }
+}
+
+@keyframes cardNavRelease {
+  0% { scale: 0.972; }
+  46% { scale: 1.012; }
+  72% { scale: 0.997; }
+  100% { scale: 1; }
 }
