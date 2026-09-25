@@ -30,12 +30,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
   <link rel="stylesheet" href="style.css?v=20260924-elastic-volume1">
-  <link rel="stylesheet" href="card-nav.css?v=20260925-cardnav1">
+  <link rel="stylesheet" href="card-nav.css?v=20260925-cardnav2">
   <link rel="stylesheet" href="hero-nodes.css?v=20260922-context1">
   <link rel="stylesheet" href="hero-camera.css?v=20260921-camera1">
   <link rel="stylesheet" href="custom-nodes.css?v=20260924-importstatus1">
   <link rel="stylesheet" href="section-jump.css?v=20260924-sling2">
-  <link rel="stylesheet" href="immersive-mode.css?v=20260924-immersive3">
+  <link rel="stylesheet" href="immersive-mode.css?v=20260925-immersive4">
   <link rel="stylesheet" href="works-canvas.css?v=20260922-bg1">
   <link rel="stylesheet" href="chatbot.css?v=20260921-modal-close1">
   <link rel="stylesheet" href="splash.css?v=20260920-shared-logo1">
@@ -141,7 +141,6 @@
               <div class="nav-card-links">
                 <a class="nav-card-link" href="/3deushima/" data-launcher-nav="true"><span aria-hidden="true">↗</span>3D launcher</a>
                 <button class="nav-card-link nav-card-link--button" type="button" data-chat-open><span aria-hidden="true">↗</span>Ask Deushima</button>
-                <button class="nav-card-link nav-card-link--button workspace-immersive-toggle" type="button" data-workspace-immersive-toggle aria-label="Entrar en modo inmersivo" aria-pressed="false" title="Modo inmersivo"><span aria-hidden="true">↗</span>Immersive mode</button>
               </div>
             </section>
 
@@ -156,6 +155,29 @@
           </div>
         </nav>
       </header>
+
+      <div class="status-cluster intro-fade" style="--intro-delay: 0.62s">
+        <button class="workspace-immersive-toggle" type="button" data-workspace-immersive-toggle aria-label="Entrar en modo inmersivo" aria-pressed="false" title="Modo inmersivo">
+          <svg class="workspace-immersive-toggle__icon workspace-immersive-toggle__icon--expand" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M4.5 9V4.5H9"></path>
+            <path d="M15 4.5h4.5V9"></path>
+            <path d="M19.5 15v4.5H15"></path>
+            <path d="M9 19.5H4.5V15"></path>
+          </svg>
+          <svg class="workspace-immersive-toggle__icon workspace-immersive-toggle__icon--collapse" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M9 4.5V9H4.5"></path>
+            <path d="M19.5 9H15V4.5"></path>
+            <path d="M15 19.5V15h4.5"></path>
+            <path d="M4.5 15H9v4.5"></path>
+          </svg>
+        </button>
+
+        <div class="status-panel" aria-label="Estado">
+          <time data-current-time>00:00:00</time>
+          <span>ART</span>
+          <span>ARG</span>
+        </div>
+      </div>
 
       <a class="floating-cta cta-reveal" href="/3deushima/" data-launcher-nav="true">
         <span class="floating-cta__label">Get launch 3D</span>
@@ -676,7 +698,7 @@
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="none"></audio>
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
-  <script src="card-nav.js?v=20260925-cardnav1" defer></script>
+  <script src="card-nav.js?v=20260925-cardnav2" defer></script>
   <script src="script.js?v=20260924-elastic-volume1"></script>
   <script src="splash.js?v=20260920-shared-logo1"></script>
   <script src="sfx-config.js?v=20260921-sfx9" defer></script>

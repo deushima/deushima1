@@ -1,4 +1,6 @@
 .nav.card-nav-container {
+  --card-nav-x: 0px;
+  --card-nav-y: 0px;
   position: absolute;
   top: 1.5rem;
   left: 50%;
@@ -10,8 +12,13 @@
   height: auto;
   padding: 0;
   margin: 0;
-  transform: translate3d(-50%, var(--hero-nav-y, 0px), 0);
+  transform: translate3d(
+    calc(-50% + var(--card-nav-x)),
+    calc(var(--hero-nav-y, 0px) + var(--card-nav-y)),
+    0
+  );
   pointer-events: auto;
+  will-change: transform;
 }
 
 .card-nav {
@@ -27,7 +34,17 @@
   box-shadow: 0 10px 34px rgba(0, 0, 0, 0.26);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  will-change: height;
+  transform-origin: 50% 16%;
+  will-change: height, transform;
+}
+
+.nav.card-nav-container.is-dragging .card-nav {
+  transform: scale(0.972);
+  box-shadow: 0 7px 24px rgba(0, 0, 0, 0.22);
+}
+
+.nav.card-nav-container.is-rebounding .card-nav {
+  animation: cardNavRelease 0.52s cubic-bezier(0.18, 0.9, 0.24, 1.18);
 }
 
 .card-nav-top {
@@ -39,6 +56,17 @@
   justify-content: space-between;
   height: 60px;
   padding: 0.5rem 0.48rem 0.5rem 1.05rem;
+  cursor: grab;
+  touch-action: none;
+}
+
+.nav.card-nav-container.is-dragging .card-nav-top {
+  cursor: grabbing;
+}
+
+.card-nav-top a,
+.card-nav-top button {
+  cursor: pointer;
 }
 
 .hamburger-menu {
@@ -91,7 +119,7 @@
   display: block;
   width: auto;
   height: 25px;
-  filter: invert(1);
+  filter: brightness(0);
 }
 
 .card-nav-cta-button {
@@ -156,11 +184,11 @@
 }
 
 .nav-card--lab {
-  background: #232323;
+  background: #141414;
 }
 
 .nav-card--contact {
-  background: #312d36;
+  background: #141414;
 }
 
 .nav-card-label {
@@ -206,18 +234,11 @@
   transform: translateX(2px);
 }
 
-.card-nav .workspace-immersive-toggle {
-  width: auto;
-  height: auto;
-  min-width: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.card-nav .workspace-immersive-toggle::before,
-.card-nav .workspace-immersive-toggle::after,
-.card-nav .workspace-immersive-toggle__icon {
-  display: none !important;
+@keyframes cardNavRelease {
+  0% { transform: scale(0.972); }
+  46% { transform: scale(1.012); }
+  72% { transform: scale(0.997); }
+  100% { transform: scale(1); }
 }
 
 @media (max-width: 760px) {
@@ -271,9 +292,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .nav.card-nav-container.is-dragging .card-nav,
+  .nav.card-nav-container.is-rebounding .card-nav,
   .hamburger-line,
   .card-nav-cta-button,
   .nav-card-link {
+    animation: none;
     transition: none;
   }
 }

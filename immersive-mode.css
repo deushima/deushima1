@@ -1,7 +1,12 @@
 .status-cluster {
+  position: absolute;
+  right: clamp(1.25rem, 2.75vw, 3.45rem);
+  top: clamp(1.15rem, 1.55vw, 2.25rem);
+  z-index: 93;
   display: flex;
   align-items: flex-start;
   gap: 0.55rem;
+  pointer-events: auto;
 }
 
 .workspace-immersive-toggle {
@@ -107,7 +112,6 @@ body.is-workspace-immersive .hero--node-canvas {
 }
 
 body.is-workspace-immersive .hero--node-canvas .directory,
-body.is-workspace-immersive .hero--node-canvas .status-panel,
 body.is-workspace-immersive .hero--node-canvas .discover-link,
 body.is-workspace-immersive .hero--node-canvas .floating-cta,
 body.is-workspace-immersive .hero--node-canvas .hero__copy,
@@ -115,15 +119,8 @@ body.is-workspace-immersive .hero--node-canvas .hero-custom-node-hint {
   display: none !important;
 }
 
-body.is-workspace-immersive .hero--node-canvas .nav {
-  display: block;
-  padding: clamp(0.95rem, 1.35vw, 2.1rem) clamp(1.25rem, 2.75vw, 3.45rem);
-  transform: none;
-  pointer-events: none;
-}
-
-body.is-workspace-immersive .hero--node-canvas .brand-mark {
-  pointer-events: auto;
+body.is-workspace-immersive .hero--node-canvas .card-nav-container {
+  display: none !important;
 }
 
 body.is-workspace-immersive .status-cluster {
@@ -131,12 +128,14 @@ body.is-workspace-immersive .status-cluster {
   right: clamp(1.25rem, 2.75vw, 3.45rem);
   top: clamp(1.15rem, 1.55vw, 2.25rem);
   z-index: 32;
-  display: block;
+  display: flex;
   pointer-events: auto;
 }
 
 @media (max-width: 760px) {
   .status-cluster {
+    top: 5.35rem;
+    right: 1rem;
     gap: 0.45rem;
   }
 
