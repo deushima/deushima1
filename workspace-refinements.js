@@ -48,7 +48,7 @@
   let state = safeRead();
   let gesture = null;
   let coreGesture = null;
-  let activeNodeId = null;
+  let activeHostKey = null;
   const connectionEls = new Map();
   const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch {} };
   const uid = prefix => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
@@ -146,24 +146,42 @@
   stage.appendChild(cutButton);
 
   const customNode = nodeId => stage.querySelector(`[data-custom-node="${CSS.escape(nodeId)}"]`);
+  const originalNode = name => stage.querySelector(`[data-hero-node="${CSS.escape(name)}"]`);
+  const hostElement = hostKey => hostKey.startsWith('orig:') ? originalNode(hostKey.slice(5)) : customNode(hostKey);
+  function hostKeyFromElement(element) {
+    const custom = element?.closest?.('[data-custom-node]');
+    if (custom?.dataset.customNode) return custom.dataset.customNode;
+    const original = element?.closest?.('[data-hero-node]');
+    if (original?.dataset.heroNode) return `orig:${original.dataset.heroNode}`;
+    return null;
+  }
+  function endpointHostKey(endpoint) {
+    if (!endpoint) return null;
+    if (endpoint.kind === 'orig') return `orig:${endpoint.name}`;
+    if (endpoint.kind === 'extra' && endpoint.hostKind === 'orig') return `orig:${endpoint.name}`;
+    return endpoint.nodeId || null;
+  }
 
   function cleanupState() {
-    const liveIds = new Set([...stage.querySelectorAll('[data-custom-node]')].map(node => node.dataset.customNode));
+    const liveIds = new Set([
+      ...[...stage.querySelectorAll('[data-custom-node]')].map(node => node.dataset.customNode),
+      ...[...stage.querySelectorAll('[data-hero-node]')].map(node => `orig:${node.dataset.heroNode}`)
+    ]);
     let changed = false;
-    Object.keys(state.ports).forEach(nodeId => {
-      if (!liveIds.has(nodeId)) { delete state.ports[nodeId]; changed = true; }
+    Object.keys(state.ports).forEach(hostKey => {
+      if (!liveIds.has(hostKey)) { delete state.ports[hostKey]; changed = true; }
     });
     const before = state.connections.length;
-    state.connections = state.connections.filter(connection => [connection.from, connection.to].every(endpoint => endpoint.kind === 'orig' || liveIds.has(endpoint.nodeId)));
+    state.connections = state.connections.filter(connection => [connection.from, connection.to].every(endpoint => liveIds.has(endpointHostKey(endpoint))));
     if (state.connections.length !== before) changed = true;
     if (changed) save();
   }
 
-  function renderPorts(nodeId) {
-    const node = customNode(nodeId);
+  function renderPorts(hostKey) {
+    const node = hostElement(hostKey);
     if (!node) return;
     node.querySelectorAll('[data-extra-refinement-port]').forEach(port => port.remove());
-    const ports = Array.isArray(state.ports[nodeId]) ? state.ports[nodeId] : [];
+    const ports = Array.isArray(state.ports[hostKey]) ? state.ports[hostKey] : [];
     ports.forEach(portData => {
       const port = document.createElement('span');
       port.className = 'hero-custom-node__port hero-custom-node__port--extra';
@@ -178,34 +196,35 @@
   function renderAllPorts() {
     cleanupState();
     stage.querySelectorAll('[data-custom-node]').forEach(node => renderPorts(node.dataset.customNode));
+    stage.querySelectorAll('[data-hero-node]').forEach(node => renderPorts(`orig:${node.dataset.heroNode}`));
   }
 
   const positions = [.28, .72, .18, .82, .39, .61];
-  function addPort(nodeId, side) {
-    const list = Array.isArray(state.ports[nodeId]) ? state.ports[nodeId] : [];
+  function addPort(hostKey, side) {
+    const list = Array.isArray(state.ports[hostKey]) ? state.ports[hostKey] : [];
     const sameSide = list.filter(port => port.side === side);
     if (sameSide.length >= positions.length) return false;
-    state.ports[nodeId] = [...list, { id: uid(side), side, position: positions[sameSide.length] }];
+    state.ports[hostKey] = [...list, { id: uid(side), side, position: positions[sameSide.length] }];
     save();
-    renderPorts(nodeId);
+    renderPorts(hostKey);
     return true;
   }
 
-  function removeLastPort(nodeId) {
-    const list = Array.isArray(state.ports[nodeId]) ? [...state.ports[nodeId]] : [];
+  function removeLastPort(hostKey) {
+    const list = Array.isArray(state.ports[hostKey]) ? [...state.ports[hostKey]] : [];
     const removed = list.pop();
     if (!removed) return false;
-    state.ports[nodeId] = list;
-    state.connections = state.connections.filter(connection => ![connection.from, connection.to].some(endpoint => endpoint.kind === 'extra' && endpoint.nodeId === nodeId && endpoint.portId === removed.id));
+    state.ports[hostKey] = list;
+    state.connections = state.connections.filter(connection => ![connection.from, connection.to].some(endpoint => endpoint.kind === 'extra' && endpointHostKey(endpoint) === hostKey && endpoint.portId === removed.id));
     save();
-    renderPorts(nodeId);
+    renderPorts(hostKey);
     drawConnections();
     return true;
   }
 
   function endpointElement(endpoint) {
     if (!endpoint) return null;
-    if (endpoint.kind === 'extra') return customNode(endpoint.nodeId)?.querySelector(`[data-extra-refinement-port="${CSS.escape(endpoint.portId)}"]`) || null;
+    if (endpoint.kind === 'extra') return hostElement(endpointHostKey(endpoint))?.querySelector(`[data-extra-refinement-port="${CSS.escape(endpoint.portId)}"]`) || null;
     if (endpoint.kind === 'custom') return customNode(endpoint.nodeId)?.querySelector(`[data-custom-port="${sideToken(endpoint.side)}"]`) || null;
     if (endpoint.kind === 'orig') return stage.querySelector(`[data-hero-node="${CSS.escape(endpoint.name)}"] [data-node-port="${sideToken(endpoint.side)}"]`);
     return null;
@@ -217,11 +236,12 @@
     if (port.dataset.extraRefinementPort && node?.dataset.customNode) return { kind: 'extra', nodeId: node.dataset.customNode, portId: port.dataset.extraRefinementPort, side: port.dataset.portSide || 'right' };
     if (port.dataset.customPort && node?.dataset.customNode) return { kind: 'custom', nodeId: node.dataset.customNode, side: sideFromToken(port.dataset.customPort) };
     const original = port.closest('[data-hero-node]');
+    if (port.dataset.extraRefinementPort && original?.dataset.heroNode) return { kind: 'extra', hostKind: 'orig', name: original.dataset.heroNode, portId: port.dataset.extraRefinementPort, side: port.dataset.portSide || 'right' };
     if (port.dataset.nodePort && original?.dataset.heroNode) return { kind: 'orig', name: original.dataset.heroNode, side: sideFromToken(port.dataset.nodePort) };
     return null;
   }
 
-  const endpointNodeKey = endpoint => endpoint.kind === 'orig' ? `orig:${endpoint.name}` : `custom:${endpoint.nodeId}`;
+  const endpointNodeKey = endpoint => endpointHostKey(endpoint);
   function localCenter(endpoint) {
     const element = endpointElement(endpoint);
     if (!element) return null;
@@ -407,7 +427,7 @@
     return button;
   }
 
-  function showModifyMenu(nodeId) {
+  function showModifyMenu(hostKey) {
     const menu = document.querySelector('.hero-custom-node-context.is-open');
     if (!menu) return;
     const heading = document.createElement('div');
@@ -416,28 +436,28 @@
     const note = document.createElement('div');
     note.className = 'hero-custom-node-context__note';
     note.textContent = 'Add independent start points on either side.';
-    const list = Array.isArray(state.ports[nodeId]) ? state.ports[nodeId] : [];
+    const list = Array.isArray(state.ports[hostKey]) ? state.ports[hostKey] : [];
     const leftCount = list.filter(port => port.side === 'left').length;
     const rightCount = list.filter(port => port.side === 'right').length;
     menu.replaceChildren(
       heading,
-      menuButton('Add start point · left', '+', () => { if (addPort(nodeId, 'left')) showModifyMenu(nodeId); }, leftCount >= positions.length),
-      menuButton('Add start point · right', '+', () => { if (addPort(nodeId, 'right')) showModifyMenu(nodeId); }, rightCount >= positions.length),
-      menuButton('Remove last point', '−', () => { if (removeLastPort(nodeId)) showModifyMenu(nodeId); }, !list.length),
+      menuButton('Add start point · left', '+', () => { if (addPort(hostKey, 'left')) showModifyMenu(hostKey); }, leftCount >= positions.length),
+      menuButton('Add start point · right', '+', () => { if (addPort(hostKey, 'right')) showModifyMenu(hostKey); }, rightCount >= positions.length),
+      menuButton('Remove last point', '−', () => { if (removeLastPort(hostKey)) showModifyMenu(hostKey); }, !list.length),
       note
     );
   }
 
   root.addEventListener('contextmenu', event => {
-    const node = event.target instanceof Element ? event.target.closest('[data-custom-node]') : null;
+    const node = event.target instanceof Element ? event.target.closest('[data-custom-node], [data-hero-node]') : null;
     if (!node) return;
-    activeNodeId = node.dataset.customNode;
+    activeHostKey = hostKeyFromElement(node);
     queueMicrotask(() => {
       const menu = document.querySelector('.hero-custom-node-context.is-open');
-      if (!menu || !activeNodeId || menu.querySelector('[data-refinement-modify]')) return;
+      if (!menu || !activeHostKey || menu.querySelector('[data-refinement-modify]')) return;
       const heading = menu.querySelector('.hero-custom-node-context__heading');
       if (!heading) return;
-      const button = menuButton('Modific node', '+', () => showModifyMenu(activeNodeId));
+      const button = menuButton('Modific node', '+', () => showModifyMenu(activeHostKey));
       button.dataset.refinementModify = 'true';
       heading.insertAdjacentElement('afterend', button);
     });
@@ -479,6 +499,8 @@
         if (!(node instanceof Element)) return;
         if (node.matches?.('[data-custom-node]')) renderPorts(node.dataset.customNode);
         node.querySelectorAll?.('[data-custom-node]').forEach(custom => renderPorts(custom.dataset.customNode));
+        if (node.matches?.('[data-hero-node]')) renderPorts(`orig:${node.dataset.heroNode}`);
+        node.querySelectorAll?.('[data-hero-node]').forEach(original => renderPorts(`orig:${original.dataset.heroNode}`));
         redraw = true;
       });
       if (record.removedNodes.length) redraw = true;
