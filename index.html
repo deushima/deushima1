@@ -30,6 +30,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
   <link rel="stylesheet" href="style.css?v=20260924-elastic-volume1">
+  <link rel="stylesheet" href="card-nav.css?v=20260925-cardnav1">
   <link rel="stylesheet" href="hero-nodes.css?v=20260922-context1">
   <link rel="stylesheet" href="hero-camera.css?v=20260921-camera1">
   <link rel="stylesheet" href="custom-nodes.css?v=20260924-importstatus1">
@@ -110,54 +111,50 @@
       <div class="hero__vignette" aria-hidden="true"></div>
       <canvas class="hero-node-grid" data-node-grid aria-hidden="true"></canvas>
 
-      <header class="nav" aria-label="Navegacion principal">
-        <a class="brand-mark intro-fade" href="#" aria-label="Deushima — inicio" style="--intro-delay: 0.08s">
-          <img src="deushima.svg.svg" alt="" aria-hidden="true" data-shared-logo-target>
-        </a>
+      <header class="nav card-nav-container" data-card-nav aria-label="Navegacion principal">
+        <nav class="card-nav" data-card-nav-shell aria-label="Directorio Deushima">
+          <div class="card-nav-top">
+            <button class="hamburger-menu" type="button" data-card-nav-toggle aria-label="Abrir menu" aria-expanded="false">
+              <span class="hamburger-line"></span>
+              <span class="hamburger-line"></span>
+            </button>
 
-        <nav class="directory" aria-label="Directorio">
-          <div class="directory__group intro-fade" style="--intro-delay: 0.26s">
-            <span class="directory__title directory__title--triangle js-type-text">Contacto</span>
-            <a href="https://www.instagram.com/ivanhayunosolo/" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Instagram</a>
-            <a href="https://www.linkedin.com/in/iv%C3%A1n-lautaro-rodriguez-9b4827278/" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Linkedin</a>
-            <a href="mailto:deushima@gmail.com" class="js-wipe-link">Correo</a>
+            <a class="card-nav-logo" href="#" aria-label="Deushima — inicio">
+              <img src="deushima.svg.svg" alt="Deushima" data-shared-logo-target>
+            </a>
+
+            <button class="card-nav-cta-button" type="button" data-panel-open="contact">Start a project</button>
           </div>
-          <div class="directory__group intro-fade" style="--intro-delay: 0.38s">
-            <span class="directory__title directory__title--dot js-type-text">Portfolio</span>
-            <a href="https://www.behance.net/deushima" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Behance</a>
-            <a href="https://www.instagram.com/deushima" class="js-wipe-link" target="_blank" rel="noopener noreferrer">Instagram</a>
-          </div>
-          <div class="directory__group intro-fade" style="--intro-delay: 0.5s">
-            <span class="directory__title directory__title--square js-type-text">Programas</span>
-            <a href="/3deushima/" class="js-wipe-link" data-launcher-nav="true">Launcher 3D</a>
-            <a href="#works" class="js-wipe-link" data-panel-open="works">Second Developing...</a>
+
+          <div class="card-nav-content" data-card-nav-content aria-hidden="true">
+            <section class="nav-card nav-card--portfolio" data-card-nav-card>
+              <div class="nav-card-label">Portfolio</div>
+              <div class="nav-card-links">
+                <a class="nav-card-link" href="#works" data-panel-open="works"><span aria-hidden="true">↗</span>Selected work</a>
+                <a class="nav-card-link" href="#about" data-panel-open="about"><span aria-hidden="true">↗</span>About me</a>
+                <a class="nav-card-link" href="https://www.behance.net/deushima" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">↗</span>Behance</a>
+              </div>
+            </section>
+
+            <section class="nav-card nav-card--lab" data-card-nav-card>
+              <div class="nav-card-label">Lab</div>
+              <div class="nav-card-links">
+                <a class="nav-card-link" href="/3deushima/" data-launcher-nav="true"><span aria-hidden="true">↗</span>3D launcher</a>
+                <button class="nav-card-link nav-card-link--button" type="button" data-chat-open><span aria-hidden="true">↗</span>Ask Deushima</button>
+                <button class="nav-card-link nav-card-link--button workspace-immersive-toggle" type="button" data-workspace-immersive-toggle aria-label="Entrar en modo inmersivo" aria-pressed="false" title="Modo inmersivo"><span aria-hidden="true">↗</span>Immersive mode</button>
+              </div>
+            </section>
+
+            <section class="nav-card nav-card--contact" data-card-nav-card>
+              <div class="nav-card-label">Contact</div>
+              <div class="nav-card-links">
+                <a class="nav-card-link" href="mailto:deushima@gmail.com"><span aria-hidden="true">↗</span>Email</a>
+                <a class="nav-card-link" href="https://www.instagram.com/deushima" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">↗</span>Instagram</a>
+                <a class="nav-card-link" href="https://www.linkedin.com/in/iv%C3%A1n-lautaro-rodriguez-9b4827278/" target="_blank" rel="noopener noreferrer"><span aria-hidden="true">↗</span>LinkedIn</a>
+              </div>
+            </section>
           </div>
         </nav>
-
-        <div class="status-cluster intro-fade" style="--intro-delay: 0.62s">
-          <button class="workspace-immersive-toggle" type="button" data-workspace-immersive-toggle aria-label="Entrar en modo inmersivo" aria-pressed="false" title="Modo inmersivo">
-            <svg class="workspace-immersive-toggle__icon workspace-immersive-toggle__icon--expand" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M4.5 9V4.5H9"></path>
-              <path d="M15 4.5h4.5V9"></path>
-              <path d="M19.5 15v4.5H15"></path>
-              <path d="M9 19.5H4.5V15"></path>
-            </svg>
-            <svg class="workspace-immersive-toggle__icon workspace-immersive-toggle__icon--collapse" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path d="M9 4.5V9H4.5"></path>
-              <path d="M19.5 9H15V4.5"></path>
-              <path d="M15 19.5V15h4.5"></path>
-              <path d="M4.5 15H9v4.5"></path>
-            </svg>
-          </button>
-
-          <div class="status-panel" aria-label="Estado">
-            <time data-current-time>00:00:00</time>
-            <span>ART</span>
-            <span>ARG</span>
-          </div>
-        </div>
-
-        <a class="discover-link intro-fade" href="#about" data-panel-open="about" style="--intro-delay: 0.74s">Discover</a>
       </header>
 
       <a class="floating-cta cta-reveal" href="/3deushima/" data-launcher-nav="true">
@@ -678,6 +675,8 @@
 
   <audio data-ambient-audio src="Song/Home%20Inicio.MP3" loop preload="none"></audio>
 
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
+  <script src="card-nav.js?v=20260925-cardnav1" defer></script>
   <script src="script.js?v=20260924-elastic-volume1"></script>
   <script src="splash.js?v=20260920-shared-logo1"></script>
   <script src="sfx-config.js?v=20260921-sfx9" defer></script>
