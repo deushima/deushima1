@@ -258,7 +258,7 @@
 (() => {
   if (document.querySelector('script[data-workspace-refinements]')) return;
   const script = document.createElement('script');
-  script.src = './workspace-refinements.js?v=20260925-1';
+  script.src = './workspace-refinements.js?v=20260925-2';
   script.defer = true;
   script.dataset.workspaceRefinements = 'true';
   document.head.appendChild(script);
