@@ -100,7 +100,7 @@
   }
 
   function calculateHeight() {
-    if (!isMobile()) return 260;
+    if (!isMobile()) return 238;
 
     const previous = {
       visibility: content.style.visibility,
@@ -114,7 +114,7 @@
     content.style.position = 'static';
     content.style.height = 'auto';
 
-    const height = 60 + content.scrollHeight + 8;
+    const height = 52 + content.scrollHeight + 8;
 
     content.style.visibility = previous.visibility;
     content.style.pointerEvents = previous.pointerEvents;
@@ -137,7 +137,7 @@
 
     if (!window.gsap || reducedMotion.matches) {
       timeline = null;
-      nav.style.height = isExpanded ? String(calculateHeight()) + 'px' : '60px';
+      nav.style.height = isExpanded ? String(calculateHeight()) + 'px' : '52px';
       cards.forEach((card) => {
         card.style.opacity = isExpanded ? '1' : '0';
         card.style.transform = isExpanded ? 'translateY(0)' : 'translateY(50px)';
@@ -145,7 +145,7 @@
       return;
     }
 
-    window.gsap.set(nav, { height: 60, overflow: 'hidden' });
+    window.gsap.set(nav, { height: 52, overflow: 'hidden' });
     window.gsap.set(cards, { y: 50, opacity: 0 });
 
     timeline = window.gsap.timeline({ paused: true });
@@ -194,7 +194,7 @@
     }
 
     isExpanded = false;
-    nav.style.height = '60px';
+    nav.style.height = '52px';
     cards.forEach((card) => {
       card.style.opacity = '0';
       card.style.transform = 'translateY(50px)';
@@ -252,4 +252,14 @@
 
   setA11y(false);
   buildTimeline();
+})();
+
+
+(() => {
+  if (document.querySelector('script[data-workspace-refinements]')) return;
+  const script = document.createElement('script');
+  script.src = './workspace-refinements.js?v=20260925-1';
+  script.defer = true;
+  script.dataset.workspaceRefinements = 'true';
+  document.head.appendChild(script);
 })();
