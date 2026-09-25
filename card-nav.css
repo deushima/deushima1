@@ -171,6 +171,7 @@
   min-width: 5.8rem;
   height: 2.2rem;
   align-items: center;
+  align-self: center;
   justify-content: center;
   justify-self: end;
   gap: 0.42rem;
@@ -203,7 +204,7 @@
   background: #fff;
   color: #080808;
   outline: none;
-  transform: translateY(-1px);
+  transform: none;
 }
 
 .card-nav__cta-arrow {
