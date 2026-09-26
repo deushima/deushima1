@@ -348,6 +348,42 @@
     return 'unknown';
   }
 
+  function isPinterestUrl(value) {
+    const normalized = normalizeHttpUrl(value);
+    if (!normalized) return false;
+    try {
+      const host = new URL(normalized).hostname.toLowerCase().replace(/\.$/, '');
+      return host === 'pin.it' || host === 'pinterest.com' || host.endsWith('.pinterest.com');
+    } catch {
+      return false;
+    }
+  }
+
+  async function resolvePinterestMedia(url, timeoutMs = 10000) {
+    const normalized = normalizeHttpUrl(url);
+    if (!normalized || !isPinterestUrl(normalized)) return null;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(`/api/media-resolver?url=${encodeURIComponent(normalized)}`, {
+        headers: { accept: 'application/json' },
+        signal: controller.signal
+      });
+      if (!response.ok) return null;
+      const data = await response.json();
+      const resolvedUrl = normalizeHttpUrl(data?.url);
+      if (!resolvedUrl) return null;
+      return {
+        url: resolvedUrl,
+        mediaType: ['image', 'video'].includes(data?.mediaType) ? data.mediaType : inferMediaTypeFromUrl(resolvedUrl)
+      };
+    } catch {
+      return null;
+    } finally {
+      window.clearTimeout(timer);
+    }
+  }
+
   function probeImageUrl(url, timeoutMs = 10000) {
     return new Promise(resolve => {
       const image = new Image();
@@ -475,13 +511,25 @@
   }
 
   async function probeDirectMedia(url) {
-    const inferred = inferMediaTypeFromUrl(url);
-    if (inferred === 'image') return probeImageUrl(url);
-    if (inferred === 'video') return probeVideoUrl(url);
+    const normalized = normalizeHttpUrl(url);
+    if (!normalized) return null;
 
-    const imageResult = await probeImageUrl(url);
-    if (imageResult) return imageResult;
-    return probeVideoUrl(url);
+    let mediaUrl = normalized;
+    let inferred = inferMediaTypeFromUrl(mediaUrl);
+    if (isPinterestUrl(normalized)) {
+      const resolved = await resolvePinterestMedia(normalized);
+      if (!resolved) return null;
+      mediaUrl = resolved.url;
+      inferred = resolved.mediaType === 'unknown' ? inferMediaTypeFromUrl(mediaUrl) : resolved.mediaType;
+    }
+
+    const withResolvedUrl = result => result ? { ...result, url: mediaUrl } : null;
+    if (inferred === 'image') return withResolvedUrl(await probeImageUrl(mediaUrl));
+    if (inferred === 'video') return withResolvedUrl(await probeVideoUrl(mediaUrl));
+
+    const imageResult = await probeImageUrl(mediaUrl);
+    if (imageResult) return withResolvedUrl(imageResult);
+    return withResolvedUrl(await probeVideoUrl(mediaUrl));
   }
 
   function normalizePortId(value) {
@@ -3743,12 +3791,13 @@
             mediaType: model.mediaType,
             aspectRatio: model.aspectRatio
           };
-          model.url = normalized;
+          const resolvedMediaUrl = media.url || normalized;
+          model.url = resolvedMediaUrl;
           model.mediaType = media.mediaType;
           model.aspectRatio = clamp(media.aspectRatio || model.aspectRatio || 1.35, .35, 3.5);
           model.mediaFrame?.style.setProperty('--media-aspect', model.aspectRatio.toFixed(5));
-          model.mediaDomain.textContent = displayHost(normalized);
-          model.mediaOpen.href = normalized;
+          model.mediaDomain.textContent = displayHost(resolvedMediaUrl);
+          model.mediaOpen.href = resolvedMediaUrl;
           mountMedia(model);
           const loaded = await waitForMountedMedia(model);
           const mountIsCurrent = (
@@ -3779,7 +3828,7 @@
         const created = createMediaNode({
           x: anchorSnapshot.worldX,
           y: anchorSnapshot.worldY,
-          url: normalized,
+          url: media.url || normalized,
           mediaType: media.mediaType,
           aspectRatio: media.aspectRatio,
           animate: true,

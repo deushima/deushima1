@@ -80,7 +80,10 @@ module.exports = async function handler(req, res) {
     const html = (await response.text()).slice(0, 2_000_000);
     const imageUrl = normalizeMediaUrl(findMeta(html, ['og:image', 'twitter:image', 'twitter:image:src']));
     const videoUrl = normalizeMediaUrl(findMeta(html, ['og:video:secure_url', 'og:video', 'twitter:player:stream']));
-    const mediaUrl = imageUrl || videoUrl;
+    // Pinterest video pins usually expose both a poster image and a video URL.
+    // Prefer the actual video when present so Link image continues to support
+    // both image and video pins through the same media node.
+    const mediaUrl = videoUrl || imageUrl;
 
     if (!mediaUrl) return res.status(404).json({ error: 'No media found in this Pinterest page' });
 
@@ -88,7 +91,7 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({
       url: mediaUrl,
       sourceUrl: finalUrl.href,
-      mediaType: imageUrl ? 'image' : 'video'
+      mediaType: videoUrl ? 'video' : 'image'
     });
   } catch (error) {
     const aborted = error?.name === 'AbortError';
