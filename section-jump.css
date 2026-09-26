@@ -213,3 +213,35 @@ body.is-page-leaving .section-jump-control {
   .sling-button__arc,
   .sling-button__well { transition: none !important; }
 }
+
+/* Keep explicitly resized node cards internally elastic at compact heights. */
+.hero-custom-node.has-user-height {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-custom-node.has-user-height > .hero-custom-node__meta,
+.hero-custom-node.has-user-height > .hero-custom-node__media-footer {
+  flex: 0 0 auto;
+}
+
+.hero-custom-node.has-user-height > .hero-custom-node__editor,
+.hero-custom-node.has-user-height > .hero-custom-node__link-body,
+.hero-custom-node.has-user-height > .hero-custom-node__media-frame,
+.hero-custom-node.has-user-height > .hero-custom-node__embed-frame {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.hero-custom-node.has-user-height > .hero-custom-node__editor {
+  max-height: none;
+}
+
+.hero-custom-node.has-user-height > .hero-custom-node__link-body {
+  overflow-y: auto;
+}
+
+.hero-custom-node.has-user-height > .hero-custom-node__media-frame,
+.hero-custom-node.has-user-height > .hero-custom-node__embed-frame {
+  aspect-ratio: auto;
+}
