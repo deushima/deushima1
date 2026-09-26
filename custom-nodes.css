@@ -850,6 +850,25 @@
   padding: .76rem .78rem .7rem;
 }
 
+/* When the user gives a media node an explicit height, let the preview consume
+   only the space that is actually available inside the card instead of keeping
+   its width-derived aspect height and visually spilling below the node. */
+.hero-custom-node--media.has-user-height {
+  display: flex;
+  flex-direction: column;
+}
+
+.hero-custom-node--media.has-user-height .hero-custom-node__meta,
+.hero-custom-node--media.has-user-height .hero-custom-node__media-footer {
+  flex: 0 0 auto;
+}
+
+.hero-custom-node--media.has-user-height .hero-custom-node__media-frame {
+  flex: 1 1 auto;
+  min-height: 0;
+  aspect-ratio: auto;
+}
+
 .hero-custom-node--instagram,
 .hero-custom-node--youtube {
   width: min(320px, calc(100vw - 2rem));

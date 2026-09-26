@@ -721,6 +721,7 @@
       model.el.style.removeProperty('max-height');
     }
     model.el.classList.toggle('is-user-sized', hasUserWidth || hasUserHeight);
+    model.el.classList.toggle('has-user-height', hasUserHeight);
     clampModel(model);
     const local = worldToStageLocal(model.x, model.y);
     model.el.style.setProperty('--custom-node-x', `${local.x.toFixed(3)}px`);
