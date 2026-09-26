@@ -1329,6 +1329,7 @@ function initContactForm() {
   const statusNode = contactForm.querySelector("[data-contact-status]");
   const submitButton = contactForm.querySelector('button[type="submit"]');
   const submitLabel = submitButton?.textContent || "Send message ->";
+  let submitting = false;
 
   function setStatus(message, state = "") {
     if (!statusNode) return;
@@ -1342,7 +1343,11 @@ function initContactForm() {
 
   contactForm.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (submitting) return;
     if (!contactForm.reportValidity()) return;
+    submitting = true;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
 
     const formData = new FormData(contactForm);
     const name = String(formData.get("name") || "").trim();
@@ -1362,13 +1367,14 @@ function initContactForm() {
 
     try {
       const response = await fetch(CONTACT_ENDPOINT, {
+        signal: controller.signal,
         method: "POST",
         body: formData,
         headers: { Accept: "application/json" }
       });
 
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || data.success === false) {
+      if (!response.ok || data.success !== true) {
         throw new Error(data.message || "contact-submit-failed");
       }
 
@@ -1378,6 +1384,8 @@ function initContactForm() {
       console.warn("Contact form error:", error);
       setStatus("No se pudo enviar. Intenta de nuevo.", "error");
     } finally {
+      window.clearTimeout(timeout);
+      submitting = false;
       if (submitButton) {
         submitButton.textContent = submitLabel;
         submitButton.disabled = false;

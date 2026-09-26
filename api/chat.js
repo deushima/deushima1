@@ -90,8 +90,11 @@ module.exports = async function handler(req, res) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return res.status(200).json({ reply: localReply(message), mode: 'local' });
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 12000);
   try {
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      signal: controller.signal,
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -129,5 +132,7 @@ module.exports = async function handler(req, res) {
   } catch (error) {
     console.error('Portfolio assistant fallback:', error);
     return res.status(200).json({ reply: localReply(message), mode: 'local' });
+  } finally {
+    clearTimeout(timeout);
   }
 };

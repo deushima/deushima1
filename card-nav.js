@@ -20,18 +20,33 @@
   };
 
   const syncDrawerHeight = () => {
-    nav.style.setProperty("--card-nav-drawer-height", `${drawer.scrollHeight}px`);
+    const contentHeight = [...drawer.children].reduce((height, child) => height + child.getBoundingClientRect().height, 0);
+    const barHeight = nav.offsetHeight - drawer.offsetHeight;
+    const availableHeight = Math.max(0, window.innerHeight - 24 - barHeight);
+    nav.style.setProperty("--card-nav-drawer-height", `${Math.min(contentHeight, availableHeight)}px`);
+    return barHeight + Math.min(contentHeight, availableHeight);
   };
 
-  const getDragBounds = () => {
+  const getDragBounds = (height = nav.offsetHeight) => {
     const rect = nav.getBoundingClientRect();
     const margin = 12;
+    const viewportWidth = document.documentElement.clientWidth;
+    const horizontalMargin = Math.min(margin, Math.max(0, (viewportWidth - nav.offsetWidth) / 2));
+    const left = rect.left + (rect.width - nav.offsetWidth) / 2;
+    const top = rect.top + (rect.height - nav.offsetHeight) / 2;
     return {
-      minX: offsetX + margin - rect.left,
-      maxX: offsetX + window.innerWidth - margin - rect.right,
-      minY: offsetY + margin - rect.top,
-      maxY: offsetY + window.innerHeight - margin - rect.bottom
+      minX: offsetX + horizontalMargin - left,
+      maxX: offsetX + viewportWidth - horizontalMargin - left - nav.offsetWidth,
+      minY: offsetY + margin - top,
+      maxY: offsetY + window.innerHeight - margin - top - height
     };
+  };
+
+  const keepInViewport = (height) => {
+    const bounds = getDragBounds(height);
+    offsetX = clamp(offsetX, bounds.minX, Math.max(bounds.minX, bounds.maxX));
+    offsetY = clamp(offsetY, bounds.minY, Math.max(bounds.minY, bounds.maxY));
+    applyOffset();
   };
 
   const beginDrag = (event) => {
@@ -72,11 +87,11 @@
     if (!dragState || event.pointerId !== dragState.pointerId) return;
 
     const moved = dragState.moved;
+    dragState = null;
     if (dragSurface.hasPointerCapture?.(event.pointerId)) {
       dragSurface.releasePointerCapture(event.pointerId);
     }
 
-    dragState = null;
     nav.classList.remove("is-dragging");
     nav.classList.remove("is-rebounding");
     void nav.offsetWidth;
@@ -95,11 +110,13 @@
   };
 
   const setOpen = (open, restoreFocus = false) => {
-    syncDrawerHeight();
+    const openHeight = syncDrawerHeight();
+    if (open) keepInViewport(openHeight);
     nav.classList.toggle("is-card-nav-open", open);
     toggle.setAttribute("aria-expanded", open ? "true" : "false");
     toggle.setAttribute("aria-label", open ? "Cerrar menu" : "Abrir menu");
     drawer.setAttribute("aria-hidden", open ? "false" : "true");
+    drawer.inert = !open;
 
     if (!open && restoreFocus) {
       toggle.focus({ preventScroll: true });
@@ -114,6 +131,10 @@
   dragSurface.addEventListener("pointermove", moveDrag);
   dragSurface.addEventListener("pointerup", endDrag);
   dragSurface.addEventListener("pointercancel", endDrag);
+  dragSurface.addEventListener("lostpointercapture", endDrag);
+  window.addEventListener("blur", () => {
+    if (dragState) endDrag({ pointerId: dragState.pointerId });
+  });
 
   nav.addEventListener("click", (event) => {
     if (!suppressClick) return;
@@ -149,13 +170,15 @@
   });
 
   window.addEventListener("resize", () => {
-    syncDrawerHeight();
-    const bounds = getDragBounds();
-    offsetX = clamp(offsetX, bounds.minX, bounds.maxX);
-    offsetY = clamp(offsetY, bounds.minY, bounds.maxY);
-    applyOffset();
+    const openHeight = syncDrawerHeight();
+    keepInViewport(nav.classList.contains("is-card-nav-open") ? openHeight : undefined);
   });
 
+  drawer.inert = true;
+  document.fonts?.ready.then(() => {
+    const openHeight = syncDrawerHeight();
+    if (nav.classList.contains("is-card-nav-open")) keepInViewport(openHeight);
+  });
   syncDrawerHeight();
   applyOffset();
 })();

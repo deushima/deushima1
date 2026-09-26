@@ -10,6 +10,9 @@
   const suggestionButtons = [...chat.querySelectorAll('[data-chat-suggestions] button')];
   let busy = false;
   let pendingMessage = null;
+  let focusTimer = 0;
+  let focusOrigin = null;
+  chat.inert = true;
 
   const presetPrompts = {
     what: '¿Qué hace Deushima?',
@@ -125,22 +128,33 @@
   };
 
   const openChat = () => {
+    focusOrigin = document.activeElement;
+    chat.inert = false;
     chat.classList.add('is-open');
     chat.setAttribute('aria-hidden', 'false');
     document.body.classList.add('deu-chat-open');
-    window.setTimeout(() => textarea?.focus(), 160);
+    window.clearTimeout(focusTimer);
+    focusTimer = window.setTimeout(() => {
+      if (chat.classList.contains('is-open')) textarea?.focus({ preventScroll: true });
+    }, 160);
   };
 
   const closeChat = () => {
+    window.clearTimeout(focusTimer);
+    if (chat.contains(document.activeElement)) focusOrigin?.focus?.({ preventScroll: true });
     chat.classList.remove('is-open');
     chat.setAttribute('aria-hidden', 'true');
+    chat.inert = true;
     document.body.classList.remove('deu-chat-open');
   };
 
   const askAssistant = async (message) => {
     const fallback = localAnswer(message);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15000);
     try {
       const response = await fetch('/api/chat', {
+        signal: controller.signal,
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message })
@@ -157,7 +171,9 @@
       if (typeof data.reply === 'string' && data.reply.trim()) {
         console.warn('D/AI ignored internal provider metadata instead of rendering it.');
       }
-    } catch {}
+    } catch {} finally {
+      window.clearTimeout(timeout);
+    }
 
     if (status) status.textContent = 'PORTFOLIO KNOWLEDGE / LOCAL MODE';
     return fallback;
@@ -202,7 +218,7 @@
       if (pendingMessage?.isConnected) pendingMessage.remove();
       pendingMessage = null;
       setBusy(false);
-      textarea?.focus({ preventScroll: true });
+      if (chat.classList.contains('is-open')) textarea?.focus({ preventScroll: true });
     }
   };
 
@@ -236,7 +252,21 @@
   });
 
   document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && chat.classList.contains('is-open')) closeChat();
+    if (!chat.classList.contains('is-open')) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      closeChat();
+    }
+    if (event.key === 'Tab') {
+      const items = [...chat.querySelectorAll('.deu-chat__panel button:not(:disabled), .deu-chat__panel textarea')];
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && (document.activeElement === first || !chat.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus();
+      } else if (!event.shiftKey && (document.activeElement === last || !chat.contains(document.activeElement))) {
+        event.preventDefault(); first?.focus();
+      }
+    }
   });
 })();
 

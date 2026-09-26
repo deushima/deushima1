@@ -3344,41 +3344,8 @@
   }
 
   function saveState() {
-    const cameraState = cameraApi()?.getState?.();
-    const payload = {
-      version: STORAGE_VERSION,
-      viewport: cameraState ? { width: cameraState.width, height: cameraState.height } : null,
-      nextNote: nextNoteNumber,
-      zCounter,
-      nodes: [...models.values()].map(model => {
-        const base = {
-          id: model.id,
-          type: model.type,
-          note: model.note,
-          x: Number(model.x.toFixed(6)),
-          y: Number(model.y.toFixed(6)),
-          z: model.z
-        };
-        if (model.type === 'text') return { ...base, text: safeText(model.text) };
-        if (model.type === 'link' || model.type === 'instagram' || model.type === 'youtube') {
-          return { ...base, url: model.url };
-        }
-        return {
-          ...base,
-          url: model.url,
-          mediaType: model.mediaType,
-          width: Number(model.width) || 300,
-          height: Number.isFinite(Number(model.height)) ? Number(model.height) : null,
-          aspectRatio: Number(model.aspectRatio) || 1.35
-        };
-      }),
-      connections: connections.map(connection => ({
-        id: connection.id,
-        from: { ...connection.from },
-        to: { ...connection.to },
-        lane: connection.lane
-      }))
-    };
+    // Autosave and export must preserve identical workspace fields.
+    const payload = serializeStatePayload();
 
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
@@ -3396,6 +3363,10 @@
       if (workspaceMutationDepth === 0) saveState();
     }, delay);
   }
+
+  window.addEventListener('pagehide', () => {
+    if (workspaceMutationDepth === 0) saveState();
+  });
 
   function encodeBase64UrlUtf8(value) {
     const bytes = new TextEncoder().encode(String(value));
@@ -3580,27 +3551,7 @@
       return null;
     }
 
-    nextNoteNumber = saved.nextNote;
-    zCounter = saved.zCounter;
-
-    saved.nodes.forEach(data => {
-      if (data.type === 'link') {
-        createLinkNode({ ...data, animate: false, persist: false, sound: false, select: false });
-        return;
-      }
-      if (data.type === 'media') {
-        createMediaNode({ ...data, animate: false, persist: false, sound: false, select: false });
-        return;
-      }
-      if (data.type === 'instagram' || data.type === 'youtube') {
-        createEmbedNode({ ...data, animate: false, persist: false, sound: false, select: false });
-        return;
-      }
-      createTextNode({ ...data, animate: false, focusEditor: false, persist: false, sound: false, select: false });
-    });
-
-    connections = saved.connections;
-    connections.forEach(ensureConnectionElement);
+    applyWorkspaceStatePayload(saved, { persist: false });
 
     if (saved.migrated) {
       saveState();
@@ -4790,19 +4741,9 @@
   resizeObserver.observe(stage);
 
   function initialRestore() {
-    const restored = restoreState();
+    restoreState();
     window.setTimeout(() => window.DeushimaGrid?.refreshDynamicNodes?.(), 120);
     window.setTimeout(() => {
-      if (restored?.originalNodes) {
-        workspaceMutationDepth += 1;
-        try {
-          const camera = cameraApi();
-          camera?.refreshGeometry?.({ recenterView: false });
-          window.DeushimaHeroNodes?.applyWorkspaceState?.(restored.originalNodes, { persist: false });
-        } finally {
-          workspaceMutationDepth = Math.max(0, workspaceMutationDepth - 1);
-        }
-      }
       models.forEach(renderModel);
       drawConnections();
       scheduleConnectionLoop();
