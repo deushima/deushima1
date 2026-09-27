@@ -7,7 +7,7 @@
   const SPLASH_KEY = 'deushimaStudioSplashV1';
   const FORCE_SPLASH = new URLSearchParams(window.location.search).get('intro') === '1';
   const SHARED_LOGO_DURATION = 1240;
-  const SHARED_LOGO_EASING = 'cubic-bezier(0.76, 0, 0.24, 1)';
+  const SHARED_LOGO_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)';
 
   if (!splash || !enterButton || !root.classList.contains('has-studio-splash')) {
     splash?.setAttribute('aria-hidden', 'true');
@@ -150,6 +150,44 @@
     return clone;
   };
 
+  const getSettledTargetRect = (rect) => {
+    const siteShell = document.querySelector('.site-shell');
+    if (!siteShell) return rect;
+
+    const shellRect = siteShell.getBoundingClientRect();
+    const transform = window.getComputedStyle(siteShell).transform;
+    let scaleX = 1;
+    let scaleY = 1;
+
+    if (transform && transform !== 'none' && typeof DOMMatrixReadOnly === 'function') {
+      try {
+        const matrix = new DOMMatrixReadOnly(transform);
+        scaleX = Math.hypot(matrix.a, matrix.b) || 1;
+        scaleY = Math.hypot(matrix.c, matrix.d) || 1;
+      } catch {}
+    }
+
+    if (Math.abs(scaleX - 1) < 0.001 && Math.abs(scaleY - 1) < 0.001) {
+      return rect;
+    }
+
+    const shellCenterX = shellRect.left + shellRect.width / 2;
+    const shellCenterY = shellRect.top + shellRect.height / 2;
+    const currentCenterX = rect.left + rect.width / 2;
+    const currentCenterY = rect.top + rect.height / 2;
+    const width = rect.width / scaleX;
+    const height = rect.height / scaleY;
+    const centerX = shellCenterX + (currentCenterX - shellCenterX) / scaleX;
+    const centerY = shellCenterY + (currentCenterY - shellCenterY) / scaleY;
+
+    return {
+      left: centerX - width / 2,
+      top: centerY - height / 2,
+      width,
+      height
+    };
+  };
+
   const animateSharedLogo = () => {
     if (
       !sharedLogoSource ||
@@ -161,7 +199,8 @@
     }
 
     const sourceRect = sharedLogoSource.getBoundingClientRect();
-    const targetRect = sharedLogoTarget.getBoundingClientRect();
+    const measuredTargetRect = sharedLogoTarget.getBoundingClientRect();
+    const targetRect = getSettledTargetRect(measuredTargetRect);
 
     if (
       sourceRect.width <= 0 ||

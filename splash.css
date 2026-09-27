@@ -19,6 +19,10 @@ html.has-studio-splash body {
   overflow: hidden;
 }
 
+html.has-studio-splash {
+  scrollbar-gutter: stable;
+}
+
 html.has-studio-splash .site-cursor {
   display: none !important;
 }
