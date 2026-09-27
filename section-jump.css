@@ -245,3 +245,16 @@ body.is-page-leaving .section-jump-control {
 .hero-custom-node.has-user-height > .hero-custom-node__embed-frame {
   aspect-ratio: auto;
 }
+
+/* Mobile footer clearance: dock the return control above D/AI instead of over audio. */
+@media (max-width: 760px) {
+  body.is-site-ready .section-jump-control[data-direction="up"] {
+    transform: translate3d(calc(-50% + 50vw - 51px), -62px, 0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  body.is-site-ready .section-jump-control[data-direction="up"] {
+    transform: translate3d(calc(-50% + 50vw - max(14px, env(safe-area-inset-right)) - 26px), -48px, 0) scale(1);
+  }
+}
