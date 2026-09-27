@@ -82,6 +82,7 @@
   let clearConfirmTimer = 0;
   let longPressState = null;
   let longPressOpenedUntil = 0;
+  let longPressMenuPointerId = null;
   let typingVariant = 0;
   let lastTypingAt = 0;
   let resizeSaveTimer = 0;
@@ -4392,7 +4393,7 @@
     menuFocusOrigin = origin instanceof HTMLElement ? origin : stage;
     buildCanvasMenu();
     playSfx('chatOpen', { element: stage, gainScale: .76 });
-    placeMenu(clientX, clientY);
+    placeMenu(clientX, clientY, { focusFirst });
     workspaceInteraction?.debug?.('menu open', null, { menuOpen: true, mode: 'canvas' });
   }
 
@@ -4416,6 +4417,7 @@
     const closeToken = menuPlacementToken;
     const wasOpen = menuOpen || menu.classList.contains('is-open');
     menuOpen = false;
+    longPressMenuPointerId = null;
     menu.classList.remove('is-open', 'is-url-form', 'is-workspace-form');
     const focusTarget = menuFocusOrigin;
     menuMode = null;
@@ -4533,9 +4535,11 @@
       timer: window.setTimeout(() => {
         if (!longPressState) return;
         const point = { x: longPressState.clientX, y: longPressState.clientY };
+        const pointerId = longPressState.pointerId;
         longPressOpenedUntil = performance.now() + 900;
         try { navigator.vibrate?.(8); } catch {}
-        openCanvasMenu(point.x, point.y, stage);
+        openCanvasMenu(point.x, point.y, stage, { focusFirst: false });
+        if (menuOpen && menuMode === 'canvas') longPressMenuPointerId = pointerId;
         longPressState = null;
       }, LONG_PRESS_MS)
     };
@@ -4632,7 +4636,14 @@
       menuMode === 'url-form'
       && (reason === 'window-blur' || reason === 'visibilitychange')
     );
-    if (!preserveUrlForm && ['window-blur', 'visibilitychange', 'blocked-ui', 'escape', 'pointercancel', 'lostpointercapture', 'contextmenu'].includes(reason)) {
+    const preserveLongPressMenu = (
+      menuOpen
+      && menuMode === 'canvas'
+      && longPressMenuPointerId != null
+      && pointerId === longPressMenuPointerId
+      && (reason === 'pointercancel' || reason === 'lostpointercapture')
+    );
+    if (!preserveUrlForm && !preserveLongPressMenu && ['window-blur', 'visibilitychange', 'blocked-ui', 'escape', 'pointercancel', 'lostpointercapture', 'contextmenu'].includes(reason)) {
       closeMenu(false);
     }
   }
