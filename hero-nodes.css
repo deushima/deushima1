@@ -386,13 +386,19 @@
 }
 
 .hero-node-disconnect__pill > svg:first-child {
-  width: 1.05rem;
-  height: 1.05rem;
+  display: block;
+  width: .78rem;
+  height: .78rem;
   justify-self: center;
-  fill: none;
-  stroke: rgba(224, 239, 255, 0.98);
-  stroke-width: 1.7;
-  stroke-linecap: round;
+  fill: currentColor;
+  stroke: none;
+  pointer-events: none;
+  shape-rendering: geometricPrecision;
+}
+
+.hero-node-disconnect__pill > svg:first-child path {
+  fill: currentColor;
+  stroke: none;
 }
 
 .hero-node-disconnect:hover .hero-node-disconnect__pill,
@@ -762,7 +768,7 @@
 }
 
 
-/* Node workspace redesign — 2026-09-21 */
+/* Node workspace redesign â€” 2026-09-21 */
 :root {
   --node-canvas-bg: #0c0c0d;
   --node-bg: #1f1f20;
