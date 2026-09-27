@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101112">
+  <meta name="description" content="Deushima Image Lab - experimental image effects, print treatments, frames and export tools in the browser.">
+  <title>DEUSHIMA / IMAGE LAB</title>
+  <link rel="icon" type="image/svg+xml" href="/simbolo%20deushima.svg">
+  <link rel="stylesheet" href="./styles.css?v=1">
+</head>
+<body>
+  <div class="app-shell" data-app>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Back to Deushima">
+        <img src="/simbolo%20deushima.svg" alt="">
+        <span>DEUSHIMA</span>
+      </a>
+
+      <div class="topbar__title">
+        <span>IMAGE LAB</span>
+        <small>LOCAL / NON-DESTRUCTIVE</small>
+      </div>
+
+      <div class="topbar__actions">
+        <button class="button button--ghost" type="button" data-action="upload">Import</button>
+        <button class="button button--solid" type="button" data-action="export" disabled>Export</button>
+      </div>
+    </header>
+
+    <main class="editor">
+      <aside class="rail rail--left" aria-label="Effect presets">
+        <div class="rail__head">
+          <span>STYLES</span>
+          <button class="icon-button" type="button" data-action="randomize" title="Randomize" disabled aria-label="Randomize">↻</button>
+        </div>
+
+        <div class="preset-list" data-presets>
+          <button class="preset is-active" type="button" data-preset="clean">
+            <span>Clean</span><small>Neutral</small>
+          </button>
+          <button class="preset" type="button" data-preset="soft-flash">
+            <span>Soft Flash</span><small>Optical</small>
+          </button>
+          <button class="preset" type="button" data-preset="xerox">
+            <span>Xerox</span><small>Print</small>
+          </button>
+          <button class="preset" type="button" data-preset="riso">
+            <span>Riso Split</span><small>Print</small>
+          </button>
+          <button class="preset" type="button" data-preset="rgb">
+            <span>RGB Shift</span><small>Digital</small>
+          </button>
+          <button class="preset" type="button" data-preset="silver">
+            <span>Silver</span><small>Photo</small>
+          </button>
+          <button class="preset" type="button" data-preset="night">
+            <span>Night Green</span><small>Color</small>
+          </button>
+          <button class="preset" type="button" data-preset="bitmap">
+            <span>Bitmap</span><small>Raster</small>
+          </button>
+          <button class="preset" type="button" data-preset="halftone">
+            <span>Dot Print</span><small>Print</small>
+          </button>
+          <button class="preset" type="button" data-preset="thermal">
+            <span>Thermal</span><small>Color</small>
+          </button>
+          <button class="preset" type="button" data-preset="solar">
+            <span>Solarize</span><small>Photo</small>
+          </button>
+          <button class="preset" type="button" data-preset="signal">
+            <span>Signal Loss</span><small>Digital</small>
+          </button>
+        </div>
+
+        <div class="rail__foot">
+          <span data-file-meta>NO FILE</span>
+          <button type="button" data-action="reset" disabled>Reset all</button>
+        </div>
+      </aside>
+
+      <section class="stage" data-dropzone aria-label="Image workspace">
+        <div class="stage__toolbar">
+          <div class="segmented" aria-label="Canvas zoom">
+            <button type="button" data-zoom="fit" class="is-active">Fit</button>
+            <button type="button" data-zoom="100">100%</button>
+          </div>
+
+          <div class="stage__toolbar-right">
+            <button class="hold-button" type="button" data-action="compare" disabled>
+              <span class="hold-button__key">Hold</span>
+              <span>Original</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="canvas-viewport" data-viewport>
+          <div class="empty-state" data-empty>
+            <div class="empty-state__mark" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <h1>Drop an image.<br>Break it properly.</h1>
+            <p>Print treatments, optical defects, color systems and framing. Everything runs locally in your browser.</p>
+            <div class="empty-state__actions">
+              <button class="button button--solid" type="button" data-action="upload">Choose image</button>
+              <button class="button button--ghost" type="button" data-action="demo">Use demo</button>
+            </div>
+            <small>JPG / PNG / WEBP / AVIF · paste also works</small>
+          </div>
+
+          <div class="canvas-wrap" data-canvas-wrap hidden>
+            <canvas data-canvas></canvas>
+          </div>
+        </div>
+
+        <div class="stage__status">
+          <span data-status>READY</span>
+          <span data-dimensions>-</span>
+          <span>CLIENT-SIDE</span>
+        </div>
+      </section>
+
+      <aside class="rail rail--right" aria-label="Image controls">
+        <div class="inspector-tabs" role="tablist">
+          <button type="button" class="is-active" data-tab="adjust" role="tab">Adjust</button>
+          <button type="button" data-tab="effect" role="tab">Effect</button>
+          <button type="button" data-tab="frame" role="tab">Frame</button>
+        </div>
+
+        <div class="inspector" data-panel="adjust">
+          <div class="control">
+            <div class="control__head"><label for="exposure">Exposure</label><output data-output="exposure">0</output></div>
+            <input id="exposure" type="range" min="-100" max="100" value="0" data-param="exposure">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="contrast">Contrast</label><output data-output="contrast">100</output></div>
+            <input id="contrast" type="range" min="50" max="180" value="100" data-param="contrast">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="saturation">Saturation</label><output data-output="saturation">100</output></div>
+            <input id="saturation" type="range" min="0" max="180" value="100" data-param="saturation">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="temperature">Temperature</label><output data-output="temperature">0</output></div>
+            <input id="temperature" type="range" min="-100" max="100" value="0" data-param="temperature">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="hue">Hue</label><output data-output="hue">0</output></div>
+            <input id="hue" type="range" min="-180" max="180" value="0" data-param="hue">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="blur">Blur</label><output data-output="blur">0</output></div>
+            <input id="blur" type="range" min="0" max="16" step="0.25" value="0" data-param="blur">
+          </div>
+        </div>
+
+        <div class="inspector" data-panel="effect" hidden>
+          <div class="control">
+            <div class="control__head"><label for="grain">Grain</label><output data-output="grain">0</output></div>
+            <input id="grain" type="range" min="0" max="100" value="0" data-param="grain">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="rgbSplit">RGB split</label><output data-output="rgbSplit">0</output></div>
+            <input id="rgbSplit" type="range" min="0" max="30" value="0" data-param="rgbSplit">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="pixelate">Pixel</label><output data-output="pixelate">1</output></div>
+            <input id="pixelate" type="range" min="1" max="28" value="1" data-param="pixelate">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="posterize">Posterize</label><output data-output="posterize">0</output></div>
+            <input id="posterize" type="range" min="0" max="8" value="0" data-param="posterize">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="halftone">Halftone</label><output data-output="halftone">0</output></div>
+            <input id="halftone" type="range" min="0" max="18" value="0" data-param="halftone">
+          </div>
+          <div class="control">
+            <div class="control__head"><label for="vignette">Vignette</label><output data-output="vignette">0</output></div>
+            <input id="vignette" type="range" min="0" max="100" value="0" data-param="vignette">
+          </div>
+
+          <div class="toggle-row">
+            <label><input type="checkbox" data-toggle="mono"><span>Monochrome</span></label>
+            <label><input type="checkbox" data-toggle="scanlines"><span>Scanlines</span></label>
+            <label><input type="checkbox" data-toggle="invert"><span>Invert</span></label>
+            <label><input type="checkbox" data-toggle="dither"><span>Dither</span></label>
+          </div>
+
+          <div class="duotone" data-duotone>
+            <div class="duotone__head">
+              <span>DUOTONE</span>
+              <label class="switch"><input type="checkbox" data-toggle="duotone"><span></span></label>
+            </div>
+            <div class="color-pair">
+              <label><input type="color" value="#111315" data-color="duoDark"><span>Shadow</span></label>
+              <label><input type="color" value="#ff5c38" data-color="duoLight"><span>Light</span></label>
+            </div>
+          </div>
+        </div>
+
+        <div class="inspector" data-panel="frame" hidden>
+          <div class="field">
+            <label for="ratio">Canvas ratio</label>
+            <select id="ratio" data-param="ratio">
+              <option value="original">Original</option>
+              <option value="1:1">1:1</option>
+              <option value="4:5">4:5</option>
+              <option value="16:9">16:9</option>
+              <option value="9:16">9:16</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="fit">Image fit</label>
+            <select id="fit" data-param="fit">
+              <option value="cover">Crop / cover</option>
+              <option value="contain">Contain</option>
+            </select>
+          </div>
+
+          <div class="frame-list">
+            <button type="button" class="frame-option is-active" data-frame="none"><span class="frame-swatch frame-swatch--none"></span><b>None</b></button>
+            <button type="button" class="frame-option" data-frame="white"><span class="frame-swatch frame-swatch--white"></span><b>Paper</b></button>
+            <button type="button" class="frame-option" data-frame="black"><span class="frame-swatch frame-swatch--black"></span><b>Black</b></button>
+            <button type="button" class="frame-option" data-frame="chrome"><span class="frame-swatch frame-swatch--chrome"></span><b>Chrome</b></button>
+            <button type="button" class="frame-option" data-frame="polaroid"><span class="frame-swatch frame-swatch--polaroid"></span><b>Instant</b></button>
+            <button type="button" class="frame-option" data-frame="film"><span class="frame-swatch frame-swatch--film"></span><b>35mm</b></button>
+          </div>
+
+          <div class="control">
+            <div class="control__head"><label for="frameSize">Frame size</label><output data-output="frameSize">7</output></div>
+            <input id="frameSize" type="range" min="2" max="18" value="7" data-param="frameSize">
+          </div>
+
+          <div class="field">
+            <label for="bgColor">Canvas background</label>
+            <div class="color-field"><input id="bgColor" type="color" value="#e8e7e2" data-color="bgColor"><span data-bg-hex>#E8E7E2</span></div>
+          </div>
+        </div>
+
+        <div class="export-strip">
+          <div>
+            <span>OUTPUT</span>
+            <strong data-output-meta>PNG / SOURCE SIZE</strong>
+          </div>
+          <button type="button" data-action="export" disabled>↓</button>
+        </div>
+      </aside>
+    </main>
+
+    <nav class="mobile-dock" aria-label="Mobile editor sections">
+      <button type="button" class="is-active" data-mobile-view="styles">Styles</button>
+      <button type="button" data-mobile-view="adjust">Adjust</button>
+      <button type="button" data-mobile-view="effect">Effect</button>
+      <button type="button" data-mobile-view="frame">Frame</button>
+    </nav>
+
+    <input type="file" accept="image/jpeg,image/png,image/webp,image/avif" data-file-input hidden>
+    <div class="toast" role="status" aria-live="polite" data-toast></div>
+  </div>
+
+  <script src="./app.js?v=1" defer></script>
+</body>
+</html>
