@@ -462,15 +462,25 @@
     if (!video) return;
     video.muted = true;
     video.playsInline = true;
+    video.preload = 'metadata';
     const promise = video.play();
     promise?.catch?.(() => {});
+  }
+
+  function setActiveArchiveVideo(index = -1) {
+    const videos = [...panel.querySelectorAll('[data-work-video]')];
+    videos.forEach((video, videoIndex) => {
+      video.preload = panelOpen ? 'metadata' : 'none';
+      if (panelOpen && !reducedMotion.matches && videoIndex === index) playVideo(video);
+      else video.pause();
+    });
   }
 
   function syncVideos(open) {
     const videos = [...panel.querySelectorAll('[data-work-video]')];
     videos.forEach((video) => {
-      if (open) playVideo(video);
-      else video.pause();
+      video.preload = open ? 'metadata' : 'none';
+      video.pause();
     });
 
     if (!BACKGROUND_VIDEO_ENABLED || !backgroundVideo) return;
@@ -500,7 +510,7 @@
     video.muted = true;
     video.loop = true;
     video.playsInline = true;
-    video.preload = 'metadata';
+    video.preload = 'none';
     video.setAttribute('aria-hidden', 'true');
 
     [...sourceVideo.querySelectorAll('source')].forEach((source) => {
@@ -604,7 +614,7 @@
     const centerX = (category.x + childModel.x) * 0.5;
     const centerY = (category.y + childModel.y) * 0.5;
     const rect = viewport.getBoundingClientRect();
-    const targetScale = clamp(Math.max(camera.scale, 1.02), CONFIG.minZoom, 1.18);
+    const targetScale = clamp(Math.max(camera.scale * 1.04, 1.10), CONFIG.minZoom, 1.24);
 
     animateCamera({
       scale: targetScale,
@@ -622,6 +632,8 @@
     expandedIndex = index;
     lastCategoryFocus = category.el;
     canvasRoot.classList.add('is-expanded');
+    canvasRoot.dataset.focusIndex = String(index);
+    setActiveArchiveVideo(-1);
 
     models.forEach((model) => {
       const selected = model.index === index;
@@ -629,6 +641,14 @@
       model.el.classList.toggle('is-muted', !selected);
       model.el.setAttribute('aria-expanded', selected ? 'true' : 'false');
     });
+
+    linkRecords
+      .filter((record) => record.key.startsWith('root-'))
+      .forEach((record, linkIndex) => {
+        const selected = linkIndex === index;
+        record.group?.classList.toggle('is-focus-active', selected);
+        record.group?.classList.toggle('is-focus-muted', !selected);
+      });
 
     if (breadcrumbCurrent) breadcrumbCurrent.textContent = `/ ${category.el.querySelector('strong')?.textContent?.trim() || ''}`;
 
@@ -696,10 +716,15 @@
     expandedIndex = -1;
 
     canvasRoot.classList.remove('is-expanded');
+    canvasRoot.removeAttribute('data-focus-index');
     models.forEach((model) => {
       model.el.classList.remove('is-selected', 'is-muted');
       model.el.setAttribute('aria-expanded', 'false');
     });
+    linkRecords
+      .filter((record) => record.key.startsWith('root-'))
+      .forEach((record) => record.group?.classList.remove('is-focus-active', 'is-focus-muted'));
+    if (panelOpen) setActiveArchiveVideo(-1);
 
     if (breadcrumbCurrent) breadcrumbCurrent.textContent = '';
     removeChild(immediate);
@@ -839,13 +864,23 @@
         model.el.classList.add('is-hot');
         setLinkHot(baseLink, true);
         pulseLink(baseLink);
+        if (panelOpen && expandedIndex < 0) setActiveArchiveVideo(index);
         wakeGrid(260);
       });
 
       model.el.addEventListener('pointerleave', () => {
         model.el.classList.remove('is-hot');
         setLinkHot(baseLink, false);
+        if (panelOpen && expandedIndex < 0) setActiveArchiveVideo(-1);
         wakeGrid(240);
+      });
+
+      model.el.addEventListener('focus', () => {
+        if (panelOpen && expandedIndex < 0) setActiveArchiveVideo(index);
+      });
+
+      model.el.addEventListener('blur', () => {
+        if (panelOpen && expandedIndex < 0) setActiveArchiveVideo(-1);
       });
 
       model.el.addEventListener('pointerdown', (event) => {
@@ -1340,6 +1375,7 @@
     }
 
     panelOpen = true;
+    document.body.classList.add('is-work-canvas-open');
     sceneReady = true;
     canvasRoot.classList.remove('is-leaving');
     canvasRoot.classList.add('is-grid-visible');
@@ -1372,6 +1408,7 @@
   function closeScene() {
     if (!panelOpen) return;
     panelOpen = false;
+    document.body.classList.remove('is-work-canvas-open');
     canvasRoot.classList.add('is-leaving');
     collapseExpanded({ restoreFocus: false, immediate: true });
     cancelCameraAnimation();

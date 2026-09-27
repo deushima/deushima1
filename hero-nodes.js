@@ -21,6 +21,26 @@
   ];
   const layoutMode = () => window.matchMedia('(max-width: 640px)').matches ? 'mobile' : 'desktop';
   const storageKey = () => `deushimaHeroCanvas:v6:${layoutMode()}`;
+  // HYBRID_STORAGE_CLEANUP: keep only the current hero-layout schema; custom nodes use their own v3 store.
+  const obsoleteHeroStorageKeys = [
+    'deushimaHeroCanvas:desktop',
+    'deushimaHeroCanvas:mobile',
+    'deushimaHeroCanvas:v2:desktop',
+    'deushimaHeroCanvas:v2:mobile',
+    'deushimaHeroCanvas:v3:desktop',
+    'deushimaHeroCanvas:v3:mobile',
+    'deushimaHeroCanvas:v4:desktop',
+    'deushimaHeroCanvas:v4:mobile',
+    'deushimaHeroCanvas:v5:desktop',
+    'deushimaHeroCanvas:v5:mobile'
+  ];
+  try {
+    const currentHeroStorageKey = storageKey();
+    obsoleteHeroStorageKeys.forEach((key) => {
+      if (key !== currentHeroStorageKey) localStorage.removeItem(key);
+    });
+  } catch {}
+
   const pairKey = (a, b) => [a, b].sort().join('::');
   const normalizeEdges = edges => {
     const seen = new Set();

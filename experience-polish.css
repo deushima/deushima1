@@ -1,0 +1,146 @@
+/* Deushima Hybrid Intelligence — systemic refinement pass
+   Focus: work-canvas hierarchy, interaction hit areas, and modal-state silence. */
+
+:root {
+  --deu-focus-transition: 320ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.work-canvas .work-node {
+  transition:
+    opacity var(--deu-focus-transition),
+    filter var(--deu-focus-transition),
+    border-color var(--deu-focus-transition),
+    box-shadow var(--deu-focus-transition),
+    transform var(--deu-focus-transition);
+}
+
+.work-canvas.is-expanded .work-node.is-muted {
+  opacity: .12;
+  filter: saturate(.52) brightness(.72);
+}
+
+.work-canvas.is-expanded .work-node--root {
+  opacity: .28;
+  filter: brightness(.78);
+}
+
+.work-canvas.is-expanded .work-node.is-selected {
+  opacity: 1;
+  filter: none;
+  border-color: rgba(255,255,255,.24);
+  box-shadow:
+    0 18px 48px rgba(0,0,0,.34),
+    0 0 0 1px rgba(255,255,255,.035);
+}
+
+.work-canvas .is-focus-muted {
+  opacity: .08;
+  transition: opacity var(--deu-focus-transition);
+}
+
+.work-canvas .is-focus-active {
+  opacity: 1;
+  transition: opacity var(--deu-focus-transition);
+}
+
+.work-canvas__breadcrumb {
+  gap: .56rem;
+  font-size: .74rem;
+  letter-spacing: .015em;
+  color: rgba(255,255,255,.76);
+}
+
+.work-canvas__breadcrumb-current {
+  color: rgba(255,255,255,.94);
+  font-weight: 560;
+}
+
+.section-jump-control,
+.deu-chat-launcher {
+  transition:
+    opacity 220ms ease,
+    transform 320ms cubic-bezier(.22,1,.36,1),
+    visibility 0s linear 0s;
+}
+
+body.is-work-canvas-open .section-jump-control,
+body.is-work-canvas-open .deu-chat-launcher {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transform: translateY(8px) scale(.94) !important;
+  visibility: hidden;
+  transition:
+    opacity 160ms ease,
+    transform 220ms cubic-bezier(.22,1,.36,1),
+    visibility 0s linear 160ms;
+}
+
+.card-nav__toggle,
+.card-nav__cta,
+.workspace-immersive-toggle,
+.work-canvas__back,
+.work-canvas__reset,
+.work-canvas__controls button {
+  position: relative;
+}
+
+.card-nav__toggle::after,
+.card-nav__cta::after,
+.workspace-immersive-toggle::after,
+.work-canvas__back::after,
+.work-canvas__reset::after,
+.work-canvas__controls button::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  pointer-events: auto;
+}
+
+.card-nav__toggle::after,
+.card-nav__cta::after {
+  inset: -5px -6px;
+}
+
+.workspace-immersive-toggle::after {
+  inset: -13px;
+}
+
+.work-canvas__back::after {
+  inset: -12px -10px;
+}
+
+.work-canvas__reset::after,
+.work-canvas__controls button::after {
+  inset: -7px -8px;
+}
+
+@media (max-width: 760px), (pointer: coarse) {
+  .work-canvas.is-expanded .work-node.is-muted {
+    opacity: .16;
+  }
+
+  .work-canvas__breadcrumb {
+    font-size: .72rem;
+  }
+
+  .card-nav__toggle::after,
+  .card-nav__cta::after {
+    inset: -7px -8px;
+  }
+
+  .work-canvas__back::after,
+  .work-canvas__reset::after,
+  .work-canvas__controls button::after {
+    inset: -10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .work-canvas .work-node,
+  .work-canvas .is-focus-muted,
+  .work-canvas .is-focus-active,
+  .section-jump-control,
+  .deu-chat-launcher {
+    transition-duration: 0.01ms !important;
+  }
+}
