@@ -28,6 +28,8 @@
   loadScript('hero-node-reference-layout.js?v=20260928-reference2', 'heroNodeReferenceLayout');
   loadStyle('interface-typography-polish.css?v=20260928-editorial2', 'interfaceTypographyPolishStyle');
   loadScript('interface-typography-polish.js?v=20260928-editorial1', 'interfaceTypographyPolish');
+  loadStyle('floating-card-zoom-polish.css?v=20260928-zoom1', 'floatingCardZoomPolishStyle');
+  loadScript('floating-card-zoom-polish.js?v=20260928-zoom1', 'floatingCardZoomPolish');
 
   if (!document.querySelector('style[data-contact-status-cleanup]')) {
     const style = document.createElement('style');
