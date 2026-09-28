@@ -1,10 +1,14 @@
-/* Reference-aligned default hero node layout — 2026-09-28 */
+/* Professional hero node composition — 2026-09-28 */
 
-/* Keep the initial canvas close to the supplied hub-and-spoke reference. */
+/*
+ * The opening canvas is treated as an editorial systems diagram, not a game HUD:
+ * controlled density, short readable connections, consistent card rhythm and a
+ * deliberate central hierarchy. Custom/user-created nodes remain untouched.
+ */
 .hero-node-stage {
-  top: clamp(9.75rem, 21svh, 12.5rem);
-  width: min(64rem, calc(100vw - 3rem));
-  height: clamp(23rem, 50svh, 29rem);
+  top: clamp(6.8rem, 17svh, 9rem);
+  width: min(72rem, calc(100vw - 5rem));
+  height: clamp(24rem, 58svh, 32rem);
 }
 
 .hero-node-stage__mesh .hero-node-line--halo,
@@ -14,37 +18,38 @@
 }
 
 .hero-node-stage__mesh .hero-node-line {
-  stroke: rgba(154, 154, 160, 0.48);
-  stroke-width: 1.8;
+  stroke: rgba(155, 155, 162, 0.39);
+  stroke-width: 1.45;
   stroke-linecap: round;
-  opacity: 0.92;
+  opacity: 0.95;
   filter: none;
 }
 
 .hero-node-stage__mesh .hero-node-line.is-hovered {
-  stroke: rgba(225, 225, 228, 0.72);
-  stroke-width: 2;
+  stroke: rgba(232, 232, 234, 0.68);
+  stroke-width: 1.7;
+  opacity: 1;
   filter: none;
 }
 
 .hero-node-stage__mesh .hero-node-line--preview {
-  stroke: rgba(238, 238, 240, 0.68);
-  stroke-width: 1.5;
+  stroke: rgba(238, 238, 240, 0.62);
+  stroke-width: 1.4;
   filter: none;
 }
 
 .hero-node {
   display: block;
-  width: clamp(11.75rem, 18.8vw, 12.4rem);
-  min-height: 5rem;
-  padding: 1.02rem 1.18rem 0.98rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 1.22rem;
-  background: rgba(35, 35, 36, 0.97);
-  color: rgba(255, 255, 255, 0.96);
+  width: clamp(12.85rem, 15vw, 13.55rem);
+  min-height: 5.2rem;
+  padding: 1.02rem 1.22rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.072);
+  border-radius: 1.18rem;
+  background: rgba(34, 34, 35, 0.965);
+  color: rgba(255, 255, 255, 0.97);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.025),
-    0 0.65rem 1.8rem rgba(0, 0, 0, 0.22);
+    inset 0 1px 0 rgba(255, 255, 255, 0.026),
+    0 0.8rem 2.25rem rgba(0, 0, 0, 0.21);
 }
 
 .hero-node::before,
@@ -60,15 +65,15 @@
 .hero-node--featured,
 .hero-node--featured:hover,
 .hero-node--featured:focus-visible {
-  border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(38, 38, 39, 0.985);
+  border-color: rgba(255, 255, 255, 0.145);
+  background: rgba(39, 39, 40, 0.985);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.035),
-    0 0.8rem 2rem rgba(0, 0, 0, 0.28);
+    inset 0 1px 0 rgba(255, 255, 255, 0.042),
+    0 1rem 2.6rem rgba(0, 0, 0, 0.28);
   filter: none;
 }
 
-/* The index language no longer contributes to the visual hierarchy. */
+/* The numeric labels were useful during prototyping, but weaken the portfolio hierarchy. */
 .hero-node__index {
   display: none !important;
 }
@@ -76,53 +81,68 @@
 .hero-node__copy {
   display: flex;
   min-width: 0;
-  min-height: 2.9rem;
+  min-height: 3.1rem;
   flex-direction: column;
-  justify-content: center;
   align-items: flex-start;
+  justify-content: center;
   gap: 0.34rem;
+  padding: 0;
 }
 
 .hero-node strong {
   display: block;
   margin: 0;
-  font-family: "Inter", sans-serif;
-  font-size: clamp(1.05rem, 1.2vw, 1.28rem);
+  color: rgba(255, 255, 255, 0.97);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(1.02rem, 1.15vw, 1.16rem);
   font-weight: 600;
   line-height: 1.02;
-  letter-spacing: -0.04em;
-  color: rgba(255, 255, 255, 0.97);
+  letter-spacing: -0.036em;
 }
 
 .hero-node small {
   display: block;
+  max-width: 100%;
   margin: 0;
+  overflow: hidden;
   color: rgba(255, 255, 255, 0.56);
-  font-family: "Inter", sans-serif;
-  font-size: clamp(0.7rem, 0.76vw, 0.8rem);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(0.67rem, 0.72vw, 0.74rem);
   font-weight: 400;
-  line-height: 1.25;
+  line-height: 1.22;
   letter-spacing: -0.012em;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* Central node: slightly larger and more authoritative, without looking like a CTA card. */
+.hero-node--launcher {
+  width: clamp(14rem, 16.5vw, 14.75rem);
+  min-height: 5.75rem;
+  padding-inline: 1.38rem;
+  border-color: rgba(255, 255, 255, 0.095);
+  background: rgba(37, 37, 38, 0.985);
+}
+
 .hero-node--launcher strong {
-  font-size: clamp(1.1rem, 1.28vw, 1.34rem);
+  font-size: clamp(1.12rem, 1.25vw, 1.27rem);
+  font-weight: 620;
+  letter-spacing: -0.042em;
 }
 
 .hero-node--launcher small {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.52);
 }
 
 .hero-node__status {
   position: absolute;
-  left: 2.85rem;
+  left: 1.22rem;
   top: 0.86rem;
   display: inline-flex;
   align-items: center;
   gap: 0.32rem;
   width: auto;
-  color: rgba(255, 255, 255, 0.58);
+  color: rgba(255, 255, 255, 0.52);
   font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   font-size: 0.43rem;
   font-weight: 600;
@@ -134,25 +154,25 @@
 .hero-node__status > span {
   width: 0.32rem;
   height: 1px;
-  background: rgba(255, 255, 255, 0.52);
+  background: rgba(255, 255, 255, 0.48);
   box-shadow: none;
 }
 
 .hero-node__port {
-  width: 0.62rem;
-  height: 0.62rem;
+  width: 0.58rem;
+  height: 0.58rem;
   border: 0;
-  background: rgba(157, 157, 163, 0.98);
-  box-shadow: 0 0 0 1px rgba(18, 18, 19, 0.94);
-  opacity: 1;
+  background: rgba(151, 151, 157, 0.96);
+  box-shadow: 0 0 0 1px rgba(18, 18, 19, 0.96);
+  opacity: 0.96;
 }
 
 .hero-node__port::after {
   display: none;
 }
 
-.hero-node__port--in { left: -0.31rem; }
-.hero-node__port--out { right: -0.31rem; }
+.hero-node__port--in { left: -0.29rem; }
+.hero-node__port--out { right: -0.29rem; }
 
 .hero-node:hover .hero-node__port,
 .hero-node:focus-visible .hero-node__port,
@@ -162,58 +182,69 @@
 .hero-node__port.is-active,
 .hero-node__port.is-near {
   border: 0;
-  background: rgba(224, 224, 227, 1);
+  background: rgba(232, 232, 234, 1);
   box-shadow:
-    0 0 0 1px rgba(18, 18, 19, 0.94),
-    0 0 0.38rem rgba(255, 255, 255, 0.16);
+    0 0 0 1px rgba(18, 18, 19, 0.96),
+    0 0 0.4rem rgba(255, 255, 255, 0.13);
   opacity: 1;
 }
 
-/* Desktop: two left, one central hub, two right. */
+/*
+ * Desktop composition.
+ * Upper satellites sit closer to the hub; lower satellites open slightly wider.
+ * This creates controlled asymmetry without sacrificing immediate legibility.
+ */
 .hero-node--chat {
-  --node-x: 17.5%;
-  --node-y: 19%;
+  --node-x: 26.5%;
+  --node-y: 25%;
 }
 
 .hero-node--works {
-  --node-x: 16.5%;
-  --node-y: 70%;
+  --node-x: 21.5%;
+  --node-y: 75%;
 }
 
 .hero-node--launcher {
-  --node-x: 52.5%;
-  --node-y: 46%;
+  --node-x: 50%;
+  --node-y: 50%;
 }
 
 .hero-node--contact {
-  --node-x: 84.5%;
-  --node-y: 21%;
+  --node-x: 73.5%;
+  --node-y: 25%;
 }
 
 .hero-node--about {
-  --node-x: 84%;
-  --node-y: 74%;
+  --node-x: 78.5%;
+  --node-y: 75%;
 }
 
-@media (max-width: 900px) and (min-width: 641px) {
+@media (max-width: 1100px) and (min-width: 641px) {
   .hero-node-stage {
-    width: min(52rem, calc(100vw - 2rem));
-    height: clamp(22rem, 47svh, 27rem);
+    top: clamp(6.8rem, 15svh, 8rem);
+    width: min(61rem, calc(100vw - 2.5rem));
+    height: clamp(23rem, 55svh, 29rem);
   }
 
   .hero-node {
-    width: clamp(10.8rem, 21vw, 11.6rem);
-    min-height: 4.75rem;
+    width: clamp(11.35rem, 20vw, 12.2rem);
+    min-height: 4.85rem;
+    padding: 0.92rem 1.02rem;
   }
 
-  .hero-node--chat { --node-x: 17%; --node-y: 20%; }
-  .hero-node--works { --node-x: 17%; --node-y: 72%; }
-  .hero-node--launcher { --node-x: 51%; --node-y: 47%; }
-  .hero-node--contact { --node-x: 84%; --node-y: 21%; }
-  .hero-node--about { --node-x: 84%; --node-y: 73%; }
+  .hero-node--launcher {
+    width: clamp(12.5rem, 22vw, 13.35rem);
+    min-height: 5.25rem;
+  }
+
+  .hero-node--chat { --node-x: 25%; --node-y: 25%; }
+  .hero-node--works { --node-x: 20%; --node-y: 74%; }
+  .hero-node--launcher { --node-x: 50%; --node-y: 50%; }
+  .hero-node--contact { --node-x: 75%; --node-y: 25%; }
+  .hero-node--about { --node-x: 80%; --node-y: 74%; }
 }
 
-/* Mobile: a clean vertical chain, one node connected to the next. */
+/* Mobile keeps the agreed vertical chain and uses the same typographic hierarchy. */
 @media (max-width: 640px) {
   .hero-node-stage {
     left: 0;
@@ -225,64 +256,60 @@
     overflow: visible;
   }
 
-  .hero-node {
-    width: min(9.55rem, 43vw);
-    min-height: 4.05rem;
-    padding: 0.82rem 0.9rem;
-    border-radius: 0.9rem;
+  .hero-node,
+  .hero-node--launcher {
+    width: min(10.6rem, 48vw);
+    min-height: 4.1rem;
+    padding: 0.72rem 0.86rem;
+    border-radius: 0.92rem;
     background: rgba(35, 35, 36, 0.985);
   }
 
   .hero-node__copy {
-    min-height: 2.35rem;
-    gap: 0.27rem;
+    min-height: 2.65rem;
+    gap: 0.26rem;
   }
 
-  .hero-node strong {
-    font-size: 0.86rem;
+  .hero-node strong,
+  .hero-node--launcher strong {
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.04;
     letter-spacing: -0.035em;
   }
 
-  .hero-node--launcher strong {
-    font-size: 0.9rem;
-  }
-
   .hero-node small {
-    max-width: none;
-    font-size: 0.52rem;
-    line-height: 1.2;
+    max-width: 100%;
+    font-size: 0.51rem;
+    line-height: 1.18;
     white-space: nowrap;
   }
 
   .hero-node__status {
-    left: 2.35rem;
-    top: 0.66rem;
+    left: 0.86rem;
+    top: 0.62rem;
     font-size: 0.34rem;
   }
 
-  .hero-node--contact .hero-node__copy {
-    padding-top: 0;
-  }
-
-  /* On mobile the input/output ports become top/bottom anchors so the chain reads cleanly. */
+  /* On mobile the input/output ports become top/bottom anchors. */
   .hero-node__port {
     top: auto;
-    width: 0.66rem;
-    height: 0.66rem;
+    width: 0.62rem;
+    height: 0.62rem;
     transform: translateX(-50%);
   }
 
   .hero-node__port--in {
     left: 50%;
     right: auto;
-    top: -0.33rem;
+    top: -0.31rem;
   }
 
   .hero-node__port--out {
     left: 50%;
     right: auto;
     top: auto;
-    bottom: -0.33rem;
+    bottom: -0.31rem;
   }
 
   .hero-node:hover .hero-node__port,
@@ -295,34 +322,15 @@
     transform: translateX(-50%) scale(1.06);
   }
 
-  .hero-node--contact {
-    --node-x: 50%;
-    --node-y: 9%;
-  }
-
-  .hero-node--chat {
-    --node-x: 50%;
-    --node-y: 27%;
-  }
-
-  .hero-node--works {
-    --node-x: 50%;
-    --node-y: 45%;
-  }
-
-  .hero-node--launcher {
-    --node-x: 50%;
-    --node-y: 63%;
-  }
-
-  .hero-node--about {
-    --node-x: 50%;
-    --node-y: 81%;
-  }
+  .hero-node--contact { --node-x: 50%; --node-y: 9%; }
+  .hero-node--chat { --node-x: 50%; --node-y: 27%; }
+  .hero-node--works { --node-x: 50%; --node-y: 45%; }
+  .hero-node--launcher { --node-x: 50%; --node-y: 63%; }
+  .hero-node--about { --node-x: 50%; --node-y: 81%; }
 
   .hero-node-stage__mesh .hero-node-line {
-    stroke: rgba(154, 154, 160, 0.5);
-    stroke-width: 1.6;
+    stroke: rgba(154, 154, 160, 0.46);
+    stroke-width: 1.45;
   }
 }
 
@@ -332,9 +340,10 @@
     height: min(30rem, 58svh);
   }
 
-  .hero-node {
-    width: min(9rem, 45vw);
-    min-height: 3.9rem;
+  .hero-node,
+  .hero-node--launcher {
+    width: min(9.8rem, 47vw);
+    min-height: 4rem;
   }
 
   .hero-node--contact { --node-y: 8%; }
