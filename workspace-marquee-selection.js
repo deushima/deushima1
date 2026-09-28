@@ -102,6 +102,23 @@
 
     const clearSelection = () => setSelected([]);
 
+    const selectionKey = node => {
+      if (!(node instanceof HTMLElement)) return null;
+      if (node.dataset.customNode) return `custom:${node.dataset.customNode}`;
+      if (node.dataset.heroNode) return `hero:${node.dataset.heroNode}`;
+      return null;
+    };
+
+    const selectByKeys = keys => {
+      const wanted = new Set(Array.isArray(keys) ? keys.map(String) : []);
+      const elements = allNodes().filter(node => {
+        const key = selectionKey(node);
+        return key && wanted.has(key);
+      });
+      setSelected(elements);
+      return elements;
+    };
+
     const updateVisual = rect => {
       marquee.style.left = `${rect.left}px`;
       marquee.style.top = `${rect.top}px`;
@@ -165,9 +182,6 @@
 
       if (!deleteButtons.length) return 0;
 
-      // Remove marquee state first so native single-node keyboard deletion cannot race
-      // this batch operation. Each node's own delete control remains the source of truth
-      // for persistence, connection cleanup, animation and workspace history.
       clearSelection();
       deleteButtons.forEach(button => button.click());
       return deleteButtons.length;
@@ -251,9 +265,6 @@
       if (event.key !== 'Delete' && event.key !== 'Backspace') return;
       if (!selected.size) return;
 
-      // Core navigation nodes are intentionally protected; user-created nodes in the
-      // marquee selection are deleted as one batch. Consume the key so Backspace never
-      // becomes browser navigation while a canvas selection exists.
       event.preventDefault();
       event.stopImmediatePropagation();
       deleteSelectedCustomNodes();
@@ -280,6 +291,8 @@
       clear: clearSelection,
       deleteSelected: deleteSelectedCustomNodes,
       getSelectedElements: () => [...selected],
+      getSelectedKeys: () => [...selected].map(selectionKey).filter(Boolean),
+      selectByKeys,
       getSelectedCustomNodeIds: () => [...selected]
         .map(node => node.dataset.customNode)
         .filter(Boolean),
