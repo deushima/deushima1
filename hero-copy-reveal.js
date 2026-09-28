@@ -12,4 +12,5 @@
 
   loadScript('hero-copy-reveal-core.js?v=20260928-split1', 'heroCopyRevealCore');
   loadScript('workspace-media-enhancements.js?v=20260928-cosmos-svg-undo1', 'workspaceMediaEnhancements');
+  loadScript('wire-node-autoconnect.js?v=20260928-wire-autoconnect1', 'wireNodeAutoconnect');
 })();
