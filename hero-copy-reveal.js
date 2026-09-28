@@ -24,7 +24,7 @@
   loadScript('wire-node-autoconnect.js?v=20260928-wire-autoconnect2', 'wireNodeAutoconnect');
   loadStyle('workspace-marquee-selection.css?v=20260928-marquee1', 'workspaceMarqueeStyle');
   loadScript('workspace-marquee-selection.js?v=20260928-marquee-delete2', 'workspaceMarqueeSelection');
-  loadStyle('hero-node-reference-layout.css?v=20260928-reference4', 'heroNodeReferenceLayoutStyle');
+  loadStyle('hero-node-reference-layout.css?v=20260928-reference5', 'heroNodeReferenceLayoutStyle');
   loadScript('hero-node-reference-layout.js?v=20260928-reference3', 'heroNodeReferenceLayout');
   loadStyle('interface-typography-polish.css?v=20260928-editorial2', 'interfaceTypographyPolishStyle');
   loadScript('interface-typography-polish.js?v=20260928-editorial1', 'interfaceTypographyPolish');
