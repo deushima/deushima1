@@ -106,10 +106,10 @@
   }
 
   function loadWorkspaceMediaEnhancements() {
-    if (document.querySelector('script[data-workspace-media]')) return;
+    if (document.querySelector('script[data-workspace-media-enhancements]')) return;
     const script = document.createElement('script');
-    script.src = 'workspace-media.js?v=20260928-cosmos-svg-undo1';
-    script.dataset.workspaceMedia = 'true';
+    script.src = 'workspace-media-enhancements.js?v=20260928-cosmos-svg-undo2';
+    script.dataset.workspaceMediaEnhancements = 'true';
     script.async = true;
     document.head.appendChild(script);
   }
