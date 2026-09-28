@@ -1,25 +1,35 @@
 (() => {
   'use strict';
 
-  const TARGET_EDGES = Object.freeze([
-    Object.freeze(['chat', 'launcher']),
-    Object.freeze(['works', 'launcher']),
-    Object.freeze(['launcher', 'contact']),
-    Object.freeze(['launcher', 'about'])
-  ]);
+  const TARGET_EDGES_BY_MODE = Object.freeze({
+    desktop: Object.freeze([
+      Object.freeze(['chat', 'launcher']),
+      Object.freeze(['works', 'launcher']),
+      Object.freeze(['launcher', 'contact']),
+      Object.freeze(['launcher', 'about'])
+    ]),
+    mobile: Object.freeze([
+      Object.freeze(['contact', 'chat']),
+      Object.freeze(['chat', 'works']),
+      Object.freeze(['works', 'launcher']),
+      Object.freeze(['launcher', 'about'])
+    ])
+  });
 
   const layoutMode = () => window.matchMedia('(max-width: 640px)').matches ? 'mobile' : 'desktop';
-  const migrationKey = mode => `deushima:hero-reference-layout:v1:${mode}`;
-
-  const cloneEdges = () => TARGET_EDGES.map(edge => [...edge]);
+  const migrationKey = mode => `deushima:hero-reference-layout:v2:${mode}`;
+  const targetEdges = (mode = layoutMode()) => TARGET_EDGES_BY_MODE[mode] || TARGET_EDGES_BY_MODE.desktop;
+  const cloneEdges = (mode = layoutMode()) => targetEdges(mode).map(edge => [...edge]);
   const pairKey = edge => [...edge].sort().join('::');
-  const targetEdgeSet = new Set(TARGET_EDGES.map(pairKey));
 
   const stateMatchesReference = state => {
+    const mode = layoutMode();
+    const target = targetEdges(mode);
+    const targetEdgeSet = new Set(target.map(pairKey));
     const positions = Array.isArray(state?.positions) ? state.positions : [];
     const edges = Array.isArray(state?.edges) ? state.edges : [];
     if (positions.length) return false;
-    if (edges.length !== TARGET_EDGES.length) return false;
+    if (edges.length !== target.length) return false;
     const current = new Set(edges.map(pairKey));
     return current.size === targetEdgeSet.size && [...targetEdgeSet].every(key => current.has(key));
   };
