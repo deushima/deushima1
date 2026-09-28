@@ -13,7 +13,7 @@
 .content-panel__surface--about .about-info-bar__body {
   grid-template-columns: minmax(0, 1fr) minmax(32rem, 0.48fr);
   gap: clamp(3rem, 4.5vw, 5.5rem);
-  align-items: end;
+  align-items: start;
   padding: clamp(1.55rem, 2.6vw, 2.8rem) clamp(1.4rem, 2.7vw, 3.2rem);
 }
 
@@ -22,7 +22,7 @@
   z-index: 1;
   min-width: 0;
   max-width: none;
-  align-self: end;
+  align-self: start;
 }
 
 .content-panel__surface--about .about-info-bar h2 {
@@ -53,7 +53,7 @@
 .content-panel__surface--about .about-info-bar__copy {
   position: relative;
   z-index: 2;
-  align-self: end;
+  align-self: start;
   gap: clamp(1rem, 1.7vw, 2rem);
 }
 
