@@ -1,0 +1,91 @@
+@media (max-width: 640px) {
+  /* Keep the original mesh only for an active connection preview. */
+  .hero-node-stage__mesh .hero-node-line:not(.hero-node-line--preview),
+  .hero-node-stage__mesh .hero-node-line--halo,
+  .hero-node-stage__mesh .hero-node-line--glint,
+  .hero-node-stage__mesh .hero-node-line-flare {
+    opacity: 0 !important;
+  }
+
+  .hero-node-stage__mesh .hero-node-line--preview {
+    opacity: 1 !important;
+  }
+
+  .hero-mobile-chain-mesh {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .hero-mobile-chain-mesh path {
+    fill: none;
+    stroke: rgba(158, 158, 164, 0.5);
+    stroke-width: 1.45;
+    stroke-linecap: round;
+    vector-effect: non-scaling-stroke;
+  }
+
+  /* Hard-anchor the ports outside the card. This prevents either handle from
+     falling into the title line when the mobile layout changes. */
+  .hero-node-stage > .hero-node > .hero-node__port {
+    width: 0.5rem !important;
+    height: 0.5rem !important;
+    margin: 0 !important;
+    opacity: 0.82 !important;
+    background: rgba(164, 164, 169, 0.96) !important;
+    box-shadow: 0 0 0 1px rgba(18, 18, 19, 0.96) !important;
+  }
+
+  .hero-node-stage > .hero-node > .hero-node__port--in {
+    left: 50% !important;
+    right: auto !important;
+    top: -0.25rem !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .hero-node-stage > .hero-node > .hero-node__port--out {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: -0.25rem !important;
+    transform: translateX(-50%) !important;
+  }
+
+  .hero-node-stage > .hero-node:active > .hero-node__port,
+  .hero-node-stage > .hero-node.is-dragging > .hero-node__port,
+  .hero-node-stage > .hero-node.is-connect-target > .hero-node__port,
+  .hero-node-stage.is-editing > .hero-node > .hero-node__port {
+    opacity: 1 !important;
+    background: rgba(238, 238, 240, 1) !important;
+    transform: translateX(-50%) scale(1.05) !important;
+  }
+
+  /* Stable mobile card rhythm. */
+  .hero-node-stage > .hero-node,
+  .hero-node-stage > .hero-node--launcher {
+    width: min(10.75rem, 48vw) !important;
+    min-height: 3.72rem !important;
+    padding: 0.66rem 0.88rem 0.64rem !important;
+  }
+
+  .hero-node-stage > .hero-node .hero-node__copy {
+    min-height: 0 !important;
+    gap: 0.17rem !important;
+    padding: 0 !important;
+  }
+
+  .hero-node-stage > .hero-node strong {
+    margin: 0 !important;
+    line-height: 1.02 !important;
+  }
+
+  .hero-node-stage > .hero-node small {
+    margin: 0.04rem 0 0 !important;
+    line-height: 1.16 !important;
+  }
+}
