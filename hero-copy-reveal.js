@@ -26,6 +26,8 @@
   loadScript('workspace-marquee-selection.js?v=20260928-marquee-delete2', 'workspaceMarqueeSelection');
   loadStyle('hero-node-reference-layout.css?v=20260928-reference5', 'heroNodeReferenceLayoutStyle');
   loadScript('hero-node-reference-layout.js?v=20260928-reference3', 'heroNodeReferenceLayout');
+  loadStyle('hero-mobile-chain-polish.css?v=20260928-mobilechain1', 'heroMobileChainPolishStyle');
+  loadScript('hero-mobile-chain-polish.js?v=20260928-mobilechain1', 'heroMobileChainPolish');
   loadStyle('interface-typography-polish.css?v=20260928-editorial2', 'interfaceTypographyPolishStyle');
   loadScript('interface-typography-polish.js?v=20260928-editorial1', 'interfaceTypographyPolish');
   loadStyle('floating-card-zoom-polish.css?v=20260928-zoom1', 'floatingCardZoomPolishStyle');
