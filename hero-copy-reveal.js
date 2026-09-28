@@ -26,6 +26,8 @@
   loadScript('workspace-marquee-selection.js?v=20260928-marquee-delete2', 'workspaceMarqueeSelection');
   loadStyle('hero-node-reference-layout.css?v=20260928-reference2', 'heroNodeReferenceLayoutStyle');
   loadScript('hero-node-reference-layout.js?v=20260928-reference2', 'heroNodeReferenceLayout');
+  loadStyle('interface-typography-polish.css?v=20260928-editorial1', 'interfaceTypographyPolishStyle');
+  loadScript('interface-typography-polish.js?v=20260928-editorial1', 'interfaceTypographyPolish');
 
   if (!document.querySelector('style[data-contact-status-cleanup]')) {
     const style = document.createElement('style');
