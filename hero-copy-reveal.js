@@ -22,9 +22,8 @@
   loadScript('hero-copy-reveal-core.js?v=20260928-split1', 'heroCopyRevealCore');
   loadScript('workspace-media-enhancements.js?v=20260928-cosmos-svg-undo1', 'workspaceMediaEnhancements');
   loadScript('wire-node-autoconnect.js?v=20260928-wire-autoconnect2', 'wireNodeAutoconnect');
-  loadStyle('workspace-marquee-selection.css?v=20260928-marquee1', 'workspaceMarqueeStyle');
-  loadScript('workspace-marquee-selection.js?v=20260928-marquee-group1', 'workspaceMarqueeSelection');
-  loadScript('workspace-group-drag.js?v=20260928-groupdrag1', 'workspaceGroupDrag');
+  loadStyle('workspace-marquee-selection.css?v=20260928-marquee-glass2', 'workspaceMarqueeStyle');
+  loadScript('workspace-marquee-selection.js?v=20260928-marquee-delete2', 'workspaceMarqueeSelection');
   loadStyle('hero-node-reference-layout.css?v=20260928-reference5', 'heroNodeReferenceLayoutStyle');
   loadScript('hero-node-reference-layout.js?v=20260928-reference3', 'heroNodeReferenceLayout');
   loadStyle('hero-mobile-chain-polish.css?v=20260928-mobilechain1', 'heroMobileChainPolishStyle');
