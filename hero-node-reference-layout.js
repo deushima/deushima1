@@ -17,7 +17,7 @@
   });
 
   const layoutMode = () => window.matchMedia('(max-width: 640px)').matches ? 'mobile' : 'desktop';
-  const migrationKey = mode => `deushima:hero-reference-layout:v2:${mode}`;
+  const migrationKey = mode => `deushima:hero-reference-layout:v3:${mode}`;
   const targetEdges = (mode = layoutMode()) => TARGET_EDGES_BY_MODE[mode] || TARGET_EDGES_BY_MODE.desktop;
   const cloneEdges = (mode = layoutMode()) => targetEdges(mode).map(edge => [...edge]);
   const pairKey = edge => [...edge].sort().join('::');
