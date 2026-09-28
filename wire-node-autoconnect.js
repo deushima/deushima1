@@ -33,6 +33,7 @@
     let candidateObserver = null;
     let menuCloseTimer = 0;
     let syntheticPointerSeed = 47000;
+    let connecting = false;
 
     const isPort = target => target instanceof Element
       ? target.closest('[data-custom-port], [data-node-port]')
@@ -68,6 +69,7 @@
       awaitingNode = false;
       candidateNode = null;
       candidateType = null;
+      connecting = false;
       delete menu.dataset.wireAutoconnect;
     };
 
@@ -114,6 +116,7 @@
     };
 
     const connectCandidate = () => {
+      if (connecting) return;
       if (!pendingWire || !candidateNode?.isConnected || !pendingWire.sourcePort?.isConnected) {
         clearPending();
         return;
@@ -128,6 +131,7 @@
         return;
       }
 
+      connecting = true;
       const before = snapshotConnectionCount();
       const pointerId = ++syntheticPointerSeed;
 
@@ -138,13 +142,14 @@
       requestAnimationFrame(() => {
         const after = snapshotConnectionCount();
         if (after > before) {
-          candidateNode.classList.add('is-wire-autoconnected');
+          candidateNode?.classList.add('is-wire-autoconnected');
         }
         clearPending();
       });
     };
 
     const tryFinalizeCandidate = () => {
+      if (connecting) return;
       if (!candidateNode?.isConnected || !pendingWire) return;
       if (menu.classList.contains('is-open')) return;
       if (candidateType === 'media' && !candidateNode.classList.contains('is-media-ready')) return;
@@ -165,7 +170,7 @@
     };
 
     const stageObserver = new MutationObserver(records => {
-      if (!pendingWire || !awaitingNode || candidateNode) return;
+      if (!pendingWire || !awaitingNode || candidateNode || connecting) return;
 
       for (const record of records) {
         for (const added of record.addedNodes) {
@@ -190,7 +195,7 @@
       window.clearTimeout(menuCloseTimer);
       menuCloseTimer = window.setTimeout(() => {
         menuCloseTimer = 0;
-        if (!pendingWire || menu.classList.contains('is-open')) return;
+        if (!pendingWire || connecting || menu.classList.contains('is-open')) return;
 
         if (candidateNode?.isConnected) {
           if (candidateType === 'media' && !candidateNode.classList.contains('is-media-ready')) {
@@ -208,7 +213,7 @@
     };
 
     const menuObserver = new MutationObserver(() => {
-      if (!pendingWire) return;
+      if (!pendingWire || connecting) return;
       if (menu.classList.contains('is-open')) {
         window.clearTimeout(menuCloseTimer);
         menuCloseTimer = 0;
@@ -250,6 +255,7 @@
         awaitingNode = false;
         candidateNode = null;
         candidateType = null;
+        connecting = false;
         menu.dataset.wireAutoconnect = 'true';
       });
     }, { passive: true });
@@ -260,7 +266,7 @@
     }, { passive: true });
 
     menu.addEventListener('click', event => {
-      if (!pendingWire) return;
+      if (!pendingWire || connecting) return;
       const item = event.target instanceof Element ? event.target.closest('[role="menuitem"]') : null;
       if (!item || !menu.contains(item)) return;
       const label = item.querySelector('.hero-custom-node-context__label')?.textContent?.trim();
@@ -278,7 +284,7 @@
     }, { capture: true });
 
     menu.addEventListener('submit', event => {
-      if (!pendingWire || !selectedType || selectedType === 'text') return;
+      if (!pendingWire || connecting || !selectedType || selectedType === 'text') return;
       const form = event.target instanceof Element
         ? event.target.closest('.hero-custom-node-context__url-form')
         : null;
