@@ -37,7 +37,7 @@
   display: block;
   width: clamp(11.75rem, 18.8vw, 12.4rem);
   min-height: 5rem;
-  padding: 0.82rem 1rem 0.78rem;
+  padding: 1.02rem 1.18rem 0.98rem;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 1.22rem;
   background: rgba(35, 35, 36, 0.97);
@@ -68,44 +68,50 @@
   filter: none;
 }
 
+/* The index language no longer contributes to the visual hierarchy. */
 .hero-node__index {
-  display: block;
-  padding: 0;
-  margin: 0 0 0.38rem;
-  color: rgba(255, 255, 255, 0.52);
-  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 0.49rem;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.11em;
+  display: none !important;
 }
 
 .hero-node__copy {
   display: flex;
   min-width: 0;
+  min-height: 2.9rem;
   flex-direction: column;
+  justify-content: center;
   align-items: flex-start;
-  gap: 0.28rem;
+  gap: 0.34rem;
 }
 
 .hero-node strong {
   display: block;
+  margin: 0;
   font-family: "Inter", sans-serif;
-  font-size: 1.03rem;
-  font-weight: 500;
-  line-height: 1.08;
-  letter-spacing: -0.028em;
+  font-size: clamp(1.05rem, 1.2vw, 1.28rem);
+  font-weight: 600;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: rgba(255, 255, 255, 0.97);
 }
 
 .hero-node small {
   display: block;
-  color: rgba(255, 255, 255, 0.57);
+  margin: 0;
+  color: rgba(255, 255, 255, 0.56);
   font-family: "Inter", sans-serif;
-  font-size: 0.68rem;
+  font-size: clamp(0.7rem, 0.76vw, 0.8rem);
   font-weight: 400;
-  line-height: 1.2;
-  letter-spacing: -0.005em;
+  line-height: 1.25;
+  letter-spacing: -0.012em;
   white-space: nowrap;
+}
+
+.hero-node--launcher strong {
+  font-size: clamp(1.1rem, 1.28vw, 1.34rem);
+}
+
+.hero-node--launcher small {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .hero-node__status {
@@ -222,24 +228,29 @@
   .hero-node {
     width: min(9.55rem, 43vw);
     min-height: 4.05rem;
-    padding: 0.62rem 0.72rem 0.64rem;
+    padding: 0.82rem 0.9rem;
     border-radius: 0.9rem;
     background: rgba(35, 35, 36, 0.985);
   }
 
-  .hero-node__index {
-    margin-bottom: 0.26rem;
-    font-size: 0.42rem;
+  .hero-node__copy {
+    min-height: 2.35rem;
+    gap: 0.27rem;
   }
 
   .hero-node strong {
-    font-size: 0.8rem;
+    font-size: 0.86rem;
+    letter-spacing: -0.035em;
+  }
+
+  .hero-node--launcher strong {
+    font-size: 0.9rem;
   }
 
   .hero-node small {
     max-width: none;
-    font-size: 0.5rem;
-    line-height: 1.16;
+    font-size: 0.52rem;
+    line-height: 1.2;
     white-space: nowrap;
   }
 
@@ -250,7 +261,7 @@
   }
 
   .hero-node--contact .hero-node__copy {
-    padding-top: 0.58rem;
+    padding-top: 0;
   }
 
   /* On mobile the input/output ports become top/bottom anchors so the chain reads cleanly. */
