@@ -207,101 +207,128 @@
   .hero-node--about { --node-x: 84%; --node-y: 73%; }
 }
 
-/* Mobile keeps the same topology but rotates it into a portrait-friendly diamond. */
+/* Mobile: a clean vertical chain, one node connected to the next. */
 @media (max-width: 640px) {
   .hero-node-stage {
     left: 0;
     right: 0;
-    top: 9.9rem;
+    top: 9.65rem;
     width: 100%;
-    height: min(31rem, 58svh);
+    height: min(31.5rem, 59svh);
     transform: none;
     overflow: visible;
   }
 
   .hero-node {
-    width: min(8.9rem, 41vw);
-    min-height: 4.45rem;
-    padding: 0.7rem 0.76rem 0.68rem;
-    border-radius: 1rem;
+    width: min(9.55rem, 43vw);
+    min-height: 4.05rem;
+    padding: 0.62rem 0.72rem 0.64rem;
+    border-radius: 0.9rem;
     background: rgba(35, 35, 36, 0.985);
   }
 
   .hero-node__index {
-    margin-bottom: 0.3rem;
-    font-size: 0.43rem;
+    margin-bottom: 0.26rem;
+    font-size: 0.42rem;
   }
 
   .hero-node strong {
-    font-size: 0.83rem;
+    font-size: 0.8rem;
   }
 
   .hero-node small {
     max-width: none;
-    font-size: 0.53rem;
-    line-height: 1.18;
+    font-size: 0.5rem;
+    line-height: 1.16;
     white-space: nowrap;
   }
 
   .hero-node__status {
-    left: 2.45rem;
-    top: 0.72rem;
-    font-size: 0.36rem;
+    left: 2.35rem;
+    top: 0.66rem;
+    font-size: 0.34rem;
   }
 
+  .hero-node--contact .hero-node__copy {
+    padding-top: 0.58rem;
+  }
+
+  /* On mobile the input/output ports become top/bottom anchors so the chain reads cleanly. */
   .hero-node__port {
+    top: auto;
     width: 0.66rem;
     height: 0.66rem;
+    transform: translateX(-50%);
   }
 
-  .hero-node__port--in { left: -0.33rem; }
-  .hero-node__port--out { right: -0.33rem; }
+  .hero-node__port--in {
+    left: 50%;
+    right: auto;
+    top: -0.33rem;
+  }
 
-  .hero-node--chat {
-    --node-x: 25%;
-    --node-y: 17%;
+  .hero-node__port--out {
+    left: 50%;
+    right: auto;
+    top: auto;
+    bottom: -0.33rem;
+  }
+
+  .hero-node:hover .hero-node__port,
+  .hero-node:focus-visible .hero-node__port,
+  .hero-node.is-dragging .hero-node__port,
+  .hero-node-stage.is-editing .hero-node__port,
+  .hero-node__port:hover,
+  .hero-node__port.is-active,
+  .hero-node__port.is-near {
+    transform: translateX(-50%) scale(1.06);
   }
 
   .hero-node--contact {
-    --node-x: 75%;
-    --node-y: 17%;
+    --node-x: 50%;
+    --node-y: 9%;
+  }
+
+  .hero-node--chat {
+    --node-x: 50%;
+    --node-y: 27%;
+  }
+
+  .hero-node--works {
+    --node-x: 50%;
+    --node-y: 45%;
   }
 
   .hero-node--launcher {
     --node-x: 50%;
-    --node-y: 50%;
-  }
-
-  .hero-node--works {
-    --node-x: 25%;
-    --node-y: 83%;
+    --node-y: 63%;
   }
 
   .hero-node--about {
-    --node-x: 75%;
-    --node-y: 83%;
+    --node-x: 50%;
+    --node-y: 81%;
   }
 
   .hero-node-stage__mesh .hero-node-line {
-    stroke: rgba(154, 154, 160, 0.46);
-    stroke-width: 1.55;
+    stroke: rgba(154, 154, 160, 0.5);
+    stroke-width: 1.6;
   }
 }
 
 @media (max-width: 380px) {
   .hero-node-stage {
-    top: 9.65rem;
-    height: min(29rem, 57svh);
+    top: 9.45rem;
+    height: min(30rem, 58svh);
   }
 
   .hero-node {
-    width: min(8.15rem, 42vw);
-    min-height: 4.2rem;
+    width: min(9rem, 45vw);
+    min-height: 3.9rem;
   }
 
-  .hero-node--chat,
-  .hero-node--works { --node-x: 24%; }
-
-  .hero-node--contact,
-  .hero-node--about { --node-x: 76%; }
+  .hero-node--contact { --node-y: 8%; }
+  .hero-node--chat { --node-y: 26%; }
+  .hero-node--works { --node-y: 44%; }
+  .hero-node--launcher { --node-y: 62%; }
+  .hero-node--about { --node-y: 80%; }
 }
