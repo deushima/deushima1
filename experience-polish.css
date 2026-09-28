@@ -114,6 +114,41 @@ body.is-work-canvas-open .deu-chat-launcher {
   inset: -7px -8px;
 }
 
+/* Disconnect scissors: keep the SVG on an exact 16px raster grid.
+   The previous .78rem size (~12.48px at the base font size) forced the
+   detailed 16x16 vector path through fractional resampling, which made it
+   read like a low-resolution PNG despite being inline SVG. */
+.hero-node-disconnect__pill > svg:first-child,
+.hero-custom-connection-delete svg {
+  display: block;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
+  min-height: 16px;
+  transform: none !important;
+  filter: none !important;
+  shape-rendering: geometricPrecision;
+  text-rendering: geometricPrecision;
+  backface-visibility: hidden;
+}
+
+.hero-node-disconnect__pill > svg:first-child path,
+.hero-custom-connection-delete svg path {
+  fill: currentColor;
+  stroke: none;
+}
+
+/* Avoid transform-scale rasterisation while the disconnect controls fade in. */
+.hero-node-disconnect,
+.hero-node-disconnect.is-visible {
+  transform: translate(-50%, calc(-100% - .55rem)) !important;
+}
+
+.hero-custom-connection-delete,
+.hero-custom-connection-delete.is-visible {
+  transform: translate(-50%, -50%) !important;
+}
+
 @media (max-width: 760px), (pointer: coarse) {
   .work-canvas.is-expanded .work-node.is-muted {
     opacity: .16;
