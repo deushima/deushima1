@@ -77,6 +77,14 @@
     const allNodes = () => [...stage.querySelectorAll(NODE_SELECTOR)]
       .filter(node => node instanceof HTMLElement && node.isConnected && !node.hidden);
 
+    const publishSelection = () => {
+      hero.dataset.marqueeSelectionCount = String(selected.size);
+      hero.classList.toggle('has-marquee-selection', selected.size > 0);
+      hero.dispatchEvent(new CustomEvent('deushima:marquee-selection-change', {
+        detail: { elements: [...selected], count: selected.size }
+      }));
+    };
+
     const setSelected = (elements, { additive = false } = {}) => {
       if (!additive) {
         selected.forEach(node => node.classList.remove('is-marquee-selected'));
@@ -89,11 +97,7 @@
         node.classList.add('is-marquee-selected');
       });
 
-      hero.dataset.marqueeSelectionCount = String(selected.size);
-      hero.classList.toggle('has-marquee-selection', selected.size > 0);
-      hero.dispatchEvent(new CustomEvent('deushima:marquee-selection-change', {
-        detail: { elements: [...selected], count: selected.size }
-      }));
+      publishSelection();
     };
 
     const clearSelection = () => setSelected([]);
@@ -145,6 +149,28 @@
       }
 
       resetPreview();
+    };
+
+    const isEditableTarget = target => Boolean(target instanceof Element && target.closest(
+      'input, textarea, select, [contenteditable="true"], .hero-custom-node__format-popover'
+    ));
+
+    const deleteSelectedCustomNodes = () => {
+      const customNodes = [...selected].filter(node => node.matches?.('[data-custom-node]') && node.isConnected);
+      if (!customNodes.length) return 0;
+
+      const deleteButtons = customNodes
+        .map(node => node.querySelector('.hero-custom-node__delete'))
+        .filter(button => button instanceof HTMLButtonElement && !button.disabled);
+
+      if (!deleteButtons.length) return 0;
+
+      // Remove marquee state first so native single-node keyboard deletion cannot race
+      // this batch operation. Each node's own delete control remains the source of truth
+      // for persistence, connection cleanup, animation and workspace history.
+      clearSelection();
+      deleteButtons.forEach(button => button.click());
+      return deleteButtons.length;
     };
 
     hero.addEventListener('pointerdown', event => {
@@ -213,10 +239,25 @@
     }, { capture: true, passive: true });
 
     document.addEventListener('keydown', event => {
-      if (event.key !== 'Escape' || drag) return;
+      if (drag || isEditableTarget(event.target)) return;
+
+      if (event.key === 'Escape') {
+        if (!selected.size) return;
+        event.preventDefault();
+        clearSelection();
+        return;
+      }
+
+      if (event.key !== 'Delete' && event.key !== 'Backspace') return;
       if (!selected.size) return;
-      clearSelection();
-    });
+
+      // Core navigation nodes are intentionally protected; user-created nodes in the
+      // marquee selection are deleted as one batch. Consume the key so Backspace never
+      // becomes browser navigation while a canvas selection exists.
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      deleteSelectedCustomNodes();
+    }, { capture: true });
 
     window.addEventListener('blur', () => finishDrag({ commit: false }));
     document.addEventListener('visibilitychange', () => {
@@ -224,16 +265,20 @@
     });
 
     const observer = new MutationObserver(() => {
+      let changed = false;
       [...selected].forEach(node => {
-        if (!node.isConnected) selected.delete(node);
+        if (!node.isConnected) {
+          selected.delete(node);
+          changed = true;
+        }
       });
-      hero.dataset.marqueeSelectionCount = String(selected.size);
-      hero.classList.toggle('has-marquee-selection', selected.size > 0);
+      if (changed) publishSelection();
     });
     observer.observe(stage, { childList: true, subtree: true });
 
     window.DeushimaMarqueeSelection = Object.freeze({
       clear: clearSelection,
+      deleteSelected: deleteSelectedCustomNodes,
       getSelectedElements: () => [...selected],
       getSelectedCustomNodeIds: () => [...selected]
         .map(node => node.dataset.customNode)
