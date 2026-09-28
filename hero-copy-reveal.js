@@ -23,5 +23,5 @@
   loadScript('workspace-media-enhancements.js?v=20260928-cosmos-svg-undo1', 'workspaceMediaEnhancements');
   loadScript('wire-node-autoconnect.js?v=20260928-wire-autoconnect2', 'wireNodeAutoconnect');
   loadStyle('workspace-marquee-selection.css?v=20260928-marquee1', 'workspaceMarqueeStyle');
-  loadScript('workspace-marquee-selection.js?v=20260928-marquee1', 'workspaceMarqueeSelection');
+  loadScript('workspace-marquee-selection.js?v=20260928-marquee-delete2', 'workspaceMarqueeSelection');
 })();
