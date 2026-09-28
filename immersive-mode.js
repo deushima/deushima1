@@ -44,7 +44,6 @@
 
   async function enterImmersive() {
     if (isImmersive()) return;
-
     restoreScrollY = window.scrollY;
     fallbackMode = false;
     setImmersive(true);
@@ -54,12 +53,10 @@
         await fullscreenRoot.requestFullscreen({ navigationUI: "hide" });
         return;
       }
-
       if (typeof fullscreenRoot.webkitRequestFullscreen === "function") {
         fullscreenRoot.webkitRequestFullscreen();
         return;
       }
-
       fallbackMode = true;
     } catch {
       fallbackMode = true;
@@ -68,14 +65,12 @@
 
   async function exitImmersive() {
     const currentFullscreen = fullscreenElement();
-
     if (currentFullscreen) {
       try {
         if (typeof document.exitFullscreen === "function") {
           await document.exitFullscreen();
           return;
         }
-
         if (typeof document.webkitExitFullscreen === "function") {
           document.webkitExitFullscreen();
           return;
@@ -92,13 +87,11 @@
 
   function syncFullscreenState() {
     const currentFullscreen = fullscreenElement();
-
     if (currentFullscreen === fullscreenRoot) {
       fallbackMode = false;
       if (!isImmersive()) setImmersive(true);
       return;
     }
-
     if (isImmersive() && !fallbackMode) {
       setImmersive(false);
       restorePagePosition();
@@ -106,9 +99,10 @@
   }
 
   function loadWorkspaceMediaEnhancements() {
-    if (document.querySelector('script[data-workspace-media-enhancements]')) return;
+    if (window.DeushimaWorkspaceHistory) return;
+    if ([...document.scripts].some(script => String(script.src || '').includes('workspace-media-enhancements.js?v=20260928-cosmos-svg-undo3'))) return;
     const script = document.createElement('script');
-    script.src = 'workspace-media-enhancements.js?v=20260928-cosmos-svg-undo2';
+    script.src = 'workspace-media-enhancements.js?v=20260928-cosmos-svg-undo3';
     script.dataset.workspaceMediaEnhancements = 'true';
     script.async = true;
     document.head.appendChild(script);
@@ -121,7 +115,6 @@
   toggle.addEventListener("click", event => {
     event.preventDefault();
     event.stopPropagation();
-
     if (isImmersive()) exitImmersive();
     else enterImmersive();
   });
