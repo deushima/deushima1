@@ -28,6 +28,7 @@
   loadScript('hero-node-reference-layout.js?v=20260928-reference3', 'heroNodeReferenceLayout');
   loadStyle('hero-mobile-chain-polish.css?v=20260928-mobilechain1', 'heroMobileChainPolishStyle');
   loadScript('hero-mobile-chain-polish.js?v=20260928-mobilechain1', 'heroMobileChainPolish');
+  loadScript('mobile-longpress-menu-guard.js?v=20260928-longpressguard1', 'mobileLongpressMenuGuard');
   loadStyle('interface-typography-polish.css?v=20260928-editorial2', 'interfaceTypographyPolishStyle');
   loadScript('interface-typography-polish.js?v=20260928-editorial1', 'interfaceTypographyPolish');
   loadStyle('floating-card-zoom-polish.css?v=20260928-zoom1', 'floatingCardZoomPolishStyle');
