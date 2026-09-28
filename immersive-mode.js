@@ -105,6 +105,15 @@
     }
   }
 
+  function loadWorkspaceMediaEnhancements() {
+    if (document.querySelector('script[data-workspace-media]')) return;
+    const script = document.createElement('script');
+    script.src = 'workspace-media.js?v=20260928-cosmos-svg-undo1';
+    script.dataset.workspaceMedia = 'true';
+    script.async = true;
+    document.head.appendChild(script);
+  }
+
   toggle.addEventListener("pointerdown", event => {
     event.stopPropagation();
   });
@@ -127,4 +136,10 @@
     setImmersive(false);
     restorePagePosition();
   });
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadWorkspaceMediaEnhancements, { once: true });
+  } else {
+    loadWorkspaceMediaEnhancements();
+  }
 })();
