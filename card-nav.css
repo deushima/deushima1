@@ -33,6 +33,24 @@
   position: absolute; left: 50%; top: 50%; width: 568px;
   transform: translate(-50%, -50%); opacity: 0; pointer-events: none;
 }
+.card-nav__close {
+  position: absolute; top: 8px; right: 8px; z-index: 5;
+  display: block; width: 28px; height: 28px; margin: 0; padding: 0;
+  border: 0; border-radius: 999px; background: transparent; color: #6f6f68;
+  opacity: 0; pointer-events: none; cursor: pointer; appearance: none;
+  transition: opacity 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+.card-nav__close::before,
+.card-nav__close::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 11px; height: 1px;
+  border-radius: 999px; background: currentColor; transform-origin: center;
+}
+.card-nav__close::before { transform: translate(-50%, -50%) rotate(45deg); }
+.card-nav__close::after { transform: translate(-50%, -50%) rotate(-45deg); }
+.card-nav.is-content-ready .card-nav__close { opacity: 1; pointer-events: auto; }
+.card-nav__close:hover,
+.card-nav__close:focus-visible { background: rgba(20, 20, 19, 0.06); color: #141413; outline: none; }
+.card-nav__close:focus-visible { box-shadow: 0 0 0 1px rgba(20, 20, 19, 0.18); }
 .hero--node-canvas .nav.card-nav .directory {
   display: grid; width: 100%; max-width: none; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px; margin: 0; padding: 0;
@@ -75,5 +93,6 @@ body.is-workspace-immersive .hero--node-canvas .nav.card-nav { display: none !im
   .hero--node-canvas .nav.card-nav .directory a { min-height: 30px; font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hero--node-canvas .nav.card-nav .directory a { transition: none; }
+  .hero--node-canvas .nav.card-nav .directory a,
+  .card-nav__close { transition: none; }
 }

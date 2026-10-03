@@ -12,6 +12,13 @@
   const papers = [...nav.querySelectorAll('.card-nav__paper')];
   const groups = [...drawer.querySelectorAll('.directory__group')];
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'card-nav__close';
+  closeButton.setAttribute('data-card-nav-close', '');
+  closeButton.setAttribute('aria-label', 'Cerrar categorías');
+  drawer.append(closeButton);
+
   const DURATION = 700;
   const LOGO_W = 132;
   const LOGO_H = LOGO_W * 983 / 3387;
@@ -187,8 +194,14 @@
     if (nav.hasPointerCapture(current.id)) nav.releasePointerCapture(current.id);
   }
 
+  closeButton.addEventListener('click', event => {
+    event.preventDefault();
+    event.stopPropagation();
+    setOpen(false, true);
+  });
+
   nav.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || !event.isPrimary || event.target.closest('a')) return;
+    if (event.button !== 0 || !event.isPrimary || event.target.closest('a, [data-card-nav-close]')) return;
     // Fit affects the drag grip, never the stored anchor on an ordinary tap.
     let visualAnchor = anchor;
     if (progress === 1) {
