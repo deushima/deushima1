@@ -1,184 +1,282 @@
 (() => {
-  const nav = document.querySelector("[data-card-nav]");
-  const toggle = nav?.querySelector("[data-card-nav-toggle]");
-  const drawer = nav?.querySelector("[data-card-nav-drawer]");
-  const dragSurface = nav?.querySelector(".card-nav__bar");
+  'use strict';
+  const nav = document.querySelector('[data-card-nav]');
+  const hero = nav?.closest('.hero--node-canvas');
+  const toggle = nav?.querySelector('[data-card-nav-toggle]');
+  const drawer = nav?.querySelector('[data-card-nav-drawer]');
+  if (!hero || !toggle || !drawer) return;
 
-  if (!nav || !toggle || !drawer || !dragSurface) return;
+  const ink = nav.querySelector('.card-nav__ink');
+  const dilate = nav.querySelector('[data-card-nav-dilate]');
+  const mass = nav.querySelector('.card-nav__mass');
+  const papers = [...nav.querySelectorAll('.card-nav__paper')];
+  const groups = [...drawer.querySelectorAll('.directory__group')];
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const DURATION = 700;
+  const LOGO_W = 132;
+  const LOGO_H = LOGO_W * 983 / 3387;
+  const THRESHOLD = 6;
+  const HOLD_MS = 240;
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+  const mix = (a, b, t) => a + (b - a) * t;
+  const camera = () => window.DeushimaHeroCamera;
 
-  let offsetX = 0;
-  let offsetY = 0;
-  let dragState = null;
-  let suppressClick = false;
-  let reboundTimer = 0;
-
-  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
-
-  const applyOffset = () => {
-    nav.style.setProperty("--card-nav-x", `${offsetX}px`);
-    nav.style.setProperty("--card-nav-y", `${offsetY}px`);
+  // Exact cubic-bezier(.22, 1, .36, 1), shared by the geometric phases.
+  const ease = t => {
+    t = clamp(t, 0, 1);
+    let lo = 0, hi = 1, u = t;
+    for (let i = 0; i < 12; i++) {
+      const x = 3 * (1 - u) ** 2 * u * .22 + 3 * (1 - u) * u * u * .36 + u ** 3;
+      if (x < t) lo = u; else hi = u;
+      u = (lo + hi) / 2;
+    }
+    return t === 0 || t === 1 ? t : 1 - (1 - u) ** 3;
   };
+  const phase = (p, a, b) => ease((p - a) / (b - a));
 
-  const syncDrawerHeight = () => {
-    const contentHeight = [...drawer.children].reduce((height, child) => height + child.getBoundingClientRect().height, 0);
-    const barHeight = nav.offsetHeight - drawer.offsetHeight;
-    const availableHeight = Math.max(0, window.innerHeight - 24 - barHeight);
-    nav.style.setProperty("--card-nav-drawer-height", `${Math.min(contentHeight, availableHeight)}px`);
-    return barHeight + Math.min(contentHeight, availableHeight);
-  };
+  // Reuse WAAPI: one reversible clock, with frames only while transforming.
+  const clock = new Animation(new KeyframeEffect(nav, [], {
+    duration: DURATION, fill: 'both'
+  }), document.timeline);
+  clock.currentTime = 0;
+  let frame = 0;
+  let open = false;
+  let progress = 0;
+  let anchor = null;
+  let moved = false;
+  let drag = null;
+  let suppressUntil = 0;
+  let geometry = { width: 568, height: 148, cards: [] };
 
-  const getDragBounds = (height = nav.offsetHeight) => {
-    const rect = nav.getBoundingClientRect();
-    const margin = 12;
-    const viewportWidth = document.documentElement.clientWidth;
-    const horizontalMargin = Math.min(margin, Math.max(0, (viewportWidth - nav.offsetWidth) / 2));
-    const left = rect.left + (rect.width - nav.offsetWidth) / 2;
-    const top = rect.top + (rect.height - nav.offsetHeight) / 2;
+  function measure() {
+    // Layout coordinates, independent of camera zoom.
+    geometry = {
+      width: drawer.offsetWidth,
+      height: drawer.offsetHeight,
+      cards: groups.map(group => ({
+        x: group.offsetLeft + group.offsetWidth / 2 - drawer.offsetWidth / 2,
+        y: group.offsetTop + group.offsetHeight / 2 - drawer.offsetHeight / 2,
+        width: group.offsetWidth, height: group.offsetHeight
+      }))
+    };
+  }
+
+  function initialAnchor() {
+    const rect = hero.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + (innerWidth < 620 ? 64 : 90);
+    return camera()?.screenToWorld(x, y) || { x: x - rect.left, y: y - rect.top };
+  }
+
+  function clampWorld() {
+    const bounds = camera()?.getWorldBounds();
+    if (!bounds || !anchor) return;
+    anchor.x = clamp(anchor.x, bounds.minX + 80, bounds.maxX - 80);
+    anchor.y = clamp(anchor.y, bounds.minY + 80, bounds.maxY - 80);
+  }
+
+  function placement(p) {
+    const rect = hero.getBoundingClientRect();
+    const worldScale = camera()?.getState().scale || 1;
+    const point = camera()?.worldToScreen(anchor.x, anchor.y) || {
+      x: rect.left + anchor.x, y: rect.top + anchor.y
+    };
+    const fitScale = Math.min((innerWidth - 32) / geometry.width, (innerHeight - 32) / geometry.height);
+    // Open navigation remains readable at wide zoom and fits at close zoom.
+    const menuScale = Math.min(clamp(worldScale, .85, 1.25), fitScale);
+    const amount = phase(p, .12, .8);
+    const scale = mix(worldScale, menuScale, amount);
+    const halfW = geometry.width * menuScale / 2;
+    const halfH = geometry.height * menuScale / 2;
     return {
-      minX: offsetX + horizontalMargin - left,
-      maxX: offsetX + viewportWidth - horizontalMargin - left - nav.offsetWidth,
-      minY: offsetY + margin - top,
-      maxY: offsetY + window.innerHeight - margin - top - height
+      x: mix(point.x, clamp(point.x, 16 + halfW, innerWidth - 16 - halfW), amount),
+      y: mix(point.y, clamp(point.y, 16 + halfH, innerHeight - 16 - halfH), amount),
+      scale, rect
     };
-  };
+  }
 
-  const keepInViewport = (height) => {
-    const bounds = getDragBounds(height);
-    offsetX = clamp(offsetX, bounds.minX, Math.max(bounds.minX, bounds.maxX));
-    offsetY = clamp(offsetY, bounds.minY, Math.max(bounds.minY, bounds.maxY));
-    applyOffset();
-  };
+  function render(p = progress) {
+    if (!anchor) anchor = initialAnchor();
+    progress = p;
+    const compression = phase(p, 0, .12);
+    const stretch = phase(p, .12, .43);
+    const division = phase(p, .43, .8);
+    const text = phase(p, .78, 1);
+    const width = p < .12 ? mix(LOGO_W, LOGO_W * .94, compression)
+      : mix(LOGO_W * .94, geometry.width, stretch);
+    const height = p < .12 ? mix(LOGO_H, LOGO_H * .9, compression)
+      : mix(LOGO_H * .9, LOGO_H, stretch);
+    const { x, y, scale, rect } = placement(p);
+    nav.style.left = `${x - rect.left}px`;
+    nav.style.top = `${y - rect.top}px`;
+    nav.style.width = `${width}px`;
+    nav.style.height = `${mix(height, geometry.height, division)}px`;
+    nav.style.transform = `translate(-50%, -50%) scale(${scale})`;
 
-  const beginDrag = (event) => {
-    if (event.button !== 0) return;
-    if (event.target.closest("a, button")) return;
+    // The actual logo alpha swells into a solid sheet before separation.
+    // Both surfaces match at the opaque handoff; there is no crossfade.
+    ink.style.visibility = p < .43 ? 'visible' : 'hidden';
+    ink.style.transform = `scale(${width / LOGO_W}, ${height / LOGO_H})`;
+    dilate.setAttribute('radius', String(30 * phase(p, .16, .4)));
+    mass.style.visibility = p >= .43 ? 'visible' : 'hidden';
+    papers.forEach((paper, i) => {
+      const target = geometry.cards[i];
+      if (!target) return;
+      const w = mix(geometry.width / 3 + .25, target.width, division);
+      const h = mix(LOGO_H, target.height, division);
+      const px = mix((i - 1) * geometry.width / 3, target.x, division);
+      const py = mix(0, target.y, division);
+      paper.style.width = `${w}px`;
+      paper.style.height = `${h}px`;
+      paper.style.borderRadius = `${7 * division}px`;
+      paper.style.backgroundColor = `rgb(${mix(255, 244, division)}, ${mix(255, 243, division)}, ${mix(255, 238, division)})`;
+      paper.style.transform = `translate(calc(-50% + ${px}px), calc(-50% + ${py}px))`;
+    });
+    drawer.style.opacity = String(text);
+    drawer.style.transform = `translate(-50%, calc(-50% + ${6 * (1 - text)}px))`;
+    const ready = open && p >= .99;
+    drawer.inert = !ready;
+    drawer.setAttribute('aria-hidden', String(!ready));
+    nav.classList.toggle('is-content-ready', ready);
+  }
 
-    dragState = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      baseX: offsetX,
-      baseY: offsetY,
-      bounds: getDragBounds(),
-      moved: false
+  function tick() {
+    frame = 0;
+    render(clamp(Number(clock.currentTime || 0) / DURATION, 0, 1));
+    if (clock.playState === 'running') frame = requestAnimationFrame(tick);
+  }
+
+  function setOpen(next, restoreFocus = false) {
+    if (open === next) return;
+    open = next;
+    nav.classList.toggle('is-card-nav-open', open);
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.setAttribute('aria-label', open
+      ? 'Cerrar categorías. Arrastrar desde un espacio libre para mover.'
+      : 'Abrir categorías. Mantener presionado y arrastrar para mover.');
+    if (!open && (restoreFocus || drawer.contains(document.activeElement))) toggle.focus({ preventScroll: true });
+    if (reducedMotion.matches) {
+      clock.pause();
+      clock.currentTime = open ? DURATION : 0;
+      render(open ? 1 : 0);
+      return;
+    }
+    clock.playbackRate = open ? 1 : -1;
+    clock.play();
+    if (!frame) frame = requestAnimationFrame(tick);
+  }
+  clock.onfinish = () => render(open ? 1 : 0);
+
+  function moveAnchor(clientX, clientY) {
+    const point = camera()?.screenToWorld(clientX, clientY) || { x: clientX, y: clientY };
+    anchor = { x: point.x - drag.grip.x, y: point.y - drag.grip.y };
+    clampWorld();
+    render();
+  }
+
+  function endDrag(event) {
+    if (!drag || (event?.pointerId != null && event.pointerId !== drag.id)) return;
+    const current = drag;
+    drag = null;
+    clearTimeout(current.timer);
+    if (current.moved || current.cancelled || current.held || event?.type !== 'pointerup') {
+      suppressUntil = performance.now() + 500;
+    }
+    nav.classList.remove('is-dragging');
+    camera()?.clearAutoPan();
+    if (nav.hasPointerCapture(current.id)) nav.releasePointerCapture(current.id);
+  }
+
+  nav.addEventListener('pointerdown', event => {
+    if (event.button !== 0 || !event.isPrimary || event.target.closest('a')) return;
+    // Fit affects the drag grip, never the stored anchor on an ordinary tap.
+    let visualAnchor = anchor;
+    if (progress === 1) {
+      const point = placement(1);
+      visualAnchor = camera()?.screenToWorld(point.x, point.y) || { x: point.x, y: point.y };
+    }
+    const point = camera()?.screenToWorld(event.clientX, event.clientY) || { x: event.clientX, y: event.clientY };
+    drag = {
+      id: event.pointerId, x: event.clientX, y: event.clientY,
+      lastX: event.clientX, lastY: event.clientY,
+      grip: { x: point.x - visualAnchor.x, y: point.y - visualAnchor.y },
+      moved: false, held: false, cancelled: false,
+      ready: event.pointerType !== 'touch', timer: 0
     };
-
-    window.clearTimeout(reboundTimer);
-    nav.classList.remove("is-rebounding");
-    nav.classList.add("is-dragging");
-    dragSurface.setPointerCapture?.(event.pointerId);
-    event.preventDefault();
-  };
-
-  const moveDrag = (event) => {
-    if (!dragState || event.pointerId !== dragState.pointerId) return;
-
-    const dx = event.clientX - dragState.startX;
-    const dy = event.clientY - dragState.startY;
-    if (Math.hypot(dx, dy) > 3) dragState.moved = true;
-
-    offsetX = clamp(dragState.baseX + dx, dragState.bounds.minX, dragState.bounds.maxX);
-    offsetY = clamp(dragState.baseY + dy, dragState.bounds.minY, dragState.bounds.maxY);
-    applyOffset();
-    event.preventDefault();
-  };
-
-  const endDrag = (event) => {
-    if (!dragState || event.pointerId !== dragState.pointerId) return;
-
-    const moved = dragState.moved;
-    dragState = null;
-    if (dragSurface.hasPointerCapture?.(event.pointerId)) {
-      dragSurface.releasePointerCapture(event.pointerId);
-    }
-
-    nav.classList.remove("is-dragging");
-    nav.classList.remove("is-rebounding");
-    void nav.offsetWidth;
-    nav.classList.add("is-rebounding");
-
-    reboundTimer = window.setTimeout(() => {
-      nav.classList.remove("is-rebounding");
-    }, 560);
-
-    if (moved) {
-      suppressClick = true;
-      window.setTimeout(() => {
-        suppressClick = false;
-      }, 0);
-    }
-  };
-
-  const setOpen = (open, restoreFocus = false) => {
-    const openHeight = syncDrawerHeight();
-    if (open) keepInViewport(openHeight);
-    nav.classList.toggle("is-card-nav-open", open);
-    toggle.setAttribute("aria-expanded", open ? "true" : "false");
-    toggle.setAttribute("aria-label", open ? "Cerrar menu" : "Abrir menu");
-    drawer.setAttribute("aria-hidden", open ? "false" : "true");
-    drawer.inert = !open;
-
-    if (!open && restoreFocus) {
-      toggle.focus({ preventScroll: true });
-    }
-  };
-
-  toggle.addEventListener("click", () => {
-    setOpen(!nav.classList.contains("is-card-nav-open"));
+    if (!drag.ready) drag.timer = setTimeout(() => {
+      if (!drag || drag.cancelled) return;
+      drag.ready = true;
+      drag.held = true;
+    }, HOLD_MS);
+    nav.setPointerCapture(event.pointerId);
+    event.stopPropagation();
   });
-
-  dragSurface.addEventListener("pointerdown", beginDrag);
-  dragSurface.addEventListener("pointermove", moveDrag);
-  dragSurface.addEventListener("pointerup", endDrag);
-  dragSurface.addEventListener("pointercancel", endDrag);
-  dragSurface.addEventListener("lostpointercapture", endDrag);
-  window.addEventListener("blur", () => {
-    if (dragState) endDrag({ pointerId: dragState.pointerId });
-  });
-
-  nav.addEventListener("click", (event) => {
-    if (!suppressClick) return;
+  nav.addEventListener('pointermove', event => {
+    if (!drag || event.pointerId !== drag.id) return;
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
+    if (!drag.moved && Math.hypot(event.clientX - drag.x, event.clientY - drag.y) <= THRESHOLD) return;
+    if (!drag.ready) {
+      drag.cancelled = true;
+      clearTimeout(drag.timer);
+      return;
+    }
+    if (drag.cancelled) return;
+    drag.moved = true;
+    moved = true;
+    nav.classList.add('is-dragging');
+    moveAnchor(event.clientX, event.clientY);
+    camera()?.setAutoPanPointer(event.clientX, event.clientY);
     event.preventDefault();
-    event.stopImmediatePropagation();
-    suppressClick = false;
+    event.stopPropagation();
+  });
+  ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => nav.addEventListener(type, endDrag));
+  window.addEventListener('blur', () => endDrag());
+  document.addEventListener('visibilitychange', () => { if (document.hidden) endDrag(); });
+  nav.addEventListener('contextmenu', event => { event.preventDefault(); event.stopPropagation(); });
+  nav.addEventListener('dragstart', event => event.preventDefault());
+  nav.addEventListener('click', event => {
+    if (event.detail !== 0 && performance.now() < suppressUntil) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
   }, true);
-
-  drawer.addEventListener("click", (event) => {
-    if (event.target.closest("a[href]")) {
-      setOpen(false);
-    }
+  // Capture can retarget clicks to nav; delegate once for both pointer and keyboard.
+  nav.addEventListener('click', event => {
+    if (event.target.closest('a')) { setOpen(false); return; }
+    setOpen(!open);
   });
-
-  nav.querySelector(".card-nav__cta")?.addEventListener("click", () => {
-    setOpen(false);
-  });
-
-  nav.querySelector(".brand-mark")?.addEventListener("click", () => {
-    setOpen(false);
-  });
-
-  document.addEventListener("pointerdown", (event) => {
-    if (!nav.classList.contains("is-card-nav-open")) return;
-    if (nav.contains(event.target)) return;
-    setOpen(false);
+  document.addEventListener('pointerdown', event => {
+    if (open && !nav.contains(event.target)) setOpen(false);
   }, { passive: true });
-
-  document.addEventListener("keydown", (event) => {
-    if (event.key !== "Escape" || !nav.classList.contains("is-card-nav-open")) return;
-    event.preventDefault();
-    setOpen(false, true);
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && open) { event.preventDefault(); setOpen(false, true); }
   });
-
-  window.addEventListener("resize", () => {
-    const openHeight = syncDrawerHeight();
-    keepInViewport(nav.classList.contains("is-card-nav-open") ? openHeight : undefined);
+  hero.addEventListener('deushima:camera-change', () => {
+    if (drag?.moved) moveAnchor(drag.lastX, drag.lastY);
+    else render();
   });
-
+  window.addEventListener('resize', () => {
+    measure();
+    if (!moved) anchor = initialAnchor();
+    clampWorld();
+    render();
+  });
+  reducedMotion.addEventListener('change', () => {
+    if (!reducedMotion.matches) return;
+    clock.pause();
+    clock.currentTime = open ? DURATION : 0;
+    render(open ? 1 : 0);
+  });
   drawer.inert = true;
-  document.fonts?.ready.then(() => {
-    const openHeight = syncDrawerHeight();
-    if (nav.classList.contains("is-card-nav-open")) keepInViewport(openHeight);
-  });
-  syncDrawerHeight();
-  applyOffset();
+  measure();
+  render(0);
+  // This script precedes the camera; initialize its anchor after all defer scripts.
+  document.addEventListener('DOMContentLoaded', () => {
+    anchor = initialAnchor();
+    window.DeushimaWorkspaceInteraction?.registerCancelHandler(() => endDrag());
+    measure();
+    render();
+  }, { once: true });
+  document.fonts?.ready.then(() => { measure(); render(); });
 })();
