@@ -7,6 +7,7 @@
   if (!hero || !toggle || !drawer) return;
 
   const ink = nav.querySelector('.card-nav__ink');
+  const tactile = nav.querySelector('.card-nav__tactile');
   const dilate = nav.querySelector('[data-card-nav-dilate]');
   const mass = nav.querySelector('.card-nav__mass');
   const papers = [...nav.querySelectorAll('.card-nav__paper')];
@@ -20,7 +21,7 @@
   drawer.append(closeButton);
 
   const DURATION = 700;
-  const LOGO_W = 132;
+  const LOGO_W = parseFloat(getComputedStyle(nav).getPropertyValue('--nav-logo-width')) || 172;
   const LOGO_H = LOGO_W * 983 / 3387;
   const THRESHOLD = 6;
   const HOLD_MS = 240;
@@ -54,6 +55,61 @@
   let drag = null;
   let suppressUntil = 0;
   let geometry = { width: 568, height: 148, cards: [] };
+  let pulseTimer = 0;
+  let tactileAnimation = null;
+  const PULSE_INTERVAL = 6000;
+  const TACTILE_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
+  function stopPulse() {
+    clearTimeout(pulseTimer);
+    pulseTimer = 0;
+  }
+
+  // Separate visual motion from the world's translation and the logo morph.
+  function animateTactile(keyframes, duration) {
+    if (!tactile) return;
+    const current = getComputedStyle(tactile).transform;
+    tactileAnimation?.cancel();
+    tactileAnimation = null;
+    if (reducedMotion.matches) return;
+    const animation = tactile.animate([
+      { transform: current === 'none' ? 'scale(1)' : current, offset: 0, easing: TACTILE_EASE },
+      ...keyframes
+    ], { duration, fill: 'forwards', easing: 'linear' });
+    tactileAnimation = animation;
+    animation.onfinish = () => {
+      // Keep the compression while held; release the idle layer completely.
+      if (tactileAnimation !== animation || drag) return;
+      animation.cancel();
+      tactileAnimation = null;
+    };
+  }
+
+  function schedulePulse() {
+    stopPulse();
+    if (open || drag || document.hidden || reducedMotion.matches) return;
+    pulseTimer = setTimeout(() => {
+      pulseTimer = 0;
+      if (open || drag || document.hidden || reducedMotion.matches) return;
+      const rect = nav.getBoundingClientRect();
+      const obscured = document.documentElement.classList.contains('has-studio-splash')
+        || document.body.matches('.is-workspace-immersive, .is-content-panel-open, .is-design-viewer-open, .deu-chat-open');
+      if (progress === 0 && !obscured && rect.bottom > 0 && rect.top < innerHeight
+        && rect.right > 0 && rect.left < innerWidth) {
+        animateTactile([
+          { transform: 'scale(1.045)', offset: .48, easing: TACTILE_EASE },
+          { transform: 'scale(1)', offset: 1 }
+        ], 1000);
+      }
+      // Start-to-start cadence stays at six seconds, including pulse duration.
+      schedulePulse();
+    }, PULSE_INTERVAL);
+  }
+
+  function showGrip() {
+    nav.classList.add('is-gripped');
+    animateTactile([{ transform: 'scale(.945)', offset: 1 }], 170);
+  }
 
   function measure() {
     // Layout coordinates, independent of camera zoom.
@@ -124,7 +180,7 @@
     // Both surfaces match at the opaque handoff; there is no crossfade.
     ink.style.visibility = p < .43 ? 'visible' : 'hidden';
     ink.style.transform = `scale(${width / LOGO_W}, ${height / LOGO_H})`;
-    dilate.setAttribute('radius', String(30 * phase(p, .16, .4)));
+    dilate.setAttribute('radius', String(LOGO_H * .8 * phase(p, .16, .4)));
     mass.style.visibility = p >= .43 ? 'visible' : 'hidden';
     papers.forEach((paper, i) => {
       const target = geometry.cards[i];
@@ -155,6 +211,8 @@
 
   function setOpen(next, restoreFocus = false) {
     if (open === next) return;
+    stopPulse();
+    animateTactile([{ transform: 'scale(1)', offset: 1 }], 150);
     open = next;
     nav.classList.toggle('is-card-nav-open', open);
     toggle.setAttribute('aria-expanded', String(open));
@@ -166,13 +224,17 @@
       clock.pause();
       clock.currentTime = open ? DURATION : 0;
       render(open ? 1 : 0);
+      if (!open) schedulePulse();
       return;
     }
     clock.playbackRate = open ? 1 : -1;
     clock.play();
     if (!frame) frame = requestAnimationFrame(tick);
   }
-  clock.onfinish = () => render(open ? 1 : 0);
+  clock.onfinish = () => {
+    render(open ? 1 : 0);
+    if (!open) schedulePulse();
+  };
 
   function moveAnchor(clientX, clientY) {
     const point = camera()?.screenToWorld(clientX, clientY) || { x: clientX, y: clientY };
@@ -189,7 +251,15 @@
     if (current.moved || current.cancelled || current.held || event?.type !== 'pointerup') {
       suppressUntil = performance.now() + 500;
     }
-    nav.classList.remove('is-dragging');
+    nav.classList.remove('is-dragging', 'is-gripped');
+    const released = event?.type === 'pointerup' && !current.cancelled;
+    const rebound = released && (current.moved || current.held);
+    animateTactile(rebound ? [
+      { transform: 'scale(1.025)', offset: .42, easing: 'ease-in-out' },
+      { transform: 'scale(.997)', offset: .74, easing: 'ease-out' },
+      { transform: 'scale(1)', offset: 1 }
+    ] : [{ transform: 'scale(1)', offset: 1 }], rebound ? 460 : 160);
+    schedulePulse();
     camera()?.clearAutoPan();
     if (nav.hasPointerCapture(current.id)) nav.releasePointerCapture(current.id);
   }
@@ -202,6 +272,7 @@
 
   nav.addEventListener('pointerdown', event => {
     if (event.button !== 0 || !event.isPrimary || event.target.closest('a, [data-card-nav-close]')) return;
+    stopPulse();
     // Fit affects the drag grip, never the stored anchor on an ordinary tap.
     let visualAnchor = anchor;
     if (progress === 1) {
@@ -216,10 +287,13 @@
       moved: false, held: false, cancelled: false,
       ready: event.pointerType !== 'touch', timer: 0
     };
-    if (!drag.ready) drag.timer = setTimeout(() => {
+    if (drag.ready) showGrip();
+    else animateTactile([{ transform: 'scale(.98)', offset: 1 }], 140);
+    drag.timer = setTimeout(() => {
       if (!drag || drag.cancelled) return;
       drag.ready = true;
       drag.held = true;
+      showGrip();
     }, HOLD_MS);
     nav.setPointerCapture(event.pointerId);
     event.stopPropagation();
@@ -232,6 +306,8 @@
     if (!drag.ready) {
       drag.cancelled = true;
       clearTimeout(drag.timer);
+      nav.classList.remove('is-gripped');
+      animateTactile([{ transform: 'scale(1)', offset: 1 }], 160);
       return;
     }
     if (drag.cancelled) return;
@@ -245,7 +321,14 @@
   });
   ['pointerup', 'pointercancel', 'lostpointercapture'].forEach(type => nav.addEventListener(type, endDrag));
   window.addEventListener('blur', () => endDrag());
-  document.addEventListener('visibilitychange', () => { if (document.hidden) endDrag(); });
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      endDrag();
+      stopPulse();
+      tactileAnimation?.cancel();
+      tactileAnimation = null;
+    } else schedulePulse();
+  });
   nav.addEventListener('contextmenu', event => { event.preventDefault(); event.stopPropagation(); });
   nav.addEventListener('dragstart', event => event.preventDefault());
   nav.addEventListener('click', event => {
@@ -276,7 +359,10 @@
     render();
   });
   reducedMotion.addEventListener('change', () => {
-    if (!reducedMotion.matches) return;
+    if (!reducedMotion.matches) { schedulePulse(); return; }
+    stopPulse();
+    tactileAnimation?.cancel();
+    tactileAnimation = null;
     clock.pause();
     clock.currentTime = open ? DURATION : 0;
     render(open ? 1 : 0);
@@ -284,6 +370,7 @@
   drawer.inert = true;
   measure();
   render(0);
+  schedulePulse();
   // This script precedes the camera; initialize its anchor after all defer scripts.
   document.addEventListener('DOMContentLoaded', () => {
     anchor = initialAnchor();
