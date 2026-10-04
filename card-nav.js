@@ -126,7 +126,9 @@
 
   function initialAnchor() {
     const rect = hero.getBoundingClientRect();
-    const x = rect.left + rect.width / 2;
+    // The intro scales .site-shell: use the camera's untransformed viewport.
+    const width = camera()?.getState().width || hero.clientWidth;
+    const x = rect.left + width / 2;
     const y = rect.top + (innerWidth < 620 ? 64 : 90);
     return camera()?.screenToWorld(x, y) || { x: x - rect.left, y: y - rect.top };
   }
