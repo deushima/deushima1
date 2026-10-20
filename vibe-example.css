@@ -11,10 +11,10 @@
   color: #f7f8fb;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   text-decoration: none;
-  border: 1px solid rgba(255, 255, 255, .23);
+  border: 1px solid rgba(255, 44, 0, .28);
   border-radius: 16px;
-  background: linear-gradient(118deg, rgba(35, 46, 67, .93), rgba(9, 12, 20, .95) 67%);
-  box-shadow: 0 14px 38px rgba(0, 0, 0, .44), inset 0 1px rgba(255, 255, 255, .13);
+  background: linear-gradient(115deg, rgba(32, 9, 7, .97), rgba(9, 9, 9, .97) 53%, rgba(5, 5, 5, .97));
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .48), inset 0 1px rgba(255, 255, 255, .08);
   -webkit-backdrop-filter: blur(18px) saturate(1.2);
   backdrop-filter: blur(18px) saturate(1.2);
   isolation: isolate;
@@ -39,12 +39,12 @@ html.has-studio-splash .vibe-example {
 
 .vibe-example:hover,
 .vibe-example:focus-visible {
-  border-color: rgba(126, 183, 255, .83);
-  box-shadow: 0 18px 48px rgba(0, 0, 0, .51), 0 0 0 1px rgba(84, 156, 255, .14), inset 0 1px rgba(255, 255, 255, .2);
+  border-color: #FF2C00;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .55), 0 0 0 1px rgba(255, 44, 0, .18), 0 0 22px rgba(255, 44, 0, .12), inset 0 1px rgba(255, 255, 255, .12);
   transform: translateY(-3px);
 }
 
-.vibe-example:focus-visible { outline: 2px solid #92bdff; outline-offset: 4px; }
+.vibe-example:focus-visible { outline: 2px solid #FF2C00; outline-offset: 4px; }
 
 .vibe-example__icon {
   flex: none;
@@ -53,22 +53,22 @@ html.has-studio-splash .vibe-example {
   width: 44px;
   height: 44px;
   border-radius: 11px;
-  background: linear-gradient(145deg, #347be9, #1655a9);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,.27), 0 4px 17px rgba(36,119,255,.2);
+  background: linear-gradient(145deg, #FF2C00, #a91d00);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, .24), 0 4px 17px rgba(255, 44, 0, .22);
 }
 
 .vibe-example__icon svg { width: 23px; height: 23px; }
 
 .vibe-example__copy { display: grid; gap: 5px; line-height: 1.1; }
 .vibe-example__eyebrow {
-  color: #a3bee5;
+  color: #FF2C00;
   font-size: 9px;
   font-weight: 700;
   line-height: 1.15;
   letter-spacing: .15em;
 }
 .vibe-example__copy strong { color: #f7f8fb; font-size: 13px; font-weight: 600; letter-spacing: -.015em; }
-.vibe-example__arrow { margin-left: 7px; font-size: 18px; color: #b7cdec; transition: transform .3s ease; }
+.vibe-example__arrow { margin-left: 7px; font-size: 18px; color: #FF2C00; transition: transform .3s ease; }
 .vibe-example:hover .vibe-example__arrow { transform: translate(2px, -2px); }
 
 @media (max-width: 760px) {
