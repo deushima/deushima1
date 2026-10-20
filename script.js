@@ -1086,7 +1086,7 @@ function initWorkArchive() {
       const isActiveVideo = videoIndex === activeIndex;
       videoNode.preload = compact
         ? (forcedVisible && isActiveVideo ? "metadata" : "none")
-        : "auto";
+        : (archiveVisible || forcedVisible ? "auto" : "none");
       if ((compact ? forcedVisible : (archiveVisible || forcedVisible)) && (!compact || isActiveVideo)) {
         playVideo(videoNode);
       } else {
