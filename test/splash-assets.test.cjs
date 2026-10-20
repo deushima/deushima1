@@ -5,13 +5,13 @@ const { join } = require('node:path');
 const { runInNewContext } = require('node:vm');
 const source = readFileSync(join(__dirname, '../splash-assets.js'), 'utf8');
 
-function setup(fonts = { load: () => Promise.resolve([{}]) }) {
+function setup(fonts = { load: () => Promise.resolve([{}]) }, extra = {}) {
   const timers = new Map();
   let id = 0;
   const context = {
     window: {}, document: { fonts },
     setTimeout(fn) { timers.set(++id, fn); return id; },
-    clearTimeout(key) { timers.delete(key); }
+    clearTimeout(key) { timers.delete(key); }, ...extra
   };
   runInNewContext(source, context);
   return { ...context.window.DeushimaSplashAssets, timers };
@@ -19,7 +19,7 @@ function setup(fonts = { load: () => Promise.resolve([{}]) }) {
 
 function media(properties = {}) {
   return Object.assign(new EventTarget(), {
-    style: {}, complete: false, naturalWidth: 0, readyState: 0,
+    style: {}, dataset: {}, complete: false, naturalWidth: 0, readyState: 0,
     pause() { this.paused = true; },
     removeAttribute(name) { this.removed = name; },
     load() { this.reloaded = true; }
@@ -97,4 +97,69 @@ test('a stalled font request has a bounded wait', async () => {
   const result = waitForFonts();
   [...timers.values()].forEach(fn => fn());
   assert.equal(await result, false);
+});
+
+function downloadSetup() {
+  let request;
+  const revoked = [];
+  const api = setup(undefined, {
+    XMLHttpRequest: class {
+      constructor() { request = this; }
+      open(method, url) { this.method = method; this.url = url; }
+      send() {}
+    },
+    URL: { createObjectURL: () => 'blob:intro', revokeObjectURL: (url) => revoked.push(url) }
+  });
+  return { api, revoked, request: () => request };
+}
+
+test('video progress reflects transferred bytes; completion also requires decoded media', async () => {
+  const { api, request, revoked } = downloadSetup();
+  const updates = [];
+  const video = media({ dataset: { downloadUrl: 'blob:old' } });
+  let done = false;
+  const result = api.downloadVideo(video, '/intro.mp4', (event) => updates.push(event))
+    .then(value => { done = true; return value; });
+  request().onprogress({ lengthComputable: true, loaded: 500, total: 1000 });
+  assert.equal(updates[0].fraction, 0.475);
+  assert.equal(updates[0].loaded, 500);
+  request().status = 200;
+  request().response = { size: 1000 };
+  request().onload();
+  await Promise.resolve();
+  assert.equal(done, false);
+  assert.equal(video.src, 'blob:intro');
+  assert.deepEqual(revoked, ['blob:old']);
+  video.readyState = 3;
+  video.dispatchEvent(new Event('canplay'));
+  assert.equal(await result, true);
+});
+
+test('HTTP errors and timed-out downloads fail instead of claiming completion', async () => {
+  for (const failure of ['http', 'timeout', 'network']) {
+    const { api, request } = downloadSetup();
+    const video = media();
+    const result = api.downloadVideo(video, '/intro.mp4');
+    if (failure === 'http') {
+      request().status = 404;
+      request().response = { size: 42 };
+      request().onload();
+    } else if (failure === 'timeout') request().ontimeout();
+    else request().onerror();
+    assert.equal(await result, false);
+    assert.equal(video.style.visibility, 'hidden');
+    assert.equal(video.src, undefined);
+  }
+});
+
+test('an unknown transfer length reports bytes without inventing a percentage', async () => {
+  const { api, request } = downloadSetup();
+  let update;
+  const result = api.downloadVideo(media(), '/intro.mp4', (event) => { update = event; });
+  request().onprogress({ lengthComputable: false, loaded: 700, total: 0 });
+  assert.equal(update.fraction, 0);
+  assert.equal(update.total, null);
+  assert.equal(update.loaded, 700);
+  request().onerror();
+  await result;
 });

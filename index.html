@@ -20,7 +20,7 @@
         }
 
         if (!shutterPending && (forceSplash || !splashSeen)) {
-          document.documentElement.classList.add("has-studio-splash");
+          document.documentElement.classList.add("has-studio-splash", "is-studio-downloading");
         }
       } catch {}
     })();
@@ -29,6 +29,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="simbolo%20deushima.svg">
+  <link rel="preload" as="script" href="splash-assets.js?v=20261020-orbit-preload2">
+  <link rel="preload" as="script" href="splash.js?v=20261020-orbit-preload2">
   <link rel="stylesheet" href="style.css?v=20260924-elastic-volume1">
   <link rel="stylesheet" href="card-nav.css?v=20261004-tactile1">
   <link rel="stylesheet" href="hero-nodes.css?v=20260922-context1">
@@ -39,18 +41,26 @@
   <link rel="stylesheet" href="works-canvas.css?v=20260922-bg1">
   <link rel="stylesheet" href="experience-polish.css?v=20260926-hybrid1">
   <link rel="stylesheet" href="chatbot.css?v=20260921-modal-close1">
-  <link rel="stylesheet" href="splash.css?v=20261020-asset-preload1">
+  <link rel="stylesheet" href="splash.css?v=20261020-orbit-preload2">
 </head>
 <body>
   <section class="studio-splash" data-studio-splash data-no-ascii aria-label="Deushima studio introduction" aria-modal="true" role="dialog">
     <div class="studio-download" data-splash-download>
       <div class="studio-download__content">
-        <span class="studio-download__brand">DEUSHIMA</span>
-        <div class="studio-download__heading"><span>Downloading</span><span data-splash-progress-text>0%</span></div>
-        <div class="studio-download__track" role="progressbar" aria-label="Carga de la composición inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-splash-progress><span></span></div>
-        <span class="studio-download__caption" role="status" data-splash-progress-status>PREPARING THE EXPERIENCE</span>
+        <div class="studio-download__meter" role="progressbar" aria-label="Recursos de la composición inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-splash-progress>
+          <div class="studio-download__orbit" aria-hidden="true">
+            <span style="--i:0" data-download-dot><i></i></span><span style="--i:1" data-download-dot><i></i></span><span style="--i:2" data-download-dot><i></i></span><span style="--i:3" data-download-dot><i></i></span><span style="--i:4" data-download-dot><i></i></span><span style="--i:5" data-download-dot><i></i></span>
+          </div>
+          <span class="studio-download__percent" data-splash-progress-text>00<span>%</span></span>
+        </div>
+        <span class="studio-download__caption" role="status" data-splash-progress-status>STUDIO / LOADING</span>
+        <div class="studio-download__detail"><span data-download-resource>INITIAL ASSETS</span><span data-download-count>00 / 06</span></div>
+        <span class="studio-download__transfer" data-download-transfer> </span>
+        <div class="studio-download__recovery" data-download-recovery hidden>
+          <button type="button" data-download-retry>Retry</button>
+          <button type="button" data-download-continue>Continue with available assets ↗</button>
+        </div>
       </div>
-      <span class="studio-download__signature">VISUAL STUDIO / BUENOS AIRES</span>
     </div>
     <div class="studio-splash__half studio-splash__half--identity" aria-hidden="true"></div>
     <div class="studio-splash__half studio-splash__half--preview" aria-hidden="true"></div>
@@ -703,9 +713,9 @@
 
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
   <script src="card-nav.js?v=20261004-centered1" defer></script>
-  <script src="script.js?v=20261020-asset-preload1"></script>
-  <script src="splash-assets.js?v=20261020-asset-preload1"></script>
-  <script src="splash.js?v=20261020-asset-preload1"></script>
+  <script src="script.js?v=20261020-orbit-preload2"></script>
+  <script src="splash-assets.js?v=20261020-orbit-preload2"></script>
+  <script src="splash.js?v=20261020-orbit-preload2"></script>
   <script src="sfx-config.js?v=20260921-sfx9" defer></script>
   <script src="node-sfx.js?v=20260921-sfx11" defer></script>
   <script src="hero-camera.js?v=20260925-camera4" defer></script>

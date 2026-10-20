@@ -51,7 +51,6 @@
     splashVideo.setAttribute('aria-hidden', 'true');
     splashVideo.setAttribute('tabindex', '-1');
     splashVideo.setAttribute('controlslist', 'nodownload noplaybackrate nofullscreen');
-    splashVideo.src = 'Video%20Background/Video%20footer%20mobile.mp4';
 
     Object.assign(splashVideo.style, {
       position: 'absolute',
@@ -68,7 +67,6 @@
 
     art.prepend(splashVideo);
 
-    splashVideo.load();
   }
 
   const syncLoaderMotion = () => {
@@ -104,6 +102,7 @@
 
   const finish = () => {
     splashVideo?.pause();
+    if (splashVideo?.dataset.downloadUrl) URL.revokeObjectURL(splashVideo.dataset.downloadUrl);
     splashVideo?.remove();
     mobileQuery.removeEventListener?.('change', syncLoaderMotion);
     reducedMotionQuery.removeEventListener?.('change', syncLoaderMotion);
@@ -334,7 +333,7 @@
     if (!compositionReady) return;
     enterRequested = true;
     splash.classList.add('is-armed');
-    if (isSiteReady()) reveal();
+    reveal();
   };
 
   enterButton.addEventListener('click', requestEnter);
@@ -346,35 +345,27 @@
   });
   readyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-  const prepareComposition = async () => {
+  const prepareComposition = () => {
     const progress = splash.querySelector('[data-splash-progress]');
     const progressText = splash.querySelector('[data-splash-progress-text]');
     const status = splash.querySelector('[data-splash-progress-status]');
+    const resource = splash.querySelector('[data-download-resource]');
+    const count = splash.querySelector('[data-download-count]');
+    const transfer = splash.querySelector('[data-download-transfer]');
+    const recovery = splash.querySelector('[data-download-recovery]');
+    const dots = [...splash.querySelectorAll('[data-download-dot]')];
     const assets = window.DeushimaSplashAssets;
-    const images = [...splash.querySelectorAll('img'), sharedLogoTarget].filter(Boolean);
-    const jobs = assets ? [
-      ...images.map((image) => assets.waitForMedia(image, 'image')),
-      assets.waitForFonts().then((ready) => {
-        if (!ready) splash.classList.add('has-fallback-font');
-        return ready;
-      }),
-      ...(splashVideo ? [assets.waitForMedia(splashVideo, 'video')] : [])
-    ] : [];
-    // Start asset tracking immediately. A slow deferred third-party script must
-    // not leave the counter at zero or prevent the intro from opening forever.
-    jobs.push(new Promise((resolve) => {
+    const waitForDocument = () => new Promise((resolve) => {
       if (document.readyState !== 'loading') return resolve(true);
-      const finishWaiting = () => {
+      const finishWaiting = (ready = true) => {
         clearTimeout(timer);
         document.removeEventListener('DOMContentLoaded', finishWaiting);
-        resolve(true);
+        resolve(Boolean(ready));
       };
-      const timer = setTimeout(finishWaiting, 12000);
+      const timer = setTimeout(() => finishWaiting(false), 30000);
       document.addEventListener('DOMContentLoaded', finishWaiting, { once: true });
-    }));
-    // The blurred workspace is visible in the desktop intro too. Wait for its
-    // existing initialization without depending on unrelated page media/load.
-    jobs.push(new Promise((resolve) => {
+    });
+    const waitForWorkspace = () => new Promise((resolve) => {
       if (isSiteReady()) return resolve(true);
       const observer = new MutationObserver(() => {
         if (isSiteReady()) finishWaiting(true);
@@ -384,24 +375,78 @@
         observer.disconnect();
         resolve(ready);
       };
-      const timer = setTimeout(() => finishWaiting(false), 12000);
+      const timer = setTimeout(() => finishWaiting(false), 30000);
       observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    }));
-    let completed = 0;
-    await Promise.all(jobs.map((job) => job.then(() => {
-      const percent = Math.round(++completed / jobs.length * 100);
-      progress?.setAttribute('aria-valuenow', String(percent));
-      progress?.style.setProperty('--download-progress', String(percent / 100));
-      if (progressText) progressText.textContent = `${percent}%`;
-    })));
-    if (status) status.textContent = 'READY TO EXPLORE';
-    // Let the completed bar paint before dissolving it into the composition.
-    setTimeout(() => {
+    });
+    const loadImage = (image) => {
+      if (!image || !assets) return Promise.resolve(false);
+      if (image.complete && !image.naturalWidth) image.src = image.getAttribute('src');
+      return assets.waitForMedia(image, 'image');
+    };
+    const tasks = [
+      { name: 'STUDIO SYMBOL', run: () => loadImage(sharedLogoSource) },
+      { name: 'WORDMARK', run: () => loadImage(sharedLogoTarget) },
+      { name: 'TYPOGRAPHY', run: () => assets?.waitForFonts().then((ready) => {
+        splash.classList.toggle('has-fallback-font', !ready);
+        return ready;
+      }) },
+      { name: 'INTRO FILM', run: () => splashVideo && assets?.downloadVideo(splashVideo,
+        'Video%20Background/Video%20footer%20mobile.mp4', (event) => {
+          tasks[3].fraction = event.fraction;
+          transfer.textContent = `FILM · ${Math.ceil(event.loaded / 1024)}${event.total ? ` / ${Math.ceil(event.total / 1024)}` : ''} KB`;
+          renderProgress();
+        }) },
+      { name: 'INTERFACE', run: waitForDocument },
+      { name: 'WORKSPACE', run: waitForWorkspace }
+    ].map((task) => ({ ...task, fraction: 0, state: 'pending' }));
+
+    const renderProgress = () => {
+      const completed = tasks.filter((task) => task.state === 'ready').length;
+      const percent = Math.floor(tasks.reduce((sum, task) => sum + task.fraction, 0) / tasks.length * 100);
+      progress.setAttribute('aria-valuenow', String(percent));
+      progress.setAttribute('aria-valuetext', `${percent}%, ${completed} de ${tasks.length} recursos listos`);
+      progressText.innerHTML = `${String(percent).padStart(2, '0')}<span>%</span>`;
+      count.textContent = `${String(completed).padStart(2, '0')} / 06`;
+      const pending = tasks.find((task) => task.state === 'pending');
+      resource.textContent = pending?.name || (completed === tasks.length ? 'ALL ASSETS READY' : 'INCOMPLETE DOWNLOAD');
+      tasks.forEach((task, index) => {
+        dots[index].style.setProperty('--asset-progress', String(task.fraction));
+        dots[index].classList.toggle('is-failed', task.state === 'failed');
+      });
+    };
+
+    const revealComposition = () => {
+      recovery.hidden = true;
+      // Carry the same orbit to the standby mark, instead of cutting between
+      // two unrelated loaders. Its nested rotation continues during the flight.
+      const meter = splash.querySelector('.studio-download__meter');
+      const orbit = splash.querySelector('.studio-download__orbit');
+      const from = meter.getBoundingClientRect();
+      const to = loader?.getBoundingClientRect();
+      root.classList.remove('is-studio-downloading');
+      splash.classList.add('is-download-handoff');
       splash.classList.add('is-mounted', 'is-loaded');
+      if (to && !reducedMotionQuery.matches) {
+        const targetDot = loader.querySelector('span');
+        const targetDotSize = parseFloat(getComputedStyle(targetDot).width);
+        const targetOrbitSize = (mobileQuery.matches ? 43.2 : 70.4) + targetDotSize;
+        meter.animate([
+          { transform: 'translate3d(0,0,0) scale(1)' },
+          { transform: `translate3d(${to.x + to.width / 2 - from.x - from.width / 2}px, ${to.y + to.height / 2 - from.y - from.height / 2}px, 0) scale(${targetOrbitSize / 124})` }
+        ], { duration: 1000, easing: SHARED_LOGO_EASING, fill: 'forwards' });
+      } else meter.style.opacity = '0';
       if (splashVideo && splashVideo.readyState >= 3 && !reducedMotionQuery.matches) {
         splashVideo.play()?.catch(() => {});
       }
       setTimeout(() => {
+        if (loader && !reducedMotionQuery.matches) {
+          // Match the standby rotation phase at the exact handoff frame.
+          const angle = new DOMMatrixReadOnly(getComputedStyle(orbit).transform);
+          const degrees = ((Math.atan2(angle.b, angle.a) * 180 / Math.PI - 12) % 360 + 360) % 360;
+          const rotation = loader.getAnimations()[0];
+          if (rotation) rotation.currentTime = degrees / 360 * (mobileQuery.matches ? 2800 : 2400);
+        }
+        splash.classList.remove('is-download-handoff');
         splash.querySelector('[data-splash-download]')?.setAttribute('hidden', '');
         compositionReady = true;
         splash.setAttribute('aria-busy', 'false');
@@ -409,7 +454,42 @@
         enterButton.disabled = false;
         enterButton.focus({ preventScroll: true });
       }, reducedMotionQuery.matches ? 180 : 1100);
-    }, reducedMotionQuery.matches ? 0 : 180);
+    };
+
+    let running = false;
+    const run = async () => {
+      if (running) return;
+      running = true;
+      recovery.hidden = true;
+      status.textContent = 'STUDIO / LOADING';
+      splash.setAttribute('aria-busy', 'true');
+      const pending = tasks.filter((task) => task.state !== 'ready');
+      pending.forEach((task) => { task.state = 'pending'; task.fraction = 0; });
+      renderProgress();
+      await Promise.all(pending.map(async (task) => {
+        let ready = false;
+        try { ready = Boolean(await task.run()); } catch {}
+        task.state = ready ? 'ready' : 'failed';
+        task.fraction = ready ? 1 : 0;
+        renderProgress();
+      }));
+      running = false;
+      if (tasks.some((task) => task.state === 'failed')) {
+        status.textContent = 'STUDIO / CONNECTION INTERRUPTED';
+        transfer.textContent = 'Retry the missing assets or continue.';
+        recovery.hidden = false;
+        splash.setAttribute('aria-busy', 'false');
+        return;
+      }
+      status.textContent = 'STUDIO / READY';
+      transfer.textContent = 'DOWNLOAD COMPLETE';
+      setTimeout(revealComposition, reducedMotionQuery.matches ? 0 : 450);
+    };
+    splash.querySelector('[data-download-retry]').addEventListener('click', run);
+    splash.querySelector('[data-download-continue]').addEventListener('click', () => {
+      if (!running) revealComposition();
+    });
+    run();
   };
   prepareComposition();
 })();
