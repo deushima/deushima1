@@ -39,10 +39,19 @@
   <link rel="stylesheet" href="works-canvas.css?v=20260922-bg1">
   <link rel="stylesheet" href="experience-polish.css?v=20260926-hybrid1">
   <link rel="stylesheet" href="chatbot.css?v=20260921-modal-close1">
-  <link rel="stylesheet" href="splash.css?v=20260927-logo-dock1">
+  <link rel="stylesheet" href="splash.css?v=20261020-asset-preload1">
 </head>
 <body>
   <section class="studio-splash" data-studio-splash data-no-ascii aria-label="Deushima studio introduction" aria-modal="true" role="dialog">
+    <div class="studio-download" data-splash-download>
+      <div class="studio-download__content">
+        <span class="studio-download__brand">DEUSHIMA</span>
+        <div class="studio-download__heading"><span>Downloading</span><span data-splash-progress-text>0%</span></div>
+        <div class="studio-download__track" role="progressbar" aria-label="Carga de la composición inicial" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" data-splash-progress><span></span></div>
+        <span class="studio-download__caption" role="status" data-splash-progress-status>PREPARING THE EXPERIENCE</span>
+      </div>
+      <span class="studio-download__signature">VISUAL STUDIO / BUENOS AIRES</span>
+    </div>
     <div class="studio-splash__half studio-splash__half--identity" aria-hidden="true"></div>
     <div class="studio-splash__half studio-splash__half--preview" aria-hidden="true"></div>
 
@@ -98,7 +107,7 @@
 
   <main id="app" class="site-shell" data-site>
     <section class="hero hero--node-canvas" data-workspace-interaction-root aria-label="Inicio">
-      <video class="hero__video" data-hero-video autoplay muted loop playsinline preload="auto">
+      <video class="hero__video" data-hero-video muted loop playsinline preload="none">
         <source src="Video%20Background/Video%202%20mobile.mp4" type="video/mp4" media="(max-width: 760px)">
         <source src="Video%20Background/Video%201.mp4" type="video/mp4" media="(min-width: 761px)">
       </video>
@@ -695,7 +704,8 @@
   <script src="https://cdn.jsdelivr.net/npm/gsap@3.13.0/dist/gsap.min.js" defer></script>
   <script src="card-nav.js?v=20261004-centered1" defer></script>
   <script src="script.js?v=20260926-qa1"></script>
-  <script src="splash.js?v=20260927-logo-dock1"></script>
+  <script src="splash-assets.js?v=20261020-asset-preload1"></script>
+  <script src="splash.js?v=20261020-asset-preload1"></script>
   <script src="sfx-config.js?v=20260921-sfx9" defer></script>
   <script src="node-sfx.js?v=20260921-sfx11" defer></script>
   <script src="hero-camera.js?v=20260925-camera4" defer></script>

@@ -14,6 +14,63 @@ html.has-studio-splash .studio-splash {
   display: block;
 }
 
+/* Keep the first composition behind an opaque, immediately paintable download
+   screen. Its own typography needs no font or image request. */
+.studio-download {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  background: #030303;
+  color: #f4f4f2;
+  opacity: 1;
+  transition: opacity 0.55s ease;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.studio-download[hidden] { display: none; }
+.studio-download__content { width: min(20rem, calc(100vw - 4rem)); }
+.studio-download__brand { display: block; margin-bottom: 3.5rem; font-size: 0.75rem; letter-spacing: 0.16em; }
+.studio-download__heading { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: 0.85rem; }
+[data-splash-progress-text] { color: #8c9eb9; font-variant-numeric: tabular-nums; }
+.studio-download__track { height: 2px; margin-top: 1.15rem; overflow: hidden; background: #22252c; }
+.studio-download__track span {
+  display: block;
+  height: 100%;
+  background: #dce8ff;
+  transform: scaleX(var(--download-progress, 0));
+  transform-origin: left;
+  transition: transform 0.3s ease;
+}
+.studio-download__caption { display: block; margin-top: 1rem; color: #80848c; font-size: 0.55rem; letter-spacing: 0.1em; }
+.studio-download__signature { position: absolute; bottom: max(2rem, env(safe-area-inset-bottom)); font-size: 0.5rem; letter-spacing: 0.14em; color: #777b83; }
+.studio-splash.is-mounted .studio-download { opacity: 0; pointer-events: none; }
+.studio-splash.has-fallback-font { font-family: ui-sans-serif, system-ui, sans-serif; }
+
+.studio-splash:not(.is-mounted) .studio-splash__card {
+  opacity: 0;
+  transform: translate3d(0, 1.5rem, 0) scale(0.975);
+  pointer-events: none;
+}
+.studio-splash:not(.is-mounted) .studio-splash__loading,
+.studio-splash:not(.is-mounted) .studio-splash__split-line { opacity: 0; }
+.studio-splash.is-mounted:not(.is-entering) .studio-splash__card {
+  transition: opacity 0.8s ease 0.18s, transform 1s cubic-bezier(0.16, 1, 0.3, 1) 0.18s;
+}
+.studio-splash.is-mounted:not(.is-entering) .studio-splash__loading { transition-delay: 0.36s; }
+.studio-splash.is-mounted:not(.is-entering) .studio-splash__split-line { transition-delay: 0.2s; }
+.studio-splash:not(.is-mounted) .studio-splash__loader { animation-play-state: paused !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-download,
+  .studio-download__track span { transition-duration: 0.12s; }
+  .studio-splash:not(.is-mounted) .studio-splash__card { transform: none; }
+  .studio-splash.is-mounted:not(.is-entering) .studio-splash__card,
+  .studio-splash.is-mounted:not(.is-entering) .studio-splash__loading,
+  .studio-splash.is-mounted:not(.is-entering) .studio-splash__split-line { transition-delay: 0s; }
+}
+
 html.has-studio-splash,
 html.has-studio-splash body {
   overflow: hidden;

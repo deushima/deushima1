@@ -17,6 +17,15 @@
   let enterRequested = false;
   let entering = false;
   let flightLayer = null;
+  let compositionReady = false;
+  const identity = splash.querySelector('.studio-splash__identity');
+  const background = [...document.body.children]
+    .filter((element) => element !== splash && !element.matches('script, style'))
+    .map((element) => ({ element, wasInert: element.inert }));
+  background.forEach(({ element }) => { element.inert = true; });
+  if (identity) identity.inert = true;
+  enterButton.disabled = true;
+  splash.setAttribute('aria-busy', 'true');
 
   splash.setAttribute('aria-hidden', 'false');
 
@@ -29,7 +38,7 @@
 
   if (splashVideo && art) {
     splashVideo.className = 'studio-splash__art-video';
-    splashVideo.autoplay = !reducedMotionQuery.matches;
+    splashVideo.autoplay = false;
     splashVideo.loop = true;
     splashVideo.muted = true;
     splashVideo.defaultMuted = true;
@@ -59,17 +68,7 @@
 
     art.prepend(splashVideo);
 
-    if (reducedMotionQuery.matches) {
-      splashVideo.addEventListener('loadeddata', () => {
-        splashVideo.pause();
-        try {
-          splashVideo.currentTime = 0.001;
-        } catch {}
-      }, { once: true });
-    } else {
-      const playPromise = splashVideo.play();
-      if (playPromise?.catch) playPromise.catch(() => {});
-    }
+    splashVideo.load();
   }
 
   const syncLoaderMotion = () => {
@@ -119,6 +118,9 @@
       'is-shared-logo-reduced'
     );
     cleanupFlight();
+    readyObserver.disconnect();
+    background.forEach(({ element, wasInert }) => { element.inert = wasInert; });
+    document.querySelector('.brand-mark')?.focus({ preventScroll: true });
 
     if (!FORCE_SPLASH) {
       try {
@@ -192,6 +194,10 @@
     if (
       !sharedLogoSource ||
       !sharedLogoTarget ||
+      !sharedLogoSource.naturalWidth ||
+      !sharedLogoTarget.naturalWidth ||
+      sharedLogoSource.style.visibility === 'hidden' ||
+      sharedLogoTarget.style.visibility === 'hidden' ||
       typeof sharedLogoSource.animate !== 'function' ||
       reducedMotionQuery.matches
     ) {
@@ -325,6 +331,7 @@
   };
 
   const requestEnter = () => {
+    if (!compositionReady) return;
     enterRequested = true;
     splash.classList.add('is-armed');
     if (isSiteReady()) reveal();
@@ -339,15 +346,72 @@
   });
   readyObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
 
-  window.addEventListener('load', () => {
-    splash.classList.add('is-loaded');
-    if (enterRequested && isSiteReady()) reveal();
-  }, { once: true });
-
-  window.requestAnimationFrame(() => {
-    splash.classList.add('is-mounted');
-    window.setTimeout(() => enterButton.focus({ preventScroll: true }), 280);
-  });
+  const prepareComposition = async () => {
+    const progress = splash.querySelector('[data-splash-progress]');
+    const progressText = splash.querySelector('[data-splash-progress-text]');
+    const status = splash.querySelector('[data-splash-progress-status]');
+    const assets = window.DeushimaSplashAssets;
+    const images = [...splash.querySelectorAll('img'), sharedLogoTarget].filter(Boolean);
+    const jobs = assets ? [
+      ...images.map((image) => assets.waitForMedia(image, 'image')),
+      assets.waitForFonts().then((ready) => {
+        if (!ready) splash.classList.add('has-fallback-font');
+        return ready;
+      }),
+      ...(splashVideo ? [assets.waitForMedia(splashVideo, 'video')] : [])
+    ] : [];
+    // Start asset tracking immediately. A slow deferred third-party script must
+    // not leave the counter at zero or prevent the intro from opening forever.
+    jobs.push(new Promise((resolve) => {
+      if (document.readyState !== 'loading') return resolve(true);
+      const finishWaiting = () => {
+        clearTimeout(timer);
+        document.removeEventListener('DOMContentLoaded', finishWaiting);
+        resolve(true);
+      };
+      const timer = setTimeout(finishWaiting, 12000);
+      document.addEventListener('DOMContentLoaded', finishWaiting, { once: true });
+    }));
+    // The blurred workspace is visible in the desktop intro too. Wait for its
+    // existing initialization without depending on unrelated page media/load.
+    jobs.push(new Promise((resolve) => {
+      if (isSiteReady()) return resolve(true);
+      const observer = new MutationObserver(() => {
+        if (isSiteReady()) finishWaiting(true);
+      });
+      const finishWaiting = (ready) => {
+        clearTimeout(timer);
+        observer.disconnect();
+        resolve(ready);
+      };
+      const timer = setTimeout(() => finishWaiting(false), 12000);
+      observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    }));
+    let completed = 0;
+    await Promise.all(jobs.map((job) => job.then(() => {
+      const percent = Math.round(++completed / jobs.length * 100);
+      progress?.setAttribute('aria-valuenow', String(percent));
+      progress?.style.setProperty('--download-progress', String(percent / 100));
+      if (progressText) progressText.textContent = `${percent}%`;
+    })));
+    if (status) status.textContent = 'READY TO EXPLORE';
+    // Let the completed bar paint before dissolving it into the composition.
+    setTimeout(() => {
+      splash.classList.add('is-mounted', 'is-loaded');
+      if (splashVideo && splashVideo.readyState >= 3 && !reducedMotionQuery.matches) {
+        splashVideo.play()?.catch(() => {});
+      }
+      setTimeout(() => {
+        splash.querySelector('[data-splash-download]')?.setAttribute('hidden', '');
+        compositionReady = true;
+        splash.setAttribute('aria-busy', 'false');
+        if (identity) identity.inert = false;
+        enterButton.disabled = false;
+        enterButton.focus({ preventScroll: true });
+      }, reducedMotionQuery.matches ? 180 : 1100);
+    }, reducedMotionQuery.matches ? 0 : 180);
+  };
+  prepareComposition();
 })();
 
 (() => {
