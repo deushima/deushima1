@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <base href="/Vibe/">
+  <title>Deushima® — Iván Rodríguez · Diseño gráfico & dirección de arte</title>
+  <meta name="description" content="Portafolio de Iván Rodríguez (Deushima), diseñador gráfico y director de arte argentino de 26 años. Actualmente en Sushiclub. Identidades, campañas, editorial, experiencias digitales y visualización ASCII.">
+  <meta name="theme-color" content="#0b0b0c">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Deushima® — Iván Rodríguez · Diseño con pulso & código">
+  <meta property="og:description" content="Identidades, campañas, sistemas visuales y un render ASCII en vivo. Iván Rodríguez / Deushima. Portfolio 2026.">
+  <meta property="og:locale" content="es_AR">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preload" href="assets/fonts/archivo-900.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/instrument-serif-400-italic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/frames/frame_001.webp" as="image" type="image/webp">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="demo-context.css">
+  <script>document.documentElement.classList.add('js');</script>
+  <noscript>
+    <style>
+      #loader { display: none !important; }
+      body { overflow: auto !important; }
+      .cursor, .cursor__ring { display: none !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+      .line-mask > span { transform: none !important; }
+      .hero__eyebrow, .hero__name-row { opacity: 1 !important; transform: none !important; }
+    </style>
+  </noscript>
+</head>
+<body class="is-loading">
+
+  <aside class="vibe-project-switch" aria-label="Contexto de esta demostración">
+    <a class="vibe-project-switch__back" href="/" aria-label="Volver al sitio principal de Deushima">
+      <span aria-hidden="true">↖</span> VOLVER A DEUSHIMA
+    </a>
+    <div class="vibe-project-switch__meta">
+      <span>EXPERIMENT / DEEPSEEK</span>
+      <strong>2 prompts. Una web.</strong>
+      <small>Demostración conceptual · proyectos y premios ficticios.</small>
+    </div>
+  </aside>
+
+  <a class="skip-link" href="#work">Saltar al trabajo</a>
+
+  <div class="grain" aria-hidden="true"></div>
+
+  <div class="cursor" aria-hidden="true"></div>
+  <div class="cursor__ring" aria-hidden="true"><span class="cursor__label" data-cursor-label>Ver</span></div>
+
+  <!-- Loader -->
+  <div class="loader" id="loader" aria-hidden="true">
+    <div class="loader__top">
+      <span class="loader__logo">DEUSHIMA<sup>®</sup></span>
+      <span>Portfolio / 2026</span>
+      <span>Argentina, AR</span>
+    </div>
+    <div class="loader__mid">
+      <span class="loader__eyebrow">Preparando la secuencia</span>
+      <div class="loader__count"><span id="loader-count">00</span><sup>%</sup></div>
+      <div class="loader__bar"><i id="loader-bar"></i></div>
+      <span class="loader__hint">65 fotogramas · una historia</span>
+    </div>
+    <div class="loader__log" aria-hidden="true">
+      <span data-boot="0">&gt; INIT_CANVAS <b>...............</b> OK</span>
+      <span data-boot="1">&gt; LOAD_SEQUENCE 065F <b>.......</b> <b id="boot-progress">000%</b></span>
+      <span data-boot="2">&gt; COMPILE_GLYPHS <b>............</b> READY</span>
+      <span data-boot="3">&gt; SYSTEM_READY <b>..............</b> ONLINE<i class="blink"></i></span>
+    </div>
+    <div class="loader__bottom">
+      <span>Diseño gráfico &amp; dirección de arte</span>
+      <span>Deslizá, no hay prisa ↓</span>
+    </div>
+  </div>
+
+  <!-- Terminal transition -->
+  <div class="route-wipe" id="route-wipe" aria-hidden="true">
+    <div class="route-wipe__inner">
+      <span class="mono" id="route-label">LOADING / MODULE</span>
+      <div class="route-wipe__track"><i></i></div>
+      <span class="route-wipe__meta">SYNC 0x1A · PLEASE STAND BY</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <a class="logo" href="#top" aria-label="Deushima, inicio">
+      DEUSHIMA<sup>®</sup><span class="logo__dot" aria-hidden="true"></span>
+    </a>
+    <nav class="main-nav" aria-label="Navegación principal">
+      <a href="#work">Trabajo</a>
+      <a href="#studio">Estudio</a>
+      <a href="#system">Sistema</a>
+      <a href="#services">Servicios</a>
+      <a href="#contact">Contacto</a>
+    </nav>
+    <div class="header-meta">
+      <span class="status"><span class="status-label">Agenda abierta</span></span>
+      <span class="header-clock" id="clock">BA 00:00</span>
+      <button class="menu-toggle" type="button" id="menu-toggle" aria-expanded="false" aria-controls="menu">
+        <span>Menú</span>
+        <span class="menu-toggle__lines" aria-hidden="true"><i></i><i></i></span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile menu -->
+  <div class="menu" id="menu" aria-hidden="true">
+    <div>
+      <p class="mono" style="margin-bottom: 22px;">Indice — 2026</p>
+      <nav class="menu__links" aria-label="Menú móvil">
+        <a href="#work"><span>Trabajo</span><span>01</span></a>
+        <a href="#studio"><span>Estudio</span><span>02</span></a>
+        <a href="#system"><span>Sistema</span><span>03</span></a>
+        <a href="#services"><span>Servicios</span><span>04</span></a>
+        <a href="#contact"><span>Contacto</span><span>05</span></a>
+      </nav>
+    </div>
+    <div class="menu__foot">
+      <span>deushima@gmail.com</span>
+      <span>Argentina</span>
+      <a href="https://www.instagram.com/deushima" target="_blank" rel="noopener">Instagram ↗</a>
+      <a href="https://www.deushima.com.ar/" target="_blank" rel="noopener">Deushima.com.ar ↗</a>
+    </div>
+  </div>
+
+  <!-- Side rail -->
+  <aside class="rail" aria-label="Progreso de lectura">
+    <span class="rail__count" id="rail-count">01</span>
+    <button type="button" class="is-active" data-rail="hero" aria-label="Ir a introducción"><span>Intro</span></button>
+    <button type="button" data-rail="studio" aria-label="Ir a estudio"><span>Estudio</span></button>
+    <button type="button" data-rail="system" aria-label="Ir a sistema ASCII"><span>Sistema</span></button>
+    <button type="button" data-rail="work" aria-label="Ir a trabajo"><span>Trabajo</span></button>
+    <button type="button" data-rail="fragments" aria-label="Ir a fragmentos"><span>Fragmentos</span></button>
+    <button type="button" data-rail="services" aria-label="Ir a servicios"><span>Servicios</span></button>
+    <button type="button" data-rail="recognition" aria-label="Ir a reconocimiento"><span>Premios</span></button>
+    <button type="button" data-rail="contact" aria-label="Ir a contacto"><span>Contacto</span></button>
+    <span class="rail__pct" id="rail-pct">000%</span>
+  </aside>
+
+  <main id="top">
+
+    <!-- HERO -->
+    <section class="hero" id="hero" aria-label="Introducción">
+      <div class="hero__pin">
+        <canvas id="hero-canvas" width="1600" height="900" aria-hidden="true"></canvas>
+        <div class="hero__grade" aria-hidden="true"></div>
+
+        <div class="hero__rule" aria-hidden="true">
+          <span class="hero__seq">Film <b id="frame-current">001</b> / 065</span>
+          <span class="line"></span>
+          <span class="hide-mobile">Scroll-driven sequence</span>
+          <span>34°36′S — 58°22′W</span>
+        </div>
+
+        <div class="hero__intro">
+          <div class="hero__eyebrow">
+            <p>Portfolio / 2026</p>
+            <p>Diseñador gráfico &amp; director de arte<br>26 años · Argentina · Deushima</p>
+          </div>
+          <div class="hero__name-row">
+            <h1 class="hero__name"><span>Iván</span> <span class="serif">Rodríguez</span></h1>
+            <div class="hero__aside">
+              <p>Actualmente en Sushiclub. Construyo identidades, campañas y experiencias para marcas que quieren decir algo. Y decirlo distinto.</p>
+              <a class="hero__scroll" href="#studio"><i aria-hidden="true"></i> Deslizá para entrar</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero__statement" data-statement="0">
+          <p class="mono">01 — Identidad &amp; dirección</p>
+          <h2>El diseño<br><em>no se mira.</em><br>Se siente.</h2>
+          <p>Antes de leer una marca, el cuerpo ya decidió. Trabajo en esa fracción de segundo.</p>
+        </div>
+
+        <div class="hero__statement" data-statement="1">
+          <p class="mono">02 — Sistema &amp; expresión</p>
+          <h2>Marcas<br><em>con pulso.</em><br>Sistemas<br><em>con alma.</em></h2>
+          <p>Estrategia para ordenar. Dirección de arte para incomodar lo justo. Un sistema vivo, no un manual muerto.</p>
+        </div>
+
+        <div class="hero__statement" data-statement="2">
+          <p class="mono">03 — Menos ruido</p>
+          <h2>Menos ruido.<br><em>Más intención.</em></h2>
+          <p>En un mundo saturado, la claridad es una forma de rebeldía. Elijo cada gesto y elimino todo lo demás.</p>
+        </div>
+
+        <div class="hero__statement hero__statement--outro" data-statement="3">
+          <p class="mono">04 — El trabajo</p>
+          <h2>Bajá.<br><em>El trabajo habla.</em></h2>
+          <p>Cuatro proyectos, una forma de pensar. Seguí bajando.</p>
+        </div>
+
+        <div class="hero__bottom" aria-hidden="true">
+          <span>Secuencia</span>
+          <div class="hero__progress"><i id="hero-progress"></i></div>
+          <div class="right">
+            <span id="hero-timecode">00:00:00</span>
+            <span>Scroll ↓</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TICKER -->
+    <div class="ticker" aria-label="Disciplinas">
+      <div class="ticker__track">
+        <span>
+          Identidad <b>✳</b> Dirección de arte <b>✳</b> Editorial <b>✳</b> Digital <b>✳</b> Packaging <b>✳</b> Motion <b>✳</b> Campañas <b>✳</b>
+        </span>
+        <span aria-hidden="true">
+          Identidad <b>✳</b> Dirección de arte <b>✳</b> Editorial <b>✳</b> Digital <b>✳</b> Packaging <b>✳</b> Motion <b>✳</b> Campañas <b>✳</b>
+        </span>
+      </div>
+    </div>
+
+    <!-- STUDIO -->
+    <section class="studio section" id="studio">
+      <div class="section__head reveal">
+        <span class="label">02 — Estudio</span>
+        <span class="mono" style="color: var(--muted);">Argentina · 26 años</span>
+      </div>
+
+      <div class="studio__grid">
+        <div>
+          <h2 class="studio__headline reveal" data-scan>
+            Diseño para marcas que quieren<br>
+            <em>decir algo.</em><br>
+            <span class="outline">Y decirlo distinto.</span>
+          </h2>
+
+          <div class="studio__body">
+            <div>
+              <p class="studio__manifesto" data-words>
+                Soy Iván Rodríguez, diseñador gráfico y director de arte argentino. Tengo 26 años y actualmente trabajo en Sushiclub, donde desarrollo identidad, campañas y contenido para un ecosistema gastronómico en movimiento. En paralelo, Deushima es mi estudio: <em>sistemas visuales con carácter,</em> campañas que ocupan espacio y experiencias digitales que se recuerdan.
+              </p>
+            </div>
+            <div class="studio__side reveal">
+              <p>Mi práctica combina pensamiento de sistema, dirección de arte y una obsesión sana por el detalle. Desde Deushima trabajo con equipos y marcas de música, moda, cultura y tecnología.</p>
+              <span class="mono">Disponible para proyectos<br>en todo el mundo.</span>
+            </div>
+          </div>
+        </div>
+
+        <figure class="studio__figure reveal" style="--d: .12s;">
+          <span class="tag">En el taller</span>
+          <div class="frame">
+            <img src="assets/img/studio.webp" alt="Manos dibujando sobre una tablet en el taller de Iván Rodríguez" width="1500" height="1875" loading="lazy" data-parallax="0.07">
+          </div>
+          <figcaption>
+            <span>Estudio / 34°36′S 58°22′W</span>
+            <span>Proceso, no poses.</span>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div class="studio__stats reveal">
+        <div class="stat">
+          <div class="stat__num"><span data-count="26">26</span></div>
+          <div class="stat__label">Edad</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num"><span data-count="48">48</span></div>
+          <div class="stat__label">Marcas acompañadas</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num"><span data-count="9">9</span></div>
+          <div class="stat__label">Países</div>
+        </div>
+        <div class="stat">
+          <div class="stat__num"><span data-count="21">21</span></div>
+          <div class="stat__label">Premios &amp; menciones</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- QUOTE -->
+    <section class="quote" aria-label="Manifiesto" data-header="light">
+      <div class="quote__head">
+        <span class="label">Manifiesto</span>
+        <span>01 — 03</span>
+      </div>
+      <p class="quote__text reveal" data-scan>El buen diseño no decora. <em>Ordena el ruido</em> y le da una intención.</p>
+      <span class="quote__star" aria-hidden="true">✳</span>
+      <div class="quote__foot">
+        <span>Deushima®</span>
+        <span>Menos, pero mejor.</span>
+        <span>Argentina, 2026</span>
+      </div>
+    </section>
+
+    <!-- SYSTEM / ASCII -->
+    <section class="system" id="system" aria-labelledby="system-title">
+      <div class="system__grid">
+        <div class="system__copy">
+          <div class="section__head system__head reveal">
+            <span class="label">03 — Sistema</span>
+            <span class="mono system__head-meta">ASCII_RENDER / v1.0</span>
+          </div>
+
+          <p class="system__eyebrow mono reveal">// DEL PÍXEL AL CARÁCTER</p>
+          <h2 class="system__title reveal" data-scan id="system-title">La forma<br><em>también es código.</em></h2>
+          <p class="system__text reveal">Cada imagen puede leerse como una retícula de decisiones. Traduzco píxeles a glifos para encontrar la estructura esencial del retrato: dónde hay luz, dónde hay peso y dónde conviene borrar.</p>
+
+          <div class="system__terminal reveal" aria-hidden="true">
+            <div class="system__terminal-head">
+              <span>ASCII_RENDER.LOG</span>
+              <span><i class="live-dot"></i> LIVE</span>
+            </div>
+            <div class="system__terminal-body">
+              <span>&gt; source <b>eter_04.webp</b></span>
+              <span>&gt; grid <b id="ascii-grid">000 × 000</b></span>
+              <span>&gt; glyphs <b id="ascii-glyphs">.:-=+*#%@</b></span>
+              <span>&gt; render <b>canvas / 2d</b></span>
+              <span>&gt; status <b class="ok">ONLINE</b><i class="block-cursor"></i></span>
+            </div>
+          </div>
+
+          <p class="system__note mono reveal">Mové el cursor sobre el render. El retrato responde.</p>
+        </div>
+
+        <div class="system__stage" id="ascii-stage" data-cursor="Scan">
+          <canvas id="ascii-canvas" width="1200" height="900" role="img" aria-label="Retrato editorial de Éter renderizado con caracteres ASCII sobre fondo negro"></canvas>
+          <canvas id="ascii-fx" aria-hidden="true"></canvas>
+          <div class="system__stage-lines" aria-hidden="true"></div>
+          <div class="system__scan" aria-hidden="true"></div>
+          <div class="system__stage-ui" aria-hidden="true">
+            <span class="ui-corner ui-corner--tl"></span>
+            <span class="ui-corner ui-corner--tr"></span>
+            <span class="ui-corner ui-corner--bl"></span>
+            <span class="ui-corner ui-corner--br"></span>
+            <span class="ui-label ui-label--tl">RENDER_01 / ASCII</span>
+            <span class="ui-label ui-label--tr">SRC: ETER_04</span>
+            <span class="ui-label ui-label--bl">CHARSET: MONO</span>
+            <span class="ui-label ui-label--br">LIVE FEED</span>
+          </div>
+          <div class="system__stage-foot mono" aria-hidden="true">
+            <span id="ascii-foot-grid">096 × 048</span>
+            <span>GLYPH_DENSITY / 09</span>
+            <span>2D_CONTEXT</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ascii-lab" id="ascii-lab">
+        <div class="ascii-lab__head reveal">
+          <span class="label">03.1 — ASCII_LAB</span>
+          <a class="mono ascii-lab__credit" href="https://github.com/kailashsr38/ascii-magic-art" target="_blank" rel="noopener">
+            POWERED BY ASCII MAGIC ART <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+
+        <div class="ascii-lab__layout">
+          <div class="ascii-lab__panel reveal">
+            <p class="ascii-lab__eyebrow mono">// PIEZAS EN MOVIMIENTO</p>
+            <h3 class="ascii-lab__title" id="lab-title" aria-live="polite">Liquid Chrome</h3>
+            <p class="ascii-lab__note" id="lab-note">Mercurio líquido que se fusiona, se separa y refleja un estudio imaginario. Una pieza generativa, cuadro a cuadro.</p>
+
+            <div class="ascii-lab__controls">
+              <div class="lab-control">
+                <span class="mono">01 — PIEZA</span>
+                <div class="lab-tabs" role="group" aria-label="Seleccionar pieza ASCII">
+                  <button type="button" class="lab-btn is-active" data-lab-piece="liquid-chrome" aria-pressed="true">Chrome</button>
+                  <button type="button" class="lab-btn" data-lab-piece="spinning-torus" aria-pressed="false">Torus</button>
+                  <button type="button" class="lab-btn" data-lab-piece="ivan-decode" aria-pressed="false">Decode</button>
+                  <button type="button" class="lab-btn" data-lab-piece="wireframe-globe" aria-pressed="false">Globe</button>
+                </div>
+              </div>
+
+              <div class="lab-control">
+                <span class="mono">02 — LOOK</span>
+                <div class="lab-tabs" role="group" aria-label="Seleccionar look de caracteres">
+                  <button type="button" class="lab-btn is-active" data-lab-look="ascii" aria-pressed="true">ASCII</button>
+                  <button type="button" class="lab-btn" data-lab-look="dots" aria-pressed="false">Dots</button>
+                  <button type="button" class="lab-btn" data-lab-look="binary" aria-pressed="false">Binary</button>
+                  <button type="button" class="lab-btn" data-lab-look="dither" aria-pressed="false">Dither</button>
+                </div>
+              </div>
+
+              <div class="lab-control">
+                <span class="mono">03 — VISTA</span>
+                <div class="lab-tabs" role="group" aria-label="Opciones de visualización">
+                  <button type="button" class="lab-btn lab-toggle" data-lab-mono aria-pressed="false">Color</button>
+                  <button type="button" class="lab-btn lab-toggle" data-lab-pause aria-pressed="false">Pausa</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="ascii-lab__readout mono">
+              <span>GRID <b id="lab-grid">088 × 032</b></span>
+              <span>FPS <b id="lab-fps">30</b></span>
+              <span>LOOK <b id="lab-look">ASCII</b></span>
+              <span>RENDER <b>CANVAS / 2D</b></span>
+            </div>
+          </div>
+
+          <div class="ascii-lab__stage" id="lab-stage" role="img" aria-label="Liquid Chrome, pieza ASCII animada de ascii-magic-art" data-cursor="Live">
+            <pre id="lab-pre" aria-hidden="true"></pre>
+            <div class="lab-stage-boot" id="lab-boot"><span class="mono">MOUNTING ASCII_LAB ...</span></div>
+            <div class="lab-stage-scan" aria-hidden="true"></div>
+            <div class="lab-stage-ui" aria-hidden="true">
+              <span class="ui-corner ui-corner--tl"></span>
+              <span class="ui-corner ui-corner--tr"></span>
+              <span class="ui-corner ui-corner--bl"></span>
+              <span class="ui-corner ui-corner--br"></span>
+              <span class="ui-label ui-label--tl">ASCII_LAB / LIVE</span>
+              <span class="ui-label ui-label--tr">SOURCE: ASCII MAGIC</span>
+              <span class="ui-label ui-label--bl">CANVAS / 2D</span>
+              <span class="ui-label ui-label--br" id="lab-ui-mode">LOOK: ASCII</span>
+            </div>
+            <div class="lab-stage-foot mono" aria-hidden="true">
+              <span>MIT LICENSE</span>
+              <span>634 PIEZAS</span>
+              <span>ASCII-MAGIC.COM</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WORK -->
+    <section class="work" id="work">
+      <div class="section__head reveal" style="margin: 0 var(--pad);">
+        <span class="label">04 — Trabajo seleccionado</span>
+        <span class="mono" style="color: var(--muted);">2023 — 2026 · 04 casos</span>
+      </div>
+
+      <div style="padding: 0 var(--pad);">
+        <div class="work__intro">
+          <h2 class="work__title reveal" data-scan>Cuatro formas<br>de <em>ocupar espacio.</em></h2>
+          <div class="work__note reveal" style="--d: .1s;">
+            <span class="mono">Una selección personal</span>
+            Identidades, campañas y sistemas creados para marcas que no vinieron a pedir permiso. Cada proyecto empieza con una pregunta incómoda.
+          </div>
+        </div>
+      </div>
+
+      <div class="projects">
+
+        <!-- 01 NOCTURNA -->
+        <article class="project project--nocturna" style="--i: 0;" aria-labelledby="project-nocturna">
+          <div class="project__card">
+            <div class="project__panel">
+              <div class="project__meta">
+                <span><b>01</b> / 04</span>
+                <span>Identidad · Campaña · Motion</span>
+                <span>2025</span>
+              </div>
+              <div class="project__body">
+                <p class="project__cat">Festival de música electrónica</p>
+                <h3 class="project__title" id="project-nocturna">Nocturna</h3>
+                <p class="project__sub">Una identidad que cambia de forma con el sonido.</p>
+                <p class="project__desc">Tipografía cinética, un rojo que satura y un sistema modular que se adapta del cartel al escenario. Una marca para la noche que no necesita gritar.</p>
+                <ul class="project__tags">
+                  <li>Identidad</li>
+                  <li>Dirección de arte</li>
+                  <li>Motion</li>
+                </ul>
+                <span class="project__index" aria-hidden="true">01</span>
+              </div>
+              <div class="project__foot">
+                <div class="project__loc"><b>Buenos Aires, AR</b><span>12 — 14 diciembre</span></div>
+                <button class="project__cta" type="button" data-case-open="nocturna" data-cursor="Ver" aria-label="Ver caso Nocturna">Ver caso <i aria-hidden="true">↗</i></button>
+              </div>
+            </div>
+            <figure class="project__media" data-case-open="nocturna" data-cursor="Ver">
+              <img src="assets/img/nocturna.webp" alt="Tinta azul y roja expandiéndose en el agua, campaña visual de Nocturna" width="1800" height="1200" loading="eager" decoding="async">
+              <span class="media-mark media-mark--n" aria-hidden="true">N</span>
+              <div class="media-badge" aria-hidden="true"><span>Nocturna · Buenos Aires · 2025 ·</span></div>
+            </figure>
+          </div>
+        </article>
+
+        <!-- 02 LUMEN -->
+        <article class="project project--lumen" style="--i: 1;" aria-labelledby="project-lumen">
+          <div class="project__card" data-header="light">
+            <div class="project__panel">
+              <div class="project__meta">
+                <span><b>02</b> / 04</span>
+                <span>Branding · Packaging · Estrategia</span>
+                <span>2024</span>
+              </div>
+              <div class="project__body">
+                <p class="project__cat">Cuidado de la piel de autor</p>
+                <h3 class="project__title" id="project-lumen">Lumen</h3>
+                <p class="project__sub">Luz, textura y ritual.</p>
+                <p class="project__desc">Un sistema sereno y táctil para una marca que convierte el cuidado de la piel en una pausa dentro del día. Del envase al gesto.</p>
+                <ul class="project__tags">
+                  <li>Branding</li>
+                  <li>Packaging</li>
+                  <li>Dirección de arte</li>
+                </ul>
+                <span class="project__index" aria-hidden="true">02</span>
+              </div>
+              <div class="project__foot">
+                <div class="project__loc"><b>Ámsterdam, NL</b><span>Ritual 01 — 04</span></div>
+                <button class="project__cta" type="button" data-case-open="lumen" data-cursor="Ver" aria-label="Ver caso Lumen">Ver caso <i aria-hidden="true">↗</i></button>
+              </div>
+            </div>
+            <figure class="project__media" data-case-open="lumen" data-cursor="Ver">
+              <img src="assets/img/lumen.webp" alt="Envase blanco de Lumen sobre arena y cactus, fotografía de producto" width="1500" height="2250" loading="lazy" decoding="async">
+              <span class="media-vertical" aria-hidden="true">Light as a ritual — Amsterdam</span>
+              <div class="media-rule" aria-hidden="true"><span>Lumen®</span><span class="line"></span><span>Ritual 01</span></div>
+            </figure>
+          </div>
+        </article>
+
+        <!-- 03 ÉTER -->
+        <article class="project project--eter" style="--i: 2;" aria-labelledby="project-eter">
+          <div class="project__card">
+            <div class="project__panel">
+              <div class="project__meta">
+                <span><b>03</b> / 04</span>
+                <span>Editorial · Fotografía · Arte</span>
+                <span>2024</span>
+              </div>
+              <div class="project__body">
+                <p class="project__cat">Revista independiente</p>
+                <h3 class="project__title" id="project-eter">Éter</h3>
+                <p class="project__sub">Cuerpo, memoria y deseo.</p>
+                <p class="project__desc">Una publicación sobre lo intangible. Retícula rota, imágenes que respiran y una tipografía que susurra en lugar de explicar.</p>
+                <ul class="project__tags">
+                  <li>Editorial</li>
+                  <li>Dirección de arte</li>
+                  <li>Fotografía</li>
+                </ul>
+                <span class="project__index" aria-hidden="true">03</span>
+              </div>
+              <div class="project__foot">
+                <div class="project__loc"><b>Ciudad de México, MX</b><span>Edición Nº 04</span></div>
+                <button class="project__cta" type="button" data-case-open="eter" data-cursor="Ver" aria-label="Ver caso Éter">Ver caso <i aria-hidden="true">↗</i></button>
+              </div>
+            </div>
+            <figure class="project__media" data-case-open="eter" data-cursor="Ver">
+              <img src="assets/img/eter.webp" alt="Retrato editorial con lentes de colores y flor en la boca para la revista Éter" width="1500" height="2250" loading="lazy" decoding="async">
+              <div class="media-coverlines" aria-hidden="true">
+                <div class="media-coverlines__top">
+                  <span class="word">Éter</span>
+                  <span>Nº 04<br>Otoño / 2024<br>México</span>
+                </div>
+                <div class="media-coverlines__bottom">
+                  <span class="big">Cuerpo, memoria y deseo.</span>
+                  <span>Entrevista<br>Lucía Garro<br>Pág. 48</span>
+                </div>
+              </div>
+            </figure>
+          </div>
+        </article>
+
+        <!-- 04 MONOLITO -->
+        <article class="project project--monolito" style="--i: 3;" aria-labelledby="project-monolito">
+          <div class="project__card" data-header="light">
+            <div class="project__panel">
+              <div class="project__meta">
+                <span><b>04</b> / 04</span>
+                <span>Identidad · Digital · Señalética</span>
+                <span>2023</span>
+              </div>
+              <div class="project__body">
+                <p class="project__cat">Estudio de arquitectura</p>
+                <h3 class="project__title" id="project-monolito">Monolito</h3>
+                <p class="project__sub">Peso, vacío y estructura.</p>
+                <p class="project__desc">Una marca construida con la misma lógica del hormigón. Sistema modular, plataforma editorial y señalética para un estudio que diseña desde el silencio.</p>
+                <ul class="project__tags">
+                  <li>Identidad</li>
+                  <li>Digital</li>
+                  <li>Señalética</li>
+                </ul>
+                <span class="project__index" aria-hidden="true">04</span>
+              </div>
+              <div class="project__foot">
+                <div class="project__loc"><b>Santiago, CL</b><span>33°26′S 70°39′W</span></div>
+                <button class="project__cta" type="button" data-case-open="monolito" data-cursor="Ver" aria-label="Ver caso Monolito">Ver caso <i aria-hidden="true">↗</i></button>
+              </div>
+            </div>
+            <figure class="project__media" data-case-open="monolito" data-cursor="Ver">
+              <img src="assets/img/monolito.webp" alt="Edificio de arquitectura contemporánea de paneles blancos, identidad visual de Monolito" width="1800" height="1200" loading="lazy" decoding="async">
+              <div class="media-grid" aria-hidden="true"></div>
+              <div class="media-coords" aria-hidden="true">33°26′S<br>70°39′W<br><b>Santiago / CL</b></div>
+              <div class="media-rule" aria-hidden="true" style="color: rgba(11,11,12,.62);"><span>Monolito®</span><span class="line" style="background: rgba(11,11,12,.35);"></span><span>Arquitectura</span></div>
+            </figure>
+          </div>
+        </article>
+
+        <div class="projects__spacer" aria-hidden="true"></div>
+
+      </div>
+    </section>
+
+    <!-- FRAGMENTS -->
+    <section class="fragments" id="fragments" aria-label="Fragmentos del proceso">
+      <div class="fragments__pin">
+        <div class="fragments__head">
+          <div>
+            <div class="section__head" style="margin-bottom: 20px; padding-top: 0; border: 0;">
+              <span class="label">05 — Fragmentos</span>
+            </div>
+            <h2 class="fragments__title">El proceso<br><em>también es el diseño.</em></h2>
+          </div>
+          <p class="fragments__note">Restos de taller: pruebas de color, tipografía, impresiones y fotogramas que no llegaron al corte final. Acá también se piensa.</p>
+        </div>
+
+        <div class="fragments__track" id="fragments-track">
+          <figure class="fragment" style="--ratio: 4 / 3;">
+            <div class="fragment__frame"><img src="assets/img/fragment-swatches.webp" alt="Paleta de colores y pruebas de impresión sobre una mesa" width="1200" height="1500" loading="lazy"></div>
+            <figcaption><span><b>Sistema cromático</b><br>Nocturna</span><span>2025</span></figcaption>
+          </figure>
+          <figure class="fragment" style="--ratio: 1 / 1;">
+            <div class="fragment__frame"><img src="assets/img/fragment-gradient.webp" alt="Degradado abstracto de luz naranja y violeta" width="1200" height="800" loading="lazy"></div>
+            <figcaption><span><b>Estudio de luz</b><br>Lumen</span><span>2024</span></figcaption>
+          </figure>
+          <figure class="fragment" style="--ratio: 4 / 5;">
+            <div class="fragment__frame"><img src="assets/img/fragment-eter.webp" alt="Fotografía editorial de moda en tonos verdes" width="1200" height="1797" loading="lazy"></div>
+            <figcaption><span><b>Selección de imagen</b><br>Éter</span><span>2024</span></figcaption>
+          </figure>
+          <figure class="fragment" style="--ratio: 4 / 3;">
+            <div class="fragment__frame"><img src="assets/img/fragment-lumen.webp" alt="Packaging minimalista de Lumen" width="1200" height="900" loading="lazy"></div>
+            <figcaption><span><b>Packaging</b><br>Lumen</span><span>2024</span></figcaption>
+          </figure>
+          <figure class="fragment" style="--ratio: 4 / 5;">
+            <div class="fragment__frame"><img src="assets/img/fragment-monolito.webp" alt="Detalle de arquitectura moderna para la retícula de Monolito" width="1200" height="1531" loading="lazy"></div>
+            <figcaption><span><b>Retícula</b><br>Monolito</span><span>2023</span></figcaption>
+          </figure>
+          <figure class="fragment" style="--ratio: 3 / 4;">
+            <div class="fragment__frame"><img src="assets/img/fragment-blue.webp" alt="Líneas azules abstractas, textura de exploración visual" width="1200" height="1600" loading="lazy"></div>
+            <figcaption><span><b>Textura</b><br>Estudio</span><span>2026</span></figcaption>
+          </figure>
+        </div>
+
+        <div class="fragments__foot">
+          <span>Archivo</span>
+          <div class="fragments__bar"><i id="fragments-bar"></i></div>
+          <span class="fragments__hint">Deslizá →</span>
+          <span>2019 — 2026</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- SERVICES -->
+    <section class="services section" id="services">
+      <div class="section__head reveal">
+        <span class="label">06 — Servicios</span>
+        <span class="mono" style="color: var(--muted);">Estrategia → Forma → Mundo</span>
+      </div>
+
+      <div class="services__head">
+        <h2 class="services__title reveal" data-scan>Lo que hago<br>y <em>cómo lo hago.</em></h2>
+        <p class="services__note reveal" style="--d: .1s;">No vendo piezas sueltas. Construyo sistemas que funcionan en el mundo real: en una pantalla, en una calle, en una mano.</p>
+      </div>
+
+      <div class="services__list">
+        <a class="service reveal" href="#contact" data-preview="assets/img/nocturna.webp">
+          <span class="service__num">01</span>
+          <span class="service__name">Identidad &amp; estrategia</span>
+          <span class="service__desc">Naming, posicionamiento, sistemas visuales y manuales. Una marca no es un logo: es una forma de decidir.</span>
+          <span class="service__arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="service reveal" href="#contact" data-preview="assets/img/eter.webp">
+          <span class="service__num">02</span>
+          <span class="service__name">Dirección de arte</span>
+          <span class="service__desc">Campañas, fotografía, casting, set design y key visuals. La idea se defiende en cada encuadre.</span>
+          <span class="service__arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="service reveal" href="#contact" data-preview="assets/img/fragment-swatches.webp">
+          <span class="service__num">03</span>
+          <span class="service__name">Diseño editorial</span>
+          <span class="service__desc">Libros, revistas, catálogos e informes. La retícula es una forma de pensar.</span>
+          <span class="service__arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="service reveal" href="#contact" data-preview="assets/img/monolito.webp">
+          <span class="service__num">04</span>
+          <span class="service__name">Experiencias digitales</span>
+          <span class="service__desc">Sitios, productos, prototipos y motion. La interfaz también es lenguaje.</span>
+          <span class="service__arrow" aria-hidden="true">↗</span>
+        </a>
+        <a class="service reveal" href="#contact" data-preview="assets/img/lumen.webp">
+          <span class="service__num">05</span>
+          <span class="service__name">Packaging &amp; objetos</span>
+          <span class="service__desc">Estructuras, etiquetas y ediciones limitadas. El objeto es el primer contacto.</span>
+          <span class="service__arrow" aria-hidden="true">↗</span>
+        </a>
+      </div>
+
+      <div class="services__preview" id="services-preview" aria-hidden="true"><img src="assets/img/nocturna.webp" alt=""></div>
+    </section>
+
+    <!-- RECOGNITION -->
+    <section class="recognition" id="recognition" data-header="light">
+      <div class="section__head reveal">
+        <span class="label">07 — Reconocimiento</span>
+        <span class="mono" style="color: var(--muted-dark);">Selección 2022 — 2026</span>
+      </div>
+
+      <div class="recognition__grid">
+        <div>
+          <h2 class="recognition__title reveal" data-scan>El trabajo habla.<br><em>Los jurados también.</em></h2>
+
+          <div class="recognition__list reveal" style="--d: .1s;">
+            <div class="award">
+              <span class="award__year">2026</span>
+              <span class="award__title">Awwwards — Site of the Day</span>
+              <span class="award__project">Nocturna</span>
+            </div>
+            <div class="award">
+              <span class="award__year">2025</span>
+              <span class="award__title">D&amp;AD — Wood Pencil, Art Direction</span>
+              <span class="award__project">Éter</span>
+            </div>
+            <div class="award">
+              <span class="award__year">2024</span>
+              <span class="award__title">Latin American Design — Oro</span>
+              <span class="award__project">Lumen</span>
+            </div>
+            <div class="award">
+              <span class="award__year">2023</span>
+              <span class="award__title">Clio Awards — Bronce</span>
+              <span class="award__project">Monolito</span>
+            </div>
+            <div class="award">
+              <span class="award__year">2022</span>
+              <span class="award__title">TipoGráfica — Mención de honor</span>
+              <span class="award__project">Sistema Nocturna</span>
+            </div>
+          </div>
+        </div>
+
+        <aside class="recognition__aside reveal" style="--d: .15s;">
+          <p>Los premios no son el objetivo. Son la consecuencia de hacer las preguntas correctas y cuidar cada decisión hasta el final.</p>
+          <div class="recognition__stats">
+            <div class="recognition__stat"><b data-count="48">48</b><span>Marcas</span></div>
+            <div class="recognition__stat"><b data-count="9">9</b><span>Países</span></div>
+            <div class="recognition__stat"><b data-count="21">21</b><span>Premios</span></div>
+            <div class="recognition__stat"><b data-count="12">12</b><span>Años de práctica</span></div>
+          </div>
+        </aside>
+      </div>
+
+      <div class="clients" aria-label="Clientes">
+        <div class="clients__track">
+          <span>Museo del Río <b>✳</b> Casa Sur <b>✳</b> Nordika <b>✳</b> Feria Luz <b>✳</b> Estudio Bruma <b>✳</b> Café Origen <b>✳</b> Colectivo Fauna <b>✳</b> Órbita <b>✳</b> Taller Norte <b>✳</b></span>
+          <span aria-hidden="true">Museo del Río <b>✳</b> Casa Sur <b>✳</b> Nordika <b>✳</b> Feria Luz <b>✳</b> Estudio Bruma <b>✳</b> Café Origen <b>✳</b> Colectivo Fauna <b>✳</b> Órbita <b>✳</b> Taller Norte <b>✳</b></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section class="contact" id="contact">
+      <div class="contact__head reveal">
+        <span class="label">08 — Contacto</span>
+        <span class="mono" style="color: var(--muted);">Nuevos proyectos / 2027</span>
+      </div>
+
+      <p class="contact__eyebrow reveal">¿Tenés una idea que no te deja dormir?</p>
+      <h2 class="contact__title" aria-label="Hablemos">
+        <span style="--i:0">H</span><span style="--i:1">A</span><span style="--i:2">B</span><span style="--i:3">L</span><span style="--i:4">E</span><span style="--i:5">M</span><span style="--i:6">O</span><span style="--i:7">S</span>
+      </h2>
+
+      <div class="contact__grid">
+        <div class="reveal">
+          <p class="contact__cta">Escribime. Sin vueltas.<br>Con una buena pregunta alcanza.</p>
+          <a class="contact__email" href="mailto:deushima@gmail.com">deushima@gmail.com <i aria-hidden="true">↗</i></a>
+          <br>
+          <button class="contact__copy" type="button" data-copy="deushima@gmail.com">Copiar email</button>
+        </div>
+
+        <div class="contact__info reveal" style="--d: .1s;">
+          <span class="contact__availability">Agenda abierta para nuevos proyectos</span>
+          <p>Trabajo con marcas, estudios y personas que valoran una idea bien ejecutada. Contame qué querés mover.</p>
+          <div class="contact__socials">
+            <a href="https://www.instagram.com/deushima" target="_blank" rel="noopener">Instagram <span>↗</span></a>
+            <a href="https://www.deushima.com.ar/" target="_blank" rel="noopener">Sitio principal <span>↗</span></a>
+          </div>
+        </div>
+      </div>
+
+      <div class="contact__wordmark" aria-hidden="true">DEUSHIMA</div>
+
+      <footer class="site-footer">
+        <div class="site-footer__col">
+          <span>© 2026 Deushima® / Iván Rodríguez</span>
+          <span>Diseñado y desarrollado en Argentina.</span>
+          <span>Fotografía: Unsplash + Coverr.</span>
+        </div>
+        <div class="site-footer__col">
+          <span id="footer-clock">BA 00:00:00</span>
+          <span>34°36′S 58°22′W</span>
+          <a href="#top">Volver arriba ↑</a>
+        </div>
+      </footer>
+    </section>
+
+  </main>
+
+  <!-- Case study overlay -->
+  <div class="case-modal" id="case-modal" role="dialog" aria-modal="true" aria-labelledby="case-title" aria-hidden="true">
+    <div class="case-modal__scrim" data-case-close></div>
+    <div class="case-modal__panel">
+      <button class="case-modal__close" type="button" data-case-close aria-label="Cerrar caso">Cerrar <span aria-hidden="true">✕</span></button>
+      <div class="case-modal__scroll" id="case-content"></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite">Email copiado</div>
+
+  <script src="assets/js/lenis.min.js"></script>
+  <script src="assets/js/ascii-source.js"></script>
+  <script src="assets/ascii/ascii-lab.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

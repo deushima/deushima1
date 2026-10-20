@@ -1,0 +1,92 @@
+/* Deushima / Vibe coding experiment. Isolated from the interactive workspace. */
+.vibe-example {
+  position: fixed;
+  inset: auto auto max(26px, env(safe-area-inset-bottom, 0px)) clamp(16px, 2.5vw, 36px);
+  z-index: 10050;
+  display: inline-flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 68px;
+  padding: 11px 16px 11px 12px;
+  color: #f7f8fb;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, .23);
+  border-radius: 16px;
+  background: linear-gradient(118deg, rgba(35, 46, 67, .93), rgba(9, 12, 20, .95) 67%);
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .44), inset 0 1px rgba(255, 255, 255, .13);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  isolation: isolate;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity .38s ease, transform .42s cubic-bezier(.2,.8,.2,1), border-color .25s ease, box-shadow .25s ease, visibility .38s ease;
+  visibility: hidden;
+  white-space: nowrap;
+}
+
+body.is-site-ready .vibe-example {
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+}
+
+html.has-studio-splash .vibe-example {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.vibe-example:hover,
+.vibe-example:focus-visible {
+  border-color: rgba(126, 183, 255, .83);
+  box-shadow: 0 18px 48px rgba(0, 0, 0, .51), 0 0 0 1px rgba(84, 156, 255, .14), inset 0 1px rgba(255, 255, 255, .2);
+  transform: translateY(-3px);
+}
+
+.vibe-example:focus-visible { outline: 2px solid #92bdff; outline-offset: 4px; }
+
+.vibe-example__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #347be9, #1655a9);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.27), 0 4px 17px rgba(36,119,255,.2);
+}
+
+.vibe-example__icon svg { width: 23px; height: 23px; }
+
+.vibe-example__copy { display: grid; gap: 5px; line-height: 1.1; }
+.vibe-example__eyebrow {
+  color: #a3bee5;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: .15em;
+}
+.vibe-example__copy strong { color: #f7f8fb; font-size: 13px; font-weight: 600; letter-spacing: -.015em; }
+.vibe-example__arrow { margin-left: 7px; font-size: 18px; color: #b7cdec; transition: transform .3s ease; }
+.vibe-example:hover .vibe-example__arrow { transform: translate(2px, -2px); }
+
+@media (max-width: 760px) {
+  .vibe-example {
+    left: 16px;
+    bottom: calc(85px + env(safe-area-inset-bottom, 0px));
+    min-height: 58px;
+    padding: 9px 12px 9px 9px;
+    gap: 10px;
+    border-radius: 13px;
+  }
+  .vibe-example__icon { width: 38px; height: 38px; border-radius: 9px; }
+  .vibe-example__icon svg { width: 21px; height: 21px; }
+  .vibe-example__copy strong { font-size: 12px; }
+  .vibe-example__eyebrow { font-size: 8px; }
+  .vibe-example__arrow { margin-left: 0; font-size: 15px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vibe-example, .vibe-example__arrow { transition: none; transform: none !important; }
+}
