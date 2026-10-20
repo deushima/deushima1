@@ -2,7 +2,7 @@
 .vibe-example {
   position: fixed;
   inset: auto auto max(26px, env(safe-area-inset-bottom, 0px)) clamp(16px, 2.5vw, 36px);
-  z-index: 10050;
+  z-index: 10010;
   display: inline-flex;
   align-items: center;
   gap: 13px;
