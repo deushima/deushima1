@@ -68,23 +68,32 @@ html.has-studio-splash .vibe-example {
   letter-spacing: .15em;
 }
 .vibe-example__copy strong { color: #f7f8fb; font-size: 13px; font-weight: 600; letter-spacing: -.015em; }
+.vibe-example__mobile-label { display: none; }
 .vibe-example__arrow { margin-left: 7px; font-size: 18px; color: #FF2C00; transition: transform .3s ease; }
 .vibe-example:hover .vibe-example__arrow { transform: translate(2px, -2px); }
 
 @media (max-width: 760px) {
   .vibe-example {
     left: 16px;
-    bottom: calc(85px + env(safe-area-inset-bottom, 0px));
-    min-height: 58px;
-    padding: 9px 12px 9px 9px;
-    gap: 10px;
+    top: auto;
+    bottom: calc(15px + env(safe-area-inset-bottom, 0px));
+    min-height: 50px;
+    padding: 8px 12px 8px 8px;
+    gap: 9px;
     border-radius: 13px;
   }
-  .vibe-example__icon { width: 38px; height: 38px; border-radius: 9px; }
-  .vibe-example__icon svg { width: 21px; height: 21px; }
-  .vibe-example__copy strong { font-size: 12px; }
-  .vibe-example__eyebrow { font-size: 8px; }
-  .vibe-example__arrow { margin-left: 0; font-size: 15px; }
+  .vibe-example__icon { width: 34px; height: 34px; border-radius: 9px; }
+  .vibe-example__icon svg { width: 20px; height: 20px; }
+  .vibe-example__copy,
+  .vibe-example__arrow { display: none; }
+  .vibe-example__mobile-label {
+    display: inline;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: .09em;
+    color: #f7f8fb;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
